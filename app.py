@@ -127,15 +127,17 @@ with st.sidebar:
             st.caption(f"📄 {fn}")
 
     st.write("---")
-    st.subheader("Basis Pengetahuan RAG")
-    st.write("Jika Anda menambah atau memperbarui dokumen di folder `knowledge_base/`, klik tombol di bawah untuk menyegarkan indeks.")
-    
-    # Tombol Rebuild RAG Index
-    if st.button("Perbarui Indeks RAG Bawaan", use_container_width=True):
+    st.subheader("Basis Pengetahuan")
+    st.write(
+        "Indeks diambil dari Company Profile API LEXA. "
+        "Klik tombol di bawah untuk sinkronisasi ulang jika data website berubah."
+    )
+
+    if st.button("Sync Knowledge Base dari API", use_container_width=True):
         if st.session_state.rag:
-            with st.spinner("Membangun ulang indeks..."):
-                st.session_state.rag.build_index()
-            st.success("Indeks RAG berhasil diperbarui!")
+            with st.spinner("Mengambil basis pengetahuan dari API..."):
+                st.session_state.rag.build_index_from_url()
+            st.success("Basis pengetahuan berhasil disinkronkan!")
             st.rerun()
         else:
             st.warning("RAG Pipeline tidak aktif.")
@@ -143,7 +145,11 @@ with st.sidebar:
 
 # Header Utama
 st.title("💬 Lexa Customer Service")
-st.caption("Asisten Customer Service Interaktif dengan basis pengetahuan RAG (Groq API)")
+st.caption("Asisten resmi LEXA Software House — powered by Groq API & RAG")
+st.markdown(
+    "Halo! Saya **Lexa**, asisten customer service LEXA Software House. "
+    "Saya bisa bantu info layanan, portfolio, teknologi, karir, dan kontak kami."
+)
 st.write("---")
 
 # Menampilkan riwayat chat yang tersimpan (melewati system prompt indeks ke-0)

@@ -1,8 +1,12 @@
 import os
 import re
 import pickle
+import urllib.error
+import urllib.request
 import numpy as np
 from sentence_transformers import SentenceTransformer
+
+DEFAULT_KB_URL = "https://sh-01-company-profile.vercel.app/api/knowledge-base"
 
 class SimpleVectorStore:
     """
@@ -100,9 +104,15 @@ class RAGPipeline:
     RAG Pipeline untuk mengelola pembacaan folder dokumen, chunking,
     pengindeksan, dan pencarian basis pengetahuan.
     """
-    def __init__(self, db_dir="knowledge_base", index_path="knowledge_base/vector_index.pkl"):
+    def __init__(
+        self,
+        db_dir="knowledge_base",
+        index_path="knowledge_base/vector_index.pkl",
+        kb_url=None,
+    ):
         self.db_dir = db_dir
         self.index_path = index_path
+        self.kb_url = kb_url or os.getenv("KNOWLEDGE_BASE_URL", DEFAULT_KB_URL)
         self.vector_store = SimpleVectorStore()
 
     def chunk_markdown(self, text: str, filename: str) -> list:
@@ -209,11 +219,62 @@ class RAGPipeline:
             print(f"Berhasil menambahkan {len(chunks)} chunks dari dokumen sementara '{file_name}' ke memori.")
 
 
+    def fetch_remote_kb(self, url: str = None) -> str:
+        """Mengambil basis pengetahuan markdown dari API company profile."""
+        url = url or self.kb_url
+        request = urllib.request.Request(url, headers={"User-Agent": "LexaChatbot/1.0"})
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.read().decode("utf-8")
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Gagal mengambil basis pengetahuan dari {url}: {e}") from e
+
+    def _cache_kb_text(self, text: str) -> str:
+        """Menyimpan salinan lokal basis pengetahuan untuk fallback offline."""
+        os.makedirs(self.db_dir, exist_ok=True)
+        cache_path = os.path.join(self.db_dir, "lexa_company_profile.md")
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return cache_path
+
+    def _load_cached_kb_text(self):
+        cache_path = os.path.join(self.db_dir, "lexa_company_profile.md")
+        if not os.path.exists(cache_path):
+            return None
+        with open(cache_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    def build_index_from_url(self, url: str = None):
+        """Fetch KB dari API, cache ke disk, lalu bangun indeks vektor."""
+        filename = "lexa_company_profile.md"
+        try:
+            text = self.fetch_remote_kb(url)
+            self._cache_kb_text(text)
+            print(f"Basis pengetahuan berhasil diambil dari API.")
+        except RuntimeError as e:
+            cached = self._load_cached_kb_text()
+            if cached:
+                text = cached
+                print(f"Peringatan: {e}. Menggunakan cache lokal.")
+            else:
+                raise RuntimeError(
+                    f"{e} Tidak ada cache lokal. Pastikan koneksi internet aktif."
+                ) from e
+
+        chunks = self.chunk_markdown(text, filename)
+        if not chunks:
+            raise RuntimeError("Basis pengetahuan kosong setelah chunking.")
+
+        self.vector_store = SimpleVectorStore()
+        self.vector_store.add_chunks(chunks)
+        self.vector_store.save(self.index_path)
+        print(f"Indeks RAG berhasil dibuat dengan {len(chunks)} chunks dari API.")
+
     def build_index(self):
-        """Membaca semua file dokumen, memecahnya ke dalam chunks, dan mengindeksnya."""
+        """Membaca file lokal atau fetch dari API jika folder kosong."""
         if not os.path.exists(self.db_dir):
             os.makedirs(self.db_dir)
-            
+
         all_chunks = []
         for file in os.listdir(self.db_dir):
             if file.endswith((".md", ".txt")) and file != os.path.basename(self.index_path):
@@ -221,33 +282,32 @@ class RAGPipeline:
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
                         text = f.read()
-                    
                     chunks = self.chunk_markdown(text, file)
                     all_chunks.extend(chunks)
                 except Exception as e:
                     print(f"Gagal membaca file {file}: {e}")
-                    
+
         if all_chunks:
-            # Buat vector store baru
             self.vector_store = SimpleVectorStore()
             self.vector_store.add_chunks(all_chunks)
             self.vector_store.save(self.index_path)
-            print(f"Indeks berhasil dibuat dengan {len(all_chunks)} chunks dokumen.")
+            print(f"Indeks berhasil dibuat dengan {len(all_chunks)} chunks dokumen lokal.")
         else:
-            print("Tidak ada dokumen (.md atau .txt) yang ditemukan untuk diindeks.")
+            print("Tidak ada dokumen lokal. Mengambil basis pengetahuan dari API...")
+            self.build_index_from_url()
 
     def load_or_build(self, force_rebuild=False):
-        """Memuat indeks dari cache lokal. Jika belum ada, buat indeks baru."""
+        """Memuat indeks dari cache. Jika belum ada atau force_rebuild, bangun dari API."""
         if os.path.exists(self.index_path) and not force_rebuild:
             try:
                 self.vector_store.load(self.index_path)
                 print("Indeks RAG berhasil dimuat dari cache.")
             except Exception as e:
-                print(f"Gagal memuat indeks dari cache, membuat ulang: {e}")
-                self.build_index()
+                print(f"Gagal memuat indeks dari cache, membangun ulang: {e}")
+                self.build_index_from_url()
         else:
-            self.build_index()
+            self.build_index_from_url()
 
-    def search(self, query: str, top_k: int = 3, threshold: float = 0.2):
+    def search(self, query: str, top_k: int = 5, threshold: float = 0.22):
         """Mencari dokumen yang relevan dengan query user."""
         return self.vector_store.search(query, top_k=top_k, threshold=threshold)
