@@ -4,3 +4,5 @@ streamlit
 sentence-transformers
 numpy
 pypdf
+fastapi
+uvicorn[standard]

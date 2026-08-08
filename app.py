@@ -1,4 +1,5 @@
 import streamlit as st
+import pypdf
 from core.llm import LexaChatbot
 from core.rag import RAGPipeline
 
@@ -83,15 +84,18 @@ with st.sidebar:
     # Logika Pemrosesan Berkas Unggahan
     if uploaded_file is not None:
         file_name = uploaded_file.name
+        file_size_mb = uploaded_file.size / (1024 * 1024)
+
         if "indexed_files" not in st.session_state:
             st.session_state.indexed_files = set()
-            
-        if file_name not in st.session_state.indexed_files:
+
+        if file_size_mb > 10:
+            st.sidebar.error(f"Ukuran file {file_size_mb:.1f}MB melebihi batas 10MB.")
+        elif file_name not in st.session_state.indexed_files:
             try:
                 with st.spinner(f"Mengekstrak teks dari {file_name}..."):
                     extracted_text = ""
                     if file_name.endswith(".pdf"):
-                        import pypdf
                         reader = pypdf.PdfReader(uploaded_file)
                         for page in reader.pages:
                             page_text = page.extract_text()

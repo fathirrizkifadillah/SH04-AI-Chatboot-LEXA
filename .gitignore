@@ -1,4 +1,26 @@
+# Environment
 .env
-.venv
-__pycache__
-knowledge_base
+.venv/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Knowledge Base cache (di-generate otomatis)
+knowledge_base/vector_index.pkl
+knowledge_base/lexa_company_profile.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store

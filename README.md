@@ -1,53 +1,43 @@
-# Chatbot Customer Service - Lexa 💬📚
+# Chatbot Customer Service - Lexa 💬
 
-Lexa adalah chatbot asisten customer service interaktif berbasis AI yang dilengkapi dengan teknologi **RAG (Retrieval-Augmented Generation)**. Chatbot ini dapat menjawab pertanyaan pelanggan secara cerdas dan akurat berdasarkan basis pengetahuan dokumen perusahaan Anda, baik dari dokumen bawaan (*static*) maupun dokumen yang diunggah langsung saat percakapan berlangsung (*dynamic upload*).
+Lexa adalah chatbot asisten customer service berbasis AI dengan teknologi **RAG (Retrieval-Augmented Generation)**. Tersedia dalam 3 mode: **Sidebar Widget**, **Streamlit Web UI**, dan **CLI Terminal**.
 
-Proyek ini ditenagai oleh **Groq Cloud API** dengan antarmuka berbasis **Streamlit** (Web UI) dan **Terminal (CLI)**.
+Ditenagai oleh **Groq Cloud API** dengan model `openai/gpt-oss-120b`.
 
 ---
 
 ## 🚀 Fitur Utama
-1. **Retrieval-Augmented Generation (RAG) Lokal**: Pencarian dokumen menggunakan representasi vektor dari model `all-MiniLM-L6-v2` (`sentence-transformers`) dan kecocokan kecerdasan kosinus (*Cosine Similarity*).
-2. **Dynamic PDF & TXT Upload**: Mengekstraksi teks dari berkas PDF (`pypdf`) dan TXT yang diunggah langsung oleh pengguna di halaman web.
-3. **Penyimpanan Vektor Aman di Memori**: Dokumen unggahan pengguna hanya disimpan di dalam memori sesi aktif dan akan otomatis terhapus saat sesi di-reset atau ditutup (tidak tersimpan ke disk).
-4. **Indikator Dokumen Aktif & Referensi Transparan**: Menampilkan sumber dokumen pendukung beserta skor kecocokan dalam panel *expander* di bawah jawaban bot.
+
+- **RAG (Retrieval-Augmented Generation)** — Jawaban berdasarkan dokumen perusahaan, bukan halusinasi
+- **Sidebar Chat Widget** — Bisa di-embed di website manapun via `<script>` tag
+- **Streaming Real-time** — Respon muncul kata per kata secara instan
+- **Upload Dokumen Dinamis** — Upload PDF/TXT untuk dianalisis AI selama sesi chat
+- **Riwayat Tersimpan** — Chat history tersimpan di browser (localStorage)
+- **Quick Replies** — Tombol shortcut pertanyaan umum
+- **Eskalasi ke Manusia** — Redirect ke WhatsApp jika bot tidak bisa jawab
+- **Feedback per Jawaban** — 👍👎 untuk track kualitas jawaban
+- **Desain Premium** — Glassmorphism dark mode + animasi halus
 
 ---
 
-## 🛠️ Persiapan Awal
+## 🛠️ Persiapan
 
 ### 1. Dapatkan API Key Groq
-Silakan daftar secara gratis dan ambil API Key Anda di: **[Groq Console](https://console.groq.com/)**.
+Daftar gratis di **[Groq Console](https://console.groq.com/)**.
 
-### 2. Konfigurasi Environment File (`.env`)
-Buat file bernama `.env` di root folder proyek Anda, lalu masukkan API Key Anda:
+### 2. Konfigurasi `.env`
+```bash
+cp .env.example .env
+```
+Edit `.env` dan masukkan API Key:
 ```env
-GROQ_API_KEY=gsk_IsiDenganApiKeyGroqAndaDiSini
+GROQ_API_KEY=gsk_IsiDenganApiKeyGroqAnda
 ```
 
----
-
-## 🚀 Instalasi & Setup
-
-Sangat disarankan untuk menggunakan **Virtual Environment (venv)** agar pustaka terisolasi secara aman.
-
-### 1. Buat dan Aktifkan Virtual Environment
-Jalankan perintah berikut di terminal Anda (PowerShell/CMD):
-
-* **Windows (PowerShell)**:
-  ```powershell
-  python -m venv .venv
-  .\.venv\Scripts\Activate.ps1
-  ```
-* **Windows (CMD)**:
-  ```cmd
-  python -m venv .venv
-  .\.venv\Scripts\activate.bat
-  ```
-
-### 2. Instal Library (Requirements)
-Jalankan perintah berikut untuk menginstal semua pustaka yang diperlukan (`groq`, `streamlit`, `sentence-transformers`, `numpy`, `pypdf`):
-```bash
+### 3. Setup Virtual Environment & Install
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
@@ -55,38 +45,74 @@ pip install -r requirements.txt
 
 ## 🎮 Cara Menjalankan
 
-### A. Tampilan Browser (Streamlit Web UI)
-Jalankan perintah berikut untuk membuka antarmuka chatbot interaktif:
+### A. Sidebar Widget (⭐ Utama)
+
+Jalankan API server:
+```powershell
+.\.venv\Scripts\python.exe api.py
+```
+
+Lalu buka demo page:
+```
+http://localhost:8000/widget/index.html
+```
+
+**Untuk embed di website Anda**, tambahkan sebelum `</body>`:
+```html
+<!-- Lexa Chat Widget -->
+<link rel="stylesheet" href="http://localhost:8000/widget/lexa-widget.css">
+<script src="http://localhost:8000/widget/lexa-widget.js"></script>
+<script>LexaWidget.init({ apiUrl: 'http://localhost:8000' });</script>
+```
+
+### B. Streamlit Web UI
 ```powershell
 .\.venv\Scripts\streamlit.exe run app.py
 ```
-Aplikasi web akan otomatis terbuka di browser Anda pada alamat `http://localhost:8501`.
 
-### B. Uji Coba Pencarian RAG (CLI)
-Untuk memverifikasi kecocokan pencarian dokumen dinamis secara terpisah di terminal:
+### C. CLI Terminal
 ```powershell
-.\.venv\Scripts\python.exe llm_tests/scratch_pdf_test.py
+.\.venv\Scripts\python.exe main.py
 ```
 
 ---
 
-## 📁 Struktur Direktori Proyek
+## 🌐 API Endpoints
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| `GET` | `/health` | Status server |
+| `GET` | `/config` | Konfigurasi widget (welcome message, quick replies) |
+| `POST` | `/chat` | Kirim pesan (non-streaming) |
+| `POST` | `/chat/stream` | Kirim pesan (SSE streaming) |
+| `POST` | `/chat/reset` | Reset sesi chat |
+
+---
+
+## 📁 Struktur Proyek
+
 ```text
 CHATBOT LEXA/
-├── .venv/                      # Python virtual environment
-├── core/                       # Logika Utama (Package)
-│   ├── __init__.py             # Inisialisasi package
-│   ├── llm.py                  # Logika utama LLM & orkestrasi
-│   └── rag.py                  # Mesin pencari RAG & chunking
-├── knowledge_base/             # Folder dokumen basis pengetahuan
-│   ├── features.md             # Data fitur-fitur utama SaaS
-│   ├── pricing.md              # Data daftar paket harga SaaS
-│   └── vector_index.pkl        # Berkas cache indeks vektor (permanen)
-├── llm_tests/                  # Script Pengujian LLM
-│   ├── scratch_pdf_test.py     # Pengujian PDF / Dynamic RAG
-│   └── scratch_rag_test.py     # Pengujian static RAG
-├── app.py                      # Aplikasi utama (Streamlit Web UI)
-├── main.py                     # Aplikasi CLI terminal
-├── requirements.txt            # Daftar dependensi pustaka Python
-└── README.md                   # Panduan proyek ini
+├── core/                           # Logika utama
+│   ├── __init__.py
+│   ├── config.py                   # Config management terpusat
+│   ├── llm.py                      # LLM & orkestrasi Groq API
+│   └── rag.py                      # RAG pipeline & chunking
+├── widget/                         # Sidebar chat widget
+│   ├── index.html                  # Demo page
+│   ├── lexa-widget.css             # Styling widget
+│   └── lexa-widget.js              # Logic widget
+├── knowledge_base/                 # Basis pengetahuan
+│   ├── features.md
+│   └── pricing.md
+├── tests/                          # Script pengujian
+│   ├── scratch_pdf_test.py
+│   └── scratch_rag_test.py
+├── api.py                          # FastAPI backend (Widget)
+├── app.py                          # Streamlit Web UI
+├── main.py                         # CLI Terminal
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
 ```

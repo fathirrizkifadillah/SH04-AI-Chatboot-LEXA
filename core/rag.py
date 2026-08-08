@@ -297,16 +297,16 @@ class RAGPipeline:
             self.build_index_from_url()
 
     def load_or_build(self, force_rebuild=False):
-        """Memuat indeks dari cache. Jika belum ada atau force_rebuild, bangun dari API."""
+        """Memuat indeks dari cache. Jika belum ada atau force_rebuild, bangun dari dokumen lokal/API."""
         if os.path.exists(self.index_path) and not force_rebuild:
             try:
                 self.vector_store.load(self.index_path)
                 print("Indeks RAG berhasil dimuat dari cache.")
             except Exception as e:
                 print(f"Gagal memuat indeks dari cache, membangun ulang: {e}")
-                self.build_index_from_url()
+                self.build_index()
         else:
-            self.build_index_from_url()
+            self.build_index()
 
     def search(self, query: str, top_k: int = 5, threshold: float = 0.22):
         """Mencari dokumen yang relevan dengan query user."""
