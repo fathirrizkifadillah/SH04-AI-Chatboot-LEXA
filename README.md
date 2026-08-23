@@ -1,118 +1,90 @@
-# Chatbot Customer Service - Lexa 💬
+# Lexa AI Platform 💬🚀
 
-Lexa adalah chatbot asisten customer service berbasis AI dengan teknologi **RAG (Retrieval-Augmented Generation)**. Tersedia dalam 3 mode: **Sidebar Widget**, **Streamlit Web UI**, dan **CLI Terminal**.
+Lexa adalah platform asisten customer service cerdas berbasis **Artificial Intelligence (AI)** dan teknologi **RAG (Retrieval-Augmented Generation)**. Platform ini dirancang khusus untuk memenuhi standar tingkat *Enterprise* dengan dilengkapi Dashboard Admin interaktif dan terintegrasi penuh.
 
-Ditenagai oleh **Groq Cloud API** dengan model `openai/gpt-oss-120b`.
-
----
-
-## 🚀 Fitur Utama
-
-- **RAG (Retrieval-Augmented Generation)** — Jawaban berdasarkan dokumen perusahaan, bukan halusinasi
-- **Sidebar Chat Widget** — Bisa di-embed di website manapun via `<script>` tag
-- **Streaming Real-time** — Respon muncul kata per kata secara instan
-- **Upload Dokumen Dinamis** — Upload PDF/TXT untuk dianalisis AI selama sesi chat
-- **Riwayat Tersimpan** — Chat history tersimpan di browser (localStorage)
-- **Quick Replies** — Tombol shortcut pertanyaan umum
-- **Eskalasi ke Manusia** — Redirect ke WhatsApp jika bot tidak bisa jawab
-- **Feedback per Jawaban** — 👍👎 untuk track kualitas jawaban
-- **Desain Premium** — Glassmorphism dark mode + animasi halus
+Ditenagai oleh **Groq Cloud API** dengan model `openai/gpt-oss-120b`, Lexa mampu membalas pesan pelanggan secara sekejap mata dengan informasi akurat dari dokumen perusahaan Anda (anti halusinasi).
 
 ---
 
-## 🛠️ Persiapan
+## ✨ Fitur Utama
 
-### 1. Dapatkan API Key Groq
-Daftar gratis di **[Groq Console](https://console.groq.com/)**.
+### 1. 🌐 Customer Facing (Widget & Chatbot)
+- **RAG (Retrieval-Augmented Generation)** — Menjawab spesifik berdasarkan dokumen (*Knowledge Base*) perusahaan.
+- **Sidebar Chat Widget (React + Tailwind v4)** — Widget modern dengan desain premium (Glassmorphism, transisi halus) yang siap disematkan ke website apapun.
+- **Streaming Real-time** — Respon mengetik kata per kata seperti manusia (menggunakan SSE).
+- **Quick Replies** — Tombol saran (*shortcut*) pertanyaan.
+- **Auto-Escalation** — Jika bot tidak tahu, otomatis merekomendasikan pelanggan untuk menghubungi tim melalui WhatsApp/Email.
 
-### 2. Konfigurasi `.env`
-```bash
-cp .env.example .env
-```
-Edit `.env` dan masukkan API Key:
-```env
-GROQ_API_KEY=gsk_IsiDenganApiKeyGroqAnda
-```
+### 2. 🎛️ Admin Dashboard (Manajemen Terpusat)
+- **Monitoring Analytics (`/analytics`)** — Pantau tren *chat*, rasio pertanyaan terjawab/tidak terjawab dalam bentuk grafik interaktif (menggunakan Recharts).
+- **Conversations History (`/conversations`)** — Pantau log percakapan seluruh pengguna secara real-time.
+- **Knowledge Base Manager (`/kb`)** — Unggah (Upload), Hapus (Delete), dan Sinkronisasi Ulang (Reindex) dokumen RAG langsung dari *browser* tanpa perlu menyentuh *server*!
+- **Settings & Persona Customization (`/settings`)** — Atur *Welcome Message*, *Quick Replies*, hingga mengubah *System Prompt* (watak/kepribadian) bot secara dinamis.
+- **Users & Roles (`/users`)** — Antarmuka manajemen tim admin CS (*mock-up ready*).
 
-### 3. Setup Virtual Environment & Install
+---
+
+## 🛠️ Teknologi yang Digunakan
+
+- **Backend / API Server:** Python, FastAPI, SQLAlchemy, Uvicorn, SQLite.
+- **AI & RAG:** Groq API, Langchain, ChromaDB, SentenceTransformers (`all-MiniLM-L6-v2`).
+- **Frontend (Widget & Admin Dashboard):** React JS, Vite, Tailwind CSS v4, Lucide React, Recharts.
+
+---
+
+## 🚀 Cara Menjalankan Aplikasi
+
+Aplikasi ini memiliki arsitektur yang terpisah (*Backend* API, *Frontend Widget*, dan *Admin Dashboard*). Namun, kami sudah menyediakan **skrip otomatis** agar Anda bisa menjalankan semuanya dengan 1x klik.
+
+### Persiapan Awal
+1. Dapatkan API Key Groq di **[Groq Console](https://console.groq.com/)**.
+2. Salin file `.env.example` menjadi `.env` lalu masukkan API Key Anda:
+   ```env
+   GROQ_API_KEY=gsk_IsiDenganApiKeyGroqAnda
+   ```
+3. *(Khusus pengguna pertama kali)* Jalankan Setup Virtual Environment:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+4. *(Khusus pengguna pertama kali)* Install module untuk frontend:
+   ```powershell
+   cd frontend
+   npm install
+   cd ../admin_dashboard
+   npm install
+   cd ..
+   ```
+
+### 🏃‍♂️ Menjalankan Keseluruhan Platform
+Cara paling mudah adalah dengan menjalankan skrip batch yang sudah disediakan:
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\start_all.bat
 ```
+Skrip ini akan otomatis membuka **3 jendela terminal** sekaligus:
+1. **API Server (FastAPI)** berjalan di `http://localhost:8000`
+2. **Widget Chat Pelanggan** berjalan di `http://localhost:5173`
+3. **Admin Dashboard** berjalan di `http://localhost:5174`
+
+Silakan buka URL tersebut di *browser* pilihan Anda.
 
 ---
 
-## 🎮 Cara Menjalankan
-
-### A. Sidebar Widget (⭐ Utama)
-
-Jalankan API server:
-```powershell
-.\.venv\Scripts\python.exe api.py
-```
-
-Lalu buka demo page:
-```
-http://localhost:8000/widget/index.html
-```
-
-**Untuk embed di website Anda**, tambahkan sebelum `</body>`:
-```html
-<!-- Lexa Chat Widget -->
-<link rel="stylesheet" href="http://localhost:8000/widget/lexa-widget.css">
-<script src="http://localhost:8000/widget/lexa-widget.js"></script>
-<script>LexaWidget.init({ apiUrl: 'http://localhost:8000' });</script>
-```
-
-### B. Streamlit Web UI
-```powershell
-.\.venv\Scripts\streamlit.exe run app.py
-```
-
-### C. CLI Terminal
-```powershell
-.\.venv\Scripts\python.exe main.py
-```
-
----
-
-## 🌐 API Endpoints
-
-| Method | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| `GET` | `/health` | Status server |
-| `GET` | `/config` | Konfigurasi widget (welcome message, quick replies) |
-| `POST` | `/chat` | Kirim pesan (non-streaming) |
-| `POST` | `/chat/stream` | Kirim pesan (SSE streaming) |
-| `POST` | `/chat/reset` | Reset sesi chat |
-
----
-
-## 📁 Struktur Proyek
+## 📁 Struktur Proyek Utama
 
 ```text
 CHATBOT LEXA/
-├── core/                           # Logika utama
-│   ├── __init__.py
-│   ├── config.py                   # Config management terpusat
-│   ├── llm.py                      # LLM & orkestrasi Groq API
-│   └── rag.py                      # RAG pipeline & chunking
-├── widget/                         # Sidebar chat widget
-│   ├── index.html                  # Demo page
-│   ├── lexa-widget.css             # Styling widget
-│   └── lexa-widget.js              # Logic widget
-├── knowledge_base/                 # Basis pengetahuan
-│   ├── features.md
-│   └── pricing.md
-├── tests/                          # Script pengujian
-│   ├── scratch_pdf_test.py
-│   └── scratch_rag_test.py
-├── api.py                          # FastAPI backend (Widget)
-├── app.py                          # Streamlit Web UI
-├── main.py                         # CLI Terminal
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── README.md
+├── admin_dashboard/                # React App (Dashboard Admin)
+├── frontend/                       # React App (Chat Widget Pelanggan)
+├── core/                           # Logika Backend Python (LLM, RAG, Config)
+├── data/                           # Penyimpanan Database & Settings JSON
+├── knowledge_base/                 # Direktori penyimpanan dokumen teks/PDF untuk RAG
+├── chroma_db/                      # Database Vector Index (Terbuat otomatis)
+├── api.py                          # Entry point server FastAPI
+├── start_all.bat                   # Skrip auto-run seluruh ekosistem
+└── .env                            # Variabel lingkungan dan Secrets
 ```
+
+---
+*© 2026 LEXA Software House - Didesain untuk layanan pelanggan masa depan.*
