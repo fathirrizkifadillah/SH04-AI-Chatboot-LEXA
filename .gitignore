@@ -6,21 +6,32 @@
 __pycache__/
 **/__pycache__/
 *.py[cod]
-*$py.class
+*.class
 *.egg-info/
 dist/
 build/
 
-# Knowledge Base cache (di-generate otomatis)
+# Knowledge Base & Databases (Generate otomatis)
 knowledge_base/vector_index.pkl
 knowledge_base/lexa_company_profile.md
+chroma_db/
+*.db
+*.sqlite
+*.sqlite3
+lexa_chat.db
 
-# IDE
+# Node / Frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm/
+admin_dashboard/dist/
+frontend/dist/
+
+# IDE & OS
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# OS
 Thumbs.db
 .DS_Store

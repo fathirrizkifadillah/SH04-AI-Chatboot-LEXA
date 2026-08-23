@@ -50,9 +50,7 @@ const LexaWidget = (() => {
         root.innerHTML = `
             <!-- Floating Bubble -->
             <button class="lexa-bubble" id="lexa-bubble" aria-label="Buka chat Lexa">
-                <svg class="lexa-icon-chat" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
-                </svg>
+                <img src="${state.apiUrl}/widget/lexa_bot.png" alt="Lexa" class="lexa-bubble-icon" />
                 <svg class="lexa-icon-close" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
                 </svg>
@@ -63,9 +61,8 @@ const LexaWidget = (() => {
             <div class="lexa-panel" id="lexa-panel">
                 <!-- Header -->
                 <div class="lexa-header">
-                    <div class="lexa-header-avatar">💬</div>
                     <div class="lexa-header-info">
-                        <div class="lexa-header-name">Lexa</div>
+                        <div class="lexa-header-name">Chat dengan LEXA AI</div>
                         <div class="lexa-header-status">Online</div>
                     </div>
                     <div class="lexa-header-actions">
@@ -92,10 +89,10 @@ const LexaWidget = (() => {
 
                 <!-- Typing Indicator -->
                 <div class="lexa-typing" id="lexa-typing">
-                    <div class="lexa-msg-avatar" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">💬</div>
-                    <div class="lexa-typing-dots">
-                        <span></span><span></span><span></span>
+                    <div class="lexa-typing-robot">
+                        <img src="${state.apiUrl}/widget/lexa_bot.png" alt="Lexa" />
                     </div>
+                    <div class="lexa-typing-text">Lexa sedang memproses...</div>
                 </div>
 
                 <!-- Quick Replies -->
@@ -216,9 +213,9 @@ const LexaWidget = (() => {
         }
 
         div.innerHTML = `
-            <div class="lexa-msg-avatar">${isUser ? '👤' : '💬'}</div>
+            <div class="lexa-msg-avatar">${isUser ? '👤' : `<img src="${state.apiUrl}/widget/lexa_bot.png" alt="Lexa" />`}</div>
             <div class="lexa-msg-content">
-                <div class="lexa-msg-bubble">${escapeHtml(msg.content)}</div>
+                <div class="lexa-msg-bubble">${isUser ? escapeHtml(msg.content) : (typeof marked !== 'undefined' ? marked.parse(msg.content) : escapeHtml(msg.content))}</div>
                 ${feedbackHTML}
                 <span class="lexa-msg-time">${timeStr}</span>
             </div>
@@ -258,7 +255,7 @@ const LexaWidget = (() => {
         div.id = 'lexa-streaming-msg';
 
         div.innerHTML = `
-            <div class="lexa-msg-avatar">💬</div>
+            <div class="lexa-msg-avatar"><img src="${state.apiUrl}/widget/lexa_bot.png" alt="Lexa" /></div>
             <div class="lexa-msg-content">
                 <div class="lexa-msg-bubble" id="lexa-streaming-bubble"></div>
             </div>
@@ -379,7 +376,7 @@ const LexaWidget = (() => {
                             state.sessionId = data.session_id;
                         } else if (data.type === 'chunk') {
                             fullResponse += data.content;
-                            streamBubble.textContent = fullResponse;
+                            streamBubble.innerHTML = typeof marked !== 'undefined' ? marked.parse(fullResponse) : escapeHtml(fullResponse);
                             scrollToBottom();
                         } else if (data.type === 'done') {
                             // Streaming complete
@@ -509,6 +506,13 @@ const LexaWidget = (() => {
     // ── Public: Initialize ──
     function init(options = {}) {
         if (options.apiUrl) state.apiUrl = options.apiUrl.replace(/\/$/, '');
+
+        // Load marked.js dynamically for markdown parsing
+        if (typeof marked === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+            document.head.appendChild(script);
+        }
 
         createWidget();
         bindEvents();

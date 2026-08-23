@@ -11,17 +11,26 @@ Jalankan:
 import sys
 import json
 import uuid
+import os
+import shutil
+import asyncio
 from contextlib import asynccontextmanager
+from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from core.config import Config
+from core.settings import SettingsManager
 from core.llm import LexaChatbot
 from core.rag import RAGPipeline
+from core.database import get_dashboard_stats, get_recent_unanswered_queries, get_all_sessions, get_session_history
 
 # ──────────────────────────────────────────────
 # Penyimpanan Sesi Chat (in-memory)
@@ -34,6 +43,7 @@ def get_or_create_session(session_id: str) -> LexaChatbot:
     """Ambil sesi chat yang sudah ada, atau buat baru."""
     if session_id not in chat_sessions:
         chat_sessions[session_id] = LexaChatbot(
+            session_id=session_id,
             rag_pipeline=rag_pipeline,
             model=Config.MODEL_NAME,
             max_history_turns=Config.MAX_HISTORY_TURNS,
@@ -86,6 +96,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Inisialisasi Limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS — agar widget di domain lain bisa akses API
 app.add_middleware(
     CORSMiddleware,
@@ -95,8 +110,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve file widget statis
-app.mount("/widget", StaticFiles(directory="widget"), name="widget")
+# Serve file widget statis (React Build)
+app.mount("/widget", StaticFiles(directory="frontend/dist"), name="widget")
 
 
 # ──────────────────────────────────────────────
@@ -136,14 +151,16 @@ async def health_check():
 @app.get("/config")
 async def get_widget_config():
     """Konfigurasi widget (welcome message, quick replies, dll)."""
+    settings = SettingsManager.get_settings()
     return WidgetConfig(
-        welcome_message=Config.WELCOME_MESSAGE,
-        quick_replies=Config.QUICK_REPLIES,
+        welcome_message=settings.get("welcome_message", "Halo!"),
+        quick_replies=settings.get("quick_replies", []),
     )
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
+@limiter.limit("20/minute")
+async def chat(request: Request, req: ChatRequest):
     """Kirim pesan dan terima jawaban lengkap (non-streaming)."""
     session_id = req.session_id or str(uuid.uuid4())
     bot = get_or_create_session(session_id)
@@ -168,7 +185,8 @@ async def chat(req: ChatRequest):
 
 
 @app.post("/chat/stream")
-async def chat_stream(req: ChatRequest):
+@limiter.limit("20/minute")
+async def chat_stream(request: Request, req: ChatRequest):
     """Kirim pesan dan terima jawaban secara streaming (SSE)."""
     session_id = req.session_id or str(uuid.uuid4())
     bot = get_or_create_session(session_id)
@@ -218,6 +236,128 @@ async def reset_chat(session_id: str = ""):
         raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
     else:
         raise HTTPException(status_code=400, detail="session_id wajib diisi")
+
+class ReindexRequest(BaseModel):
+    admin_token: str
+
+@app.post("/api/admin/reindex")
+@limiter.limit("5/minute")
+async def reindex(request: Request, req: ReindexRequest):
+    """Reindex basis pengetahuan secara dinamis."""
+    if req.admin_token != os.getenv("ADMIN_TOKEN", "lexa-admin-secret"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if rag_pipeline:
+        rag_pipeline.load_or_build()
+        return {"status": "success", "message": "Knowledge base reindexed successfully."}
+    raise HTTPException(status_code=500, detail="RAG pipeline not initialized.")
+
+
+# --- Settings Endpoints ---
+
+@app.get("/api/admin/settings")
+async def get_admin_settings():
+    return SettingsManager.get_settings()
+
+@app.post("/api/admin/settings")
+async def update_admin_settings(request: Request):
+    data = await request.json()
+    return SettingsManager.save_settings(data)
+
+
+
+@app.get("/api/admin/stats")
+async def admin_stats():
+    """Mengambil statistik untuk Dashboard Admin."""
+    stats = get_dashboard_stats()
+    # Mock chart data for now since we don't have time-series queries setup yet
+    chart_data = [
+        {"name": "Hari 1", "percakapan": max(0, stats["total_conversations"] - 20)},
+        {"name": "Hari 2", "percakapan": max(0, stats["total_conversations"] - 10)},
+        {"name": "Hari 3", "percakapan": max(0, stats["total_conversations"] - 5)},
+        {"name": "Hari Ini", "percakapan": stats["total_conversations"]},
+    ]
+    return {
+        "kpi": stats,
+        "chart": chart_data
+    }
+
+@app.get("/api/admin/unanswered")
+async def admin_unanswered():
+    """Mengambil daftar pertanyaan yang tidak terjawab terbaru."""
+    return get_recent_unanswered_queries(limit=10)
+
+@app.get("/api/admin/sessions")
+async def admin_get_sessions():
+    """Mendapatkan daftar semua sesi obrolan."""
+    return get_all_sessions()
+
+@app.get("/api/admin/sessions/{session_id}")
+async def admin_get_session_history(session_id: str):
+    """Mendapatkan riwayat obrolan lengkap untuk sesi tertentu."""
+    history = get_session_history(session_id)
+    if not history:
+        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+    return history
+
+
+# --- Knowledge Base Endpoints ---
+
+@app.get("/api/admin/kb/files")
+async def get_kb_files():
+    kb_dir = "knowledge_base"
+    if not os.path.exists(kb_dir):
+        return []
+    
+    files = []
+    for f in os.listdir(kb_dir):
+        if f.endswith((".md", ".txt")) and f != "lexa_company_profile.md":
+            path = os.path.join(kb_dir, f)
+            files.append({
+                "filename": f,
+                "size": os.path.getsize(path)
+            })
+    return files
+
+@app.post("/api/admin/kb/upload")
+async def upload_kb_file(file: UploadFile = File(...)):
+    if not file.filename.endswith((".md", ".txt", ".pdf")):
+        raise HTTPException(status_code=400, detail="Hanya file .txt, .md, atau .pdf yang didukung")
+    
+    kb_dir = "knowledge_base"
+    os.makedirs(kb_dir, exist_ok=True)
+    
+    # Save the file
+    file_path = os.path.join(kb_dir, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"message": "File berhasil diunggah", "filename": file.filename}
+
+@app.delete("/api/admin/kb/files/{filename}")
+async def delete_kb_file(filename: str):
+    kb_dir = "knowledge_base"
+    file_path = os.path.join(kb_dir, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+    
+    os.remove(file_path)
+    return {"message": "File berhasil dihapus"}
+
+@app.post("/api/admin/kb/reindex")
+async def reindex_kb():
+    # Hapus chroma_db agar benar-benar fresh index
+    chroma_dir = "knowledge_base/chroma_db"
+    if os.path.exists(chroma_dir):
+        shutil.rmtree(chroma_dir, ignore_errors=True)
+        
+    # Rebuild
+    try:
+        rag.load_or_build(force_rebuild=True)
+        return {"message": "Knowledge Base berhasil disinkronisasi dan diindeks ulang."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 # ──────────────────────────────────────────────

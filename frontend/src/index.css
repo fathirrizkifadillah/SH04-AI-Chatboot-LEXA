@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-slate-800 bg-transparent;
+  }
+}
+
+/* Markdown Styling */
+.markdown-body p {
+  @apply mb-2 last:mb-0;
+}
+.markdown-body strong {
+  @apply font-bold text-slate-900;
+}
+.markdown-body ul {
+  @apply list-disc list-inside mb-2 last:mb-0;
+}
+.markdown-body ol {
+  @apply list-decimal list-inside mb-2 last:mb-0;
+}
+.markdown-body a {
+  @apply text-blue-600 hover:underline;
+}
+.markdown-body code {
+  @apply bg-slate-100 px-1 py-0.5 rounded text-sm text-pink-600;
+}

@@ -1,8 +1,9 @@
 import sys
+import asyncio
 from core.llm import LexaChatbot
 from core.rag import RAGPipeline
 
-def main():
+async def main():
     # Set stdout encoding to UTF-8 to support emojis on Windows terminal
     if hasattr(sys.stdout, 'reconfigure'):
         try:
@@ -36,7 +37,7 @@ def main():
 
             print("Lexa: ", end="", flush=True)
             # Menggunakan mode stream agar respon terasa lebih hidup dan instan
-            for chunk in bot.send_message_stream(user_input):
+            async for chunk in bot.send_message_stream(user_input):
                 print(chunk, end="", flush=True)
             print("\n")
             
@@ -47,5 +48,5 @@ def main():
             print(f"\nTerjadi kesalahan: {e}\n")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
 

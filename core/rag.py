@@ -1,102 +1,83 @@
 import os
 import re
-import pickle
 import urllib.error
 import urllib.request
-import numpy as np
-from sentence_transformers import SentenceTransformer
+import chromadb
+from chromadb.utils import embedding_functions
 
 DEFAULT_KB_URL = "https://sh-01-company-profile.vercel.app/api/knowledge-base"
 
-class SimpleVectorStore:
+class ChromaVectorStore:
     """
-    Penyimpanan Vektor sederhana berbasis NumPy dan Pickle.
-    Menggunakan SentenceTransformers untuk pembuatan embeddings lokal.
+    Penyimpanan Vektor menggunakan ChromaDB.
     """
-    def __init__(self, model_name="all-MiniLM-L6-v2"):
+    def __init__(self, persist_directory="knowledge_base/chroma_db", model_name="all-MiniLM-L6-v2"):
+        self.persist_directory = persist_directory
         self.model_name = model_name
-        self._model = None  # Lazy loading model
-        self.chunks = []
-        self.embeddings = None
-
-    @property
-    def model(self):
-        # Memuat model secara malas (lazy loading) agar tidak membebani memori jika hanya membaca cache
-        if self._model is None:
-            self._model = SentenceTransformer(self.model_name)
-        return self._model
+        self.client = chromadb.PersistentClient(path=self.persist_directory)
+        self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=self.model_name)
+        
+        self.collection = self.client.get_or_create_collection(
+            name="lexa_kb",
+            embedding_function=self.embedding_fn
+        )
 
     def add_chunks(self, chunks):
-        """Menambahkan chunks dokumen baru dan menghitung embedding-nya."""
+        """Menambahkan chunks dokumen baru ke ChromaDB."""
         if not chunks:
             return
             
-        texts = [c["content"] for c in chunks]
-        new_embeddings = self.model.encode(texts, show_progress_bar=False)
+        documents = []
+        metadatas = []
+        ids = []
         
-        self.chunks.extend(chunks)
-        
-        if self.embeddings is None:
-            self.embeddings = new_embeddings
-        else:
-            self.embeddings = np.vstack([self.embeddings, new_embeddings])
+        for i, chunk in enumerate(chunks):
+            documents.append(chunk["content"])
+            metadatas.append(chunk["metadata"])
+            # Generate ID unik berdasarkan konten dan indeks
+            ids.append(f"doc_{i}_{hash(chunk['content'])}")
+            
+        self.collection.add(
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
+        )
 
     def search(self, query: str, top_k: int = 3, threshold: float = 0.2):
-        """Mencari chunk dokumen teratas yang paling mirip dengan query menggunakan Cosine Similarity."""
-        if not self.chunks or self.embeddings is None:
+        """Mencari chunk dokumen teratas yang relevan."""
+        if self.collection.count() == 0:
             return []
-
-        # Generate embedding untuk query
-        query_embedding = self.model.encode(query, show_progress_bar=False)
-
-        # Hitung cosine similarity
-        query_norm = np.linalg.norm(query_embedding)
-        if query_norm == 0:
-            return []
-
-        matrix_norms = np.linalg.norm(self.embeddings, axis=1)
-        matrix_norms = np.where(matrix_norms == 0, 1e-10, matrix_norms)  # Hindari pembagian dengan nol
-
-        similarities = np.dot(self.embeddings, query_embedding) / (matrix_norms * query_norm)
-
-        # Urutkan berdasarkan kemiripan tertinggi
-        sorted_indices = np.argsort(similarities)[::-1]
-
-        results = []
-        for idx in sorted_indices:
-            score = float(similarities[idx])
-            if score >= threshold:
-                results.append({
-                    "chunk": self.chunks[idx],
-                    "score": score
-                })
-            if len(results) >= top_k:
-                break
+            
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=top_k,
+            include=['documents', 'metadatas', 'distances']
+        )
+        
+        formatted_results = []
+        if results['documents'] and len(results['documents']) > 0:
+            for i in range(len(results['documents'][0])):
+                distance = results['distances'][0][i]
+                # Konversi jarak L2 default ChromaDB ke pseudo-similarity score
+                score = 1.0 / (1.0 + distance)
                 
-        return results
+                if score >= threshold:
+                    formatted_results.append({
+                        "chunk": {
+                            "content": results['documents'][0][i],
+                            "metadata": results['metadatas'][0][i]
+                        },
+                        "score": score
+                    })
+        return formatted_results
 
     def save(self, filepath: str):
-        """Menyimpan data indeks dan embeddings ke file pickle."""
-        data = {
-            "model_name": self.model_name,
-            "chunks": self.chunks,
-            "embeddings": self.embeddings
-        }
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "wb") as f:
-            pickle.dump(data, f)
+        """ChromaDB otomatis menyimpan ke disk, metode ini dipertahankan untuk kompatibilitas."""
+        pass
 
     def load(self, filepath: str):
-        """Memuat data indeks dan embeddings dari file pickle."""
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(f"File indeks {filepath} tidak ditemukan.")
-            
-        with open(filepath, "rb") as f:
-            data = pickle.load(f)
-            
-        self.model_name = data.get("model_name", self.model_name)
-        self.chunks = data.get("chunks", [])
-        self.embeddings = data.get("embeddings", None)
+        """ChromaDB otomatis memuat dari disk, metode ini dipertahankan untuk kompatibilitas."""
+        pass
 
 
 class RAGPipeline:
@@ -112,8 +93,9 @@ class RAGPipeline:
     ):
         self.db_dir = db_dir
         self.index_path = index_path
+        self.chroma_dir = os.path.join(self.db_dir, "chroma_db")
         self.kb_url = kb_url or os.getenv("KNOWLEDGE_BASE_URL", DEFAULT_KB_URL)
-        self.vector_store = SimpleVectorStore()
+        self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
 
     def chunk_markdown(self, text: str, filename: str) -> list:
         """
@@ -265,7 +247,7 @@ class RAGPipeline:
         if not chunks:
             raise RuntimeError("Basis pengetahuan kosong setelah chunking.")
 
-        self.vector_store = SimpleVectorStore()
+        self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
         self.vector_store.add_chunks(chunks)
         self.vector_store.save(self.index_path)
         print(f"Indeks RAG berhasil dibuat dengan {len(chunks)} chunks dari API.")
@@ -288,7 +270,7 @@ class RAGPipeline:
                     print(f"Gagal membaca file {file}: {e}")
 
         if all_chunks:
-            self.vector_store = SimpleVectorStore()
+            self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
             self.vector_store.add_chunks(all_chunks)
             self.vector_store.save(self.index_path)
             print(f"Indeks berhasil dibuat dengan {len(all_chunks)} chunks dokumen lokal.")
@@ -298,10 +280,14 @@ class RAGPipeline:
 
     def load_or_build(self, force_rebuild=False):
         """Memuat indeks dari cache. Jika belum ada atau force_rebuild, bangun dari dokumen lokal/API."""
-        if os.path.exists(self.index_path) and not force_rebuild:
+        if os.path.exists(self.chroma_dir) and not force_rebuild:
             try:
-                self.vector_store.load(self.index_path)
-                print("Indeks RAG berhasil dimuat dari cache.")
+                # ChromaDB otomatis ter-load saat inisialisasi Client
+                if self.vector_store.collection.count() > 0:
+                    print(f"Indeks RAG berhasil dimuat dari ChromaDB ({self.vector_store.collection.count()} chunks).")
+                else:
+                    print("ChromaDB kosong, membangun ulang...")
+                    self.build_index()
             except Exception as e:
                 print(f"Gagal memuat indeks dari cache, membangun ulang: {e}")
                 self.build_index()

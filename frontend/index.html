@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lexa Widget (React)</title>
+  </head>
+  <body class="bg-slate-900 min-h-screen relative overflow-hidden font-sans">
+    
+    <!-- Decorative background to showcase widget -->
+    <div class="absolute inset-0 z-0">
+       <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+       <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl"></div>
+    </div>
+    
+    <div class="relative z-10 p-12 text-center text-white/80">
+        <h1 class="text-4xl font-bold mb-4 text-white">Lexa Chat Widget</h1>
+        <p class="text-lg">Versi React + Tailwind CSS (Premium Edition)</p>
+        <p class="mt-8 text-sm opacity-50">Silakan klik ikon robot di sudut kanan bawah layar.</p>
+    </div>
+
+    <!-- React App Mount Point -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

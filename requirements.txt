@@ -6,3 +6,10 @@ numpy
 pypdf
 fastapi
 uvicorn[standard]
+chromadb
+rembg[cpu]
+pillow
+sqlalchemy
+slowapi
+pytest
+httpx

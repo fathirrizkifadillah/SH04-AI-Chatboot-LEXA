@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  lexa_api:
+    build: .
+    container_name: lexa_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./knowledge_base:/app/knowledge_base
+      - ./data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
