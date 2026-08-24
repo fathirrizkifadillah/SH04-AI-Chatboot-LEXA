@@ -1,9 +1,17 @@
 import React from 'react';
-import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, Bot } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-const Sidebar = () => {
+const Sidebar = ({ setAuthToken }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('lexa_admin_token');
+    localStorage.removeItem('lexa_admin_user');
+    setAuthToken(null);
+    navigate('/login');
+  };
 
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
@@ -44,6 +52,13 @@ const Sidebar = () => {
             </Link>
           );
         })}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/10 hover:text-red-400 mt-4"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="text-sm">Logout</span>
+        </button>
       </nav>
 
       <div className="p-6 mt-auto">

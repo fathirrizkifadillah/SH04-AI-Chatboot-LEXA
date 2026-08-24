@@ -1,14 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Search, User, Clock, MessageSquare, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 
 const Conversations = () => {
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
-  const [sessionHistory, setSessionHistory] = useState(null);
+  const [sessionData, setSessionData] = useState(null); // {history: [], is_human_handoff: false}
   const [isLoading, setIsLoading] = useState(true);
+  const [replyText, setReplyText] = useState('');
+  
+  const messagesEndRef = useRef(null);
 
-  useEffect(() => {
-    fetch('http://localhost:8000/api/admin/sessions')
+  // Fetch session list
+  const fetchSessions = () => {
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch('http://localhost:8000/api/admin/sessions', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
         setSessions(data);
@@ -18,17 +28,73 @@ const Conversations = () => {
         console.error("Error fetching sessions:", err);
         setIsLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchSessions();
+    const interval = setInterval(fetchSessions, 5000); // refresh list every 5s
+    return () => clearInterval(interval);
   }, []);
 
+  // Fetch specific session history
   const loadSessionHistory = (sessionId) => {
-    setSelectedSession(sessionId);
-    setSessionHistory(null); // loading state for right pane
-    fetch(`http://localhost:8000/api/admin/sessions/${sessionId}`)
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch(`http://localhost:8000/api/admin/sessions/${sessionId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
-        setSessionHistory(data);
+        setSessionData(data);
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       })
       .catch(err => console.error("Error fetching session history:", err));
+  };
+
+  // Poll selected session
+  useEffect(() => {
+    if (!selectedSession) return;
+    loadSessionHistory(selectedSession); // initial load
+    
+    const interval = setInterval(() => {
+      loadSessionHistory(selectedSession);
+    }, 3000); // poll every 3s
+    
+    return () => clearInterval(interval);
+  }, [selectedSession]);
+
+  const handleToggleHandoff = () => {
+    if (!sessionData) return;
+    const newState = !sessionData.is_human_handoff;
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch(`http://localhost:8000/api/admin/handoff?session_id=${selectedSession}&is_handoff=${newState}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(() => {
+      setSessionData({...sessionData, is_human_handoff: newState});
+    })
+    .catch(err => console.error("Error toggling handoff:", err));
+  };
+
+  const handleSendReply = () => {
+    if (!replyText.trim() || !selectedSession) return;
+    
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch(`http://localhost:8000/api/admin/reply`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ session_id: selectedSession, message: replyText })
+    })
+    .then(() => {
+      setReplyText('');
+      loadSessionHistory(selectedSession);
+    })
+    .catch(err => console.error("Error sending reply:", err));
   };
 
   return (
@@ -60,7 +126,7 @@ const Conversations = () => {
             sessions.map((s) => (
               <button 
                 key={s.session_id}
-                onClick={() => loadSessionHistory(s.session_id)}
+                onClick={() => setSelectedSession(s.session_id)}
                 className={`w-full text-left p-3 rounded-xl transition-colors ${selectedSession === s.session_id ? 'bg-blue-50 border border-blue-100 shadow-sm' : 'hover:bg-slate-100 border border-transparent'}`}
               >
                 <div className="flex justify-between items-start mb-1">
@@ -89,27 +155,46 @@ const Conversations = () => {
                 <h3 className="font-bold text-slate-800">Sesi Pelanggan</h3>
                 <p className="text-xs text-slate-500 font-mono mt-0.5">ID: {selectedSession}</p>
               </div>
-              <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full border border-green-200">
-                Riwayat Selesai
-              </span>
+              <button 
+                onClick={handleToggleHandoff}
+                className={`px-4 py-2 text-sm font-semibold rounded-xl border transition-colors flex items-center gap-2
+                  ${sessionData?.is_human_handoff 
+                    ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
+                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}`}
+              >
+                {sessionData?.is_human_handoff ? <ShieldAlert className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {sessionData?.is_human_handoff ? 'Kembalikan ke AI' : 'Ambil Alih (Handoff)'}
+              </button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-              {!sessionHistory ? (
+              {!sessionData ? (
                 <div className="h-full flex items-center justify-center text-slate-400 text-sm">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : sessionHistory.history && sessionHistory.history.length > 0 ? (
-                sessionHistory.history.map((msg, idx) => {
+              ) : sessionData.history && sessionData.history.length > 0 ? (
+                sessionData.history.map((msg, idx) => {
                   const isUser = msg.role === 'user';
+                  const isAdmin = msg.role === 'admin';
                   return (
-                    <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <div key={idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                      {!isUser && (
+                        <span className="text-[10px] text-slate-400 mb-1 ml-1 font-medium uppercase tracking-wider">
+                          {isAdmin ? 'Human Agent' : 'Lexa AI'}
+                        </span>
+                      )}
                       <div className={`max-w-[75%] rounded-2xl px-5 py-3.5 text-[14px] leading-relaxed shadow-sm ${
                         isUser 
                           ? 'bg-blue-600 text-white rounded-tr-sm' 
-                          : 'bg-white text-slate-700 border border-slate-200/60 rounded-tl-sm'
+                          : isAdmin
+                            ? 'bg-amber-500 text-white rounded-tl-sm markdown-body'
+                            : 'bg-white text-slate-700 border border-slate-200/60 rounded-tl-sm markdown-body'
                       }`}>
-                        {msg.content}
+                        {isUser ? msg.content : (
+                           <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                             {msg.content}
+                           </ReactMarkdown>
+                        )}
                       </div>
                     </div>
                   );
@@ -120,13 +205,42 @@ const Conversations = () => {
                   <p>Tidak ada pesan dalam sesi ini.</p>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
             
-            <div className="p-4 border-t border-slate-100 bg-slate-50">
-              <div className="flex items-center justify-between text-xs text-slate-500 bg-white p-3 rounded-xl border border-slate-200/60">
-                <span>⚠️ Mode Pengawasan (View-Only). Fitur membalas pesan secara manual (Live Takeover) sedang dalam pengembangan.</span>
+            {/* Input Area (Only visible if Handoff is true) */}
+            {sessionData?.is_human_handoff ? (
+              <div className="p-4 border-t border-slate-100 bg-white">
+                <div className="flex gap-2">
+                  <textarea 
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if(e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendReply();
+                      }
+                    }}
+                    placeholder="Ketik balasan untuk pelanggan..."
+                    className="flex-1 resize-none border border-amber-200 bg-amber-50 rounded-xl px-4 py-2 outline-none focus:border-amber-400 text-sm"
+                    rows={2}
+                  />
+                  <button 
+                    onClick={handleSendReply}
+                    className="px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center transition-colors"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-amber-600 mt-2 font-medium">⚠️ Saat diambil alih, AI tidak akan otomatis membalas pesan pelanggan.</p>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 border-t border-slate-100 bg-slate-50">
+                <div className="flex items-center justify-center text-xs text-slate-500 bg-white p-3 rounded-xl border border-slate-200/60">
+                  Klik tombol "Ambil Alih (Handoff)" di atas untuk membalas secara manual.
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-slate-400">

@@ -21,7 +21,11 @@ from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+import jwt
+from datetime import datetime, timedelta
+import bcrypt
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -30,7 +34,7 @@ from core.config import Config
 from core.settings import SettingsManager
 from core.llm import LexaChatbot
 from core.rag import RAGPipeline
-from core.database import get_dashboard_stats, get_recent_unanswered_queries, get_all_sessions, get_session_history
+from core.database import get_dashboard_stats, get_analytics_chart_data, get_recent_unanswered_queries, get_all_sessions, get_session_history
 
 # ──────────────────────────────────────────────
 # Penyimpanan Sesi Chat (in-memory)
@@ -118,15 +122,21 @@ app.mount("/widget", StaticFiles(directory="frontend/dist"), name="widget")
 # Schemas
 # ──────────────────────────────────────────────
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=2000, description="Pesan dari user")
-    session_id: str = Field(default="", description="ID sesi chat (kosong = buat baru)")
+    message: str
+    session_id: Optional[str] = None
 
+class AdminReplyRequest(BaseModel):
+    session_id: str
+    message: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 class ChatResponse(BaseModel):
     reply: str
     session_id: str
     references: list = []
-
 
 class WidgetConfig(BaseModel):
     welcome_message: str
@@ -134,10 +144,35 @@ class WidgetConfig(BaseModel):
     bot_name: str = "Lexa"
     bot_avatar: str = "💬"
 
+# --- JWT Config ---
+JWT_SECRET = "lexa_super_secret_key_2026"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+
+security = HTTPBearer()
+
+def create_jwt_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # ──────────────────────────────────────────────
 # Endpoints
 # ──────────────────────────────────────────────
+@app.get("/")
+def read_root():
+    return {"status": "Lexa API is running"}
+
 @app.get("/health")
 async def health_check():
     """Status kesehatan server."""
@@ -147,6 +182,25 @@ async def health_check():
         "active_sessions": len(chat_sessions),
     }
 
+# --- AUTH ENDPOINTS ---
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    db = SessionLocal()
+    try:
+        user = db.query(AdminUser).filter(AdminUser.email == req.email).first()
+        if not user or not user.password_hash:
+            raise HTTPException(status_code=401, detail="Email atau password salah")
+            
+        # Verify password
+        pwd_bytes = req.password.encode('utf-8')
+        hash_bytes = user.password_hash.encode('utf-8')
+        if not bcrypt.checkpw(pwd_bytes, hash_bytes):
+            raise HTTPException(status_code=401, detail="Email atau password salah")
+            
+        token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
+        return {"token": token, "user": {"name": user.name, "email": user.email, "role": user.role}}
+    finally:
+        db.close()
 
 @app.get("/config")
 async def get_widget_config():
@@ -196,7 +250,33 @@ async def chat_stream(request: Request, req: ChatRequest):
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
 
         try:
+            from core.database import get_session_history, SessionLocal, ChatSession
+            import datetime
+            
+            # Check handoff
+            history_data = get_session_history(session_id)
+            is_handoff = history_data.get("is_human_handoff", False) if history_data else False
+            
             full_response = ""
+            
+            if is_handoff:
+                # Just save user message and return "diam"
+                db = SessionLocal()
+                try:
+                    s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+                    if s:
+                        new_hist = list(s.history)
+                        new_hist.append({"role": "user", "content": req.message, "timestamp": datetime.datetime.utcnow().timestamp() * 1000})
+                        s.history = new_hist
+                        db.commit()
+                except:
+                    pass
+                finally:
+                    db.close()
+                    
+                yield f"data: {json.dumps({'type': 'done', 'references': []})}\n\n"
+                return
+
             for chunk in bot.send_message_stream(req.message):
                 full_response += chunk
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
@@ -266,38 +346,39 @@ async def update_admin_settings(request: Request):
 
 
 @app.get("/api/admin/stats")
-async def admin_stats():
+async def get_dashboard_statistics(payload: dict = Depends(verify_jwt)):
     """Mengambil statistik untuk Dashboard Admin."""
     stats = get_dashboard_stats()
-    # Mock chart data for now since we don't have time-series queries setup yet
-    chart_data = [
-        {"name": "Hari 1", "percakapan": max(0, stats["total_conversations"] - 20)},
-        {"name": "Hari 2", "percakapan": max(0, stats["total_conversations"] - 10)},
-        {"name": "Hari 3", "percakapan": max(0, stats["total_conversations"] - 5)},
-        {"name": "Hari Ini", "percakapan": stats["total_conversations"]},
-    ]
+    chart_data = get_analytics_chart_data()
     return {
         "kpi": stats,
         "chart": chart_data
     }
 
 @app.get("/api/admin/unanswered")
-async def admin_unanswered():
+async def admin_unanswered_queries(payload: dict = Depends(verify_jwt)):
     """Mengambil daftar pertanyaan yang tidak terjawab terbaru."""
     return get_recent_unanswered_queries(limit=10)
 
+# --- ADMIN ENDPOINTS (DASHBOARD) ---
 @app.get("/api/admin/sessions")
-async def admin_get_sessions():
+async def admin_get_sessions(payload: dict = Depends(verify_jwt)):
     """Mendapatkan daftar semua sesi obrolan."""
     return get_all_sessions()
 
 @app.get("/api/admin/sessions/{session_id}")
-async def admin_get_session_history(session_id: str):
-    """Mendapatkan riwayat obrolan lengkap untuk sesi tertentu."""
-    history = get_session_history(session_id)
-    if not history:
-        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
-    return history
+async def admin_get_session_history(session_id: str, payload: dict = Depends(verify_jwt)):
+    db = SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if not s:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # Filter out system messages
+        history = [msg for msg in s.history if msg.get("role") != "system"]
+        return {"history": history, "is_human_handoff": s.is_human_handoff}
+    finally:
+        db.close()
 
 
 # --- Knowledge Base Endpoints ---
@@ -352,12 +433,66 @@ async def reindex_kb():
         
     # Rebuild
     try:
-        rag.load_or_build(force_rebuild=True)
+        rag_pipeline.load_or_build(force_rebuild=True)
         return {"message": "Knowledge Base berhasil disinkronisasi dan diindeks ulang."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+
+
+# --- Handoff & Users Endpoints ---
+class AdminReplyReq(BaseModel):
+    content: str
+
+class UserCreateReq(BaseModel):
+    name: str
+    email: str
+    role: str
+
+@app.post("/api/admin/handoff")
+async def admin_set_handoff(session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
+    from core.database import set_human_handoff
+    if set_human_handoff(session_id, is_handoff):
+        return {"status": "success", "is_human_handoff": is_handoff}
+    raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+
+@app.post("/api/admin/reply")
+async def admin_reply(req: AdminReplyRequest, payload: dict = Depends(verify_jwt)):
+    success = add_admin_reply(req.session_id, req.message)
+    if success:
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="Session not found")
+
+@app.get("/api/chat/poll")
+async def poll_chat(session_id: str):
+    from core.database import get_session_history
+    history = get_session_history(session_id)
+    if not history:
+        return {"history": [], "is_human_handoff": False}
+    filtered_history = [m for m in history.get("history", []) if m.get("role") != "system"]
+    return {"history": filtered_history, "is_human_handoff": history.get("is_human_handoff", False)}
+
+@app.get("/api/admin/users")
+async def api_get_users():
+    from core.database import get_all_users
+    return get_all_users()
+
+@app.post("/api/admin/users")
+async def api_create_user(req: UserCreateReq):
+    from core.database import create_user
+    try:
+        return create_user(req.name, req.email, req.role)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/admin/users/{user_id}")
+async def api_delete_user(user_id: int):
+    from core.database import delete_user
+    if delete_user(user_id):
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="User tidak ditemukan")
 
 
 # ──────────────────────────────────────────────

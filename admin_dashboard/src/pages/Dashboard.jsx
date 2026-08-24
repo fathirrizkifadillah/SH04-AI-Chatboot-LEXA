@@ -13,19 +13,29 @@ const Dashboard = () => {
   
   useEffect(() => {
     // Fetch stats
-    fetch('http://localhost:8000/api/admin/stats')
+    const token = localStorage.getItem('lexa_admin_token');
+    
+    fetch('http://localhost:8000/api/admin/stats', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
-        setStats(data.kpi);
-        setChartData(data.chart);
+        if(data.kpi) {
+          setStats(data.kpi);
+          setChartData(data.chart);
+        }
       })
       .catch(err => console.error("Error fetching stats:", err));
       
-    // Fetch unanswered
-    fetch('http://localhost:8000/api/admin/unanswered')
+    // Fetch unanswered queries
+    fetch('http://localhost:8000/api/admin/unanswered', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
-      .then(data => setUnansweredList(data))
-      .catch(err => console.error("Error fetching unanswered:", err));
+      .then(data => {
+        if (Array.isArray(data)) setUnansweredList(data);
+      })
+      .catch(err => console.error("Error fetching unanswered queries:", err));
   }, []);
 
   const kpiData = [

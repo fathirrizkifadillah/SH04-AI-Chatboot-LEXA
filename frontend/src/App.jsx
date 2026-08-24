@@ -54,6 +54,56 @@ function App() {
     }
   }, [messages, sessionId]);
 
+
+  // Polling for handoff / admin replies
+  useEffect(() => {
+    if (!sessionId || isStreaming || isWaitingForResponse) return;
+    
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_URL}/chat/poll?session_id=${sessionId}&t=${Date.now()}`, { cache: "no-store", headers: { 'Pragma': 'no-cache' } });
+        const data = await res.json();
+        
+        if (data.history && data.history.length > 0) {
+          const mappedHistory = data.history.map((m, i) => ({
+            id: m.timestamp || Date.now() + i,
+            role: m.role === 'assistant' ? 'bot' : m.role,
+            content: m.content,
+            timestamp: m.timestamp || Date.now()
+          }));
+
+          setMessages(prev => {
+            const welcomeMsg = prev.length > 0 && prev[0].role === 'bot' && (!data.history.length || prev[0].content !== data.history[0].content) ? prev[0] : null;
+            const newMsgs = welcomeMsg ? [welcomeMsg, ...mappedHistory] : mappedHistory;
+            
+            const strip = msgs => JSON.stringify(msgs.map(m => ({role: m.role, content: m.content})));
+            if (strip(prev) !== strip(newMsgs)) {
+              return newMsgs;
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error("Polling error", err);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 2000);
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        poll();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [sessionId, isStreaming, isWaitingForResponse]);
+
   // Auto scroll
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -216,7 +266,7 @@ function App() {
                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                  </div>
                  <div>
-                    <h2 className="text-[15px] font-bold text-slate-800 leading-tight">Xabot</h2>
+                    <h2 className="text-[15px] font-bold text-slate-800 leading-tight">Lexa Chat Widget V5</h2>
                     <p className="text-xs text-green-500 font-medium mt-0.5">Online</p>
                  </div>
               </div>
@@ -235,6 +285,7 @@ function App() {
               <AnimatePresence>
                 {messages.map((msg, idx) => {
                   const isUser = msg.role === 'user';
+                  const isAdmin = msg.role === 'admin';
                   return (
                     <motion.div 
                       key={msg.id || idx} 
@@ -251,7 +302,9 @@ function App() {
                           <div className={`px-4 py-3 text-[14px] leading-[1.6] shadow-sm break-words whitespace-pre-wrap ${
                               isUser 
                                 ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
-                                : 'bg-white text-slate-700 border border-slate-200/60 rounded-2xl rounded-tl-sm markdown-body'
+                                : isAdmin
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-200 rounded-2xl rounded-tl-sm markdown-body'
+                                  : 'bg-white text-slate-700 border border-slate-200/60 rounded-2xl rounded-tl-sm markdown-body'
                             }`}>
                              {isUser ? msg.content : (
                                <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>

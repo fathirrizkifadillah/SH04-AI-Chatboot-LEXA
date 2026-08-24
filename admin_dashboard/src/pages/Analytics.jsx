@@ -6,22 +6,23 @@ const Analytics = () => {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/admin/stats')
-      .then(res => res.json())
-      .then(data => setStats(data))
-      .catch(err => console.error(err));
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('lexa_admin_token');
+        const res = await fetch('http://localhost:8000/api/admin/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setStats(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchStats();
   }, []);
 
-  // Mock data for charts
-  const chatData = [
-    { name: 'Senin', chats: 45, unresolved: 2 },
-    { name: 'Selasa', chats: 52, unresolved: 0 },
-    { name: 'Rabu', chats: 38, unresolved: 1 },
-    { name: 'Kamis', chats: 65, unresolved: 4 },
-    { name: 'Jumat', chats: 48, unresolved: 0 },
-    { name: 'Sabtu', chats: 30, unresolved: 0 },
-    { name: 'Minggu', chats: Math.max(10, stats?.total_sessions || 10), unresolved: stats?.total_unanswered || 0 },
-  ];
+  // Gunakan data dari API, atau array kosong jika belum ada
+  const chatData = stats?.chart || [];
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">

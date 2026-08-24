@@ -1,23 +1,56 @@
-import React from 'react';
-import { Shield, ShieldAlert, User, MoreVertical, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, ShieldAlert, User, MoreVertical, Plus, Trash2, X } from 'lucide-react';
 
 const Users = () => {
-  // Mock data for presentation
-  const users = [
-    { id: 1, name: 'Budi Santoso', role: 'Super Admin', email: 'budi@lexatech.id', status: 'Online', lastActive: 'Sekarang' },
-    { id: 2, name: 'Siti Aminah', role: 'CS Agent', email: 'siti@lexatech.id', status: 'Online', lastActive: 'Sekarang' },
-    { id: 3, name: 'Andi Wijaya', role: 'CS Agent', email: 'andi@lexatech.id', status: 'Offline', lastActive: '2 jam yang lalu' },
-    { id: 4, name: 'Rina Melati', role: 'Editor (Knowledge Base)', email: 'rina@lexatech.id', status: 'Offline', lastActive: 'Kemarin' },
-  ];
+  const [users, setUsers] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', role: 'CS Agent' });
+
+  const fetchUsers = () => {
+    fetch('http://localhost:8000/api/admin/users')
+      .then(res => res.json())
+      .then(data => setUsers(data))
+      .catch(err => console.error(err));
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleDelete = (id) => {
+    if (window.confirm("Hapus pengguna ini?")) {
+      fetch(`http://localhost:8000/api/admin/users/${id}`, { method: 'DELETE' })
+        .then(() => fetchUsers())
+        .catch(err => console.error(err));
+    }
+  };
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    fetch('http://localhost:8000/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    })
+    .then(() => {
+      setIsModalOpen(false);
+      setFormData({ name: '', email: '', role: 'CS Agent' });
+      fetchUsers();
+    })
+    .catch(err => console.error(err));
+  };
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div className="p-6 max-w-6xl relative">
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Users & Roles</h1>
           <p className="text-slate-500">Kelola akses tim ke Dashboard Lexa.</p>
         </div>
-        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           Tambah Anggota
         </button>
@@ -64,31 +97,63 @@ const Users = () => {
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
                       ${user.status === 'Online' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Online' ? 'bg-green-500' : 'bg-slate-400'}`}></span>
-                      {user.status}
+                      {user.status || 'Offline'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500">
-                    {user.lastActive}
+                    {user.last_active || 'Baru Saja'}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-100 transition-colors">
-                      <MoreVertical className="w-5 h-5" />
+                    <button onClick={() => handleDelete(user.id)} className="text-red-400 hover:text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-slate-500">Belum ada anggota tim.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-sm text-slate-500">
-          <p>Menampilkan 4 anggota tim</p>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-50" disabled>Sebelumnya</button>
-            <button className="px-3 py-1 border border-slate-200 rounded hover:bg-slate-100 disabled:opacity-50" disabled>Selanjutnya</button>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">Tambah Anggota Tim</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAdd} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
+                <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-blue-500">
+                  <option>Super Admin</option>
+                  <option>CS Agent</option>
+                  <option>Editor (Knowledge Base)</option>
+                </select>
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-colors">Batal</button>
+                <button type="submit" className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors">Simpan</button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
