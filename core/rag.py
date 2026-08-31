@@ -4,6 +4,7 @@ import urllib.error
 import urllib.request
 import chromadb
 from chromadb.utils import embedding_functions
+import PyPDF2
 
 DEFAULT_KB_URL = "https://sh-01-company-profile.vercel.app/api/knowledge-base"
 
@@ -259,12 +260,21 @@ class RAGPipeline:
 
         all_chunks = []
         for file in os.listdir(self.db_dir):
-            if file.endswith((".md", ".txt")) and file != os.path.basename(self.index_path):
+            if file.endswith((".md", ".txt", ".pdf")) and file != os.path.basename(self.index_path):
                 filepath = os.path.join(self.db_dir, file)
                 try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        text = f.read()
-                    chunks = self.chunk_markdown(text, file)
+                    text = ""
+                    if file.endswith(".pdf"):
+                        with open(filepath, "rb") as f:
+                            reader = PyPDF2.PdfReader(f)
+                            for page in reader.pages:
+                                text += page.extract_text() + "\n"
+                        chunks = self.chunk_text(text, file)
+                    else:
+                        with open(filepath, "r", encoding="utf-8") as f:
+                            text = f.read()
+                        chunks = self.chunk_markdown(text, file)
+                        
                     all_chunks.extend(chunks)
                 except Exception as e:
                     print(f"Gagal membaca file {file}: {e}")

@@ -52,16 +52,29 @@ const Conversations = () => {
       .catch(err => console.error("Error fetching session history:", err));
   };
 
-  // Poll selected session
+  // WebSocket connection for real-time sync
   useEffect(() => {
     if (!selectedSession) return;
     loadSessionHistory(selectedSession); // initial load
     
-    const interval = setInterval(() => {
-      loadSessionHistory(selectedSession);
-    }, 3000); // poll every 3s
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${wsProtocol}//localhost:8000/ws/chat/${selectedSession}`);
     
-    return () => clearInterval(interval);
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'admin_reply' || data.type === 'handoff_user_msg' || data.type === 'done' || data.type === 'chunk') {
+                // To keep it simple, just reload history when relevant new messages arrive
+                if (data.type !== 'chunk') {
+                    loadSessionHistory(selectedSession);
+                }
+            }
+        } catch(e) {}
+    };
+
+    return () => {
+        ws.close();
+    };
   }, [selectedSession]);
 
   const handleToggleHandoff = () => {
@@ -88,7 +101,7 @@ const Conversations = () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ session_id: selectedSession, message: replyText })
+      body: JSON.stringify({ session_id: selectedSession, content: replyText })
     })
     .then(() => {
       setReplyText('');

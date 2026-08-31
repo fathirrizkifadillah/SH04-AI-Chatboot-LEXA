@@ -4,10 +4,13 @@ import { Shield, ShieldAlert, User, MoreVertical, Plus, Trash2, X } from 'lucide
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', role: 'CS Agent' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'CS Agent' });
 
   const fetchUsers = () => {
-    fetch('http://localhost:8000/api/admin/users')
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch('http://localhost:8000/api/admin/users', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => setUsers(data))
       .catch(err => console.error(err));
@@ -19,22 +22,41 @@ const Users = () => {
 
   const handleDelete = (id) => {
     if (window.confirm("Hapus pengguna ini?")) {
-      fetch(`http://localhost:8000/api/admin/users/${id}`, { method: 'DELETE' })
-        .then(() => fetchUsers())
+      const token = localStorage.getItem('lexa_admin_token');
+      fetch(`http://localhost:8000/api/admin/users/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(async res => {
+            if (!res.ok) {
+                const data = await res.json();
+                alert(data.detail);
+            }
+            fetchUsers();
+        })
         .catch(err => console.error(err));
     }
   };
 
   const handleAdd = (e) => {
     e.preventDefault();
+    const token = localStorage.getItem('lexa_admin_token');
     fetch('http://localhost:8000/api/admin/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify(formData)
     })
-    .then(() => {
+    .then(async (res) => {
+      if (!res.ok) {
+          const data = await res.json();
+          alert(data.detail);
+          return;
+      }
       setIsModalOpen(false);
-      setFormData({ name: '', email: '', role: 'CS Agent' });
+      setFormData({ name: '', email: '', password: '', role: 'CS Agent' });
       fetchUsers();
     })
     .catch(err => console.error(err));
@@ -137,6 +159,10 @@ const Users = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
                 <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border border-slate-200 rounded-lg px-4 py-2 outline-none focus:border-blue-500" placeholder="Minimal 6 karakter" minLength={6} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>

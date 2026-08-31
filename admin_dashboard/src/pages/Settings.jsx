@@ -10,21 +10,35 @@ const Settings = () => {
   const [newQuickReply, setNewQuickReply] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/admin/settings')
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch('http://localhost:8000/api/admin/settings', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
-      .then(data => setSettings(data))
-      .catch(err => console.error('Failed to load settings:', err));
+      .then(data => {
+        setSettings(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load settings:', err);
+        setIsLoading(false);
+      });
   }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage('');
     try {
+      const token = localStorage.getItem('lexa_admin_token');
       const res = await fetch('http://localhost:8000/api/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(settings)
       });
       if (res.ok) {

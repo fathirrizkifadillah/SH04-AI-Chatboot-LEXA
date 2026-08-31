@@ -9,7 +9,10 @@ const KnowledgeBase = () => {
   const fileInputRef = useRef(null);
 
   const fetchFiles = () => {
-    fetch('http://localhost:8000/api/admin/kb/files')
+    const token = localStorage.getItem('lexa_admin_token');
+    fetch('http://localhost:8000/api/admin/kb/files', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => setFiles(data))
       .catch(err => console.error(err));
@@ -33,8 +36,10 @@ const KnowledgeBase = () => {
 
     setIsUploading(true);
     try {
+      const token = localStorage.getItem('lexa_admin_token');
       const res = await fetch('http://localhost:8000/api/admin/kb/upload', {
         method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       if (res.ok) {
@@ -58,8 +63,10 @@ const KnowledgeBase = () => {
     if (!confirm(`Hapus ${filename}?`)) return;
     
     try {
+      const token = localStorage.getItem('lexa_admin_token');
       const res = await fetch(`http://localhost:8000/api/admin/kb/files/${filename}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         fetchFiles();
@@ -74,7 +81,11 @@ const KnowledgeBase = () => {
     setIsSyncing(true);
     setSyncStatus(null);
     try {
-      const res = await fetch('http://localhost:8000/api/admin/kb/reindex', { method: 'POST' });
+      const token = localStorage.getItem('lexa_admin_token');
+      const res = await fetch('http://localhost:8000/api/admin/kb/reindex', { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         setSyncStatus({ type: 'success', message: 'Sinkronisasi berhasil! Bot kini menggunakan data terbaru.' });
       } else {
