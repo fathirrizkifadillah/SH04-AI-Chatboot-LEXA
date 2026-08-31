@@ -1,15 +1,13 @@
 groq
 python-dotenv
-streamlit
 sentence-transformers
 numpy
 pypdf
 fastapi
 uvicorn[standard]
 chromadb
-rembg[cpu]
-pillow
 sqlalchemy
 slowapi
 pytest
 httpx
+psycopg2-binary

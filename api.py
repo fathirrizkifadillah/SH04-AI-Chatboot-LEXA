@@ -34,26 +34,18 @@ from core.config import Config
 from core.settings import SettingsManager
 from core.llm import LexaChatbot
 from core.rag import RAGPipeline
-from core.database import get_dashboard_stats, get_analytics_chart_data, get_recent_unanswered_queries, get_all_sessions, get_session_history
+from core.database import get_dashboard_stats, get_analytics_chart_data, get_recent_unanswered_queries, get_all_sessions, get_session_history, AdminUser, SessionLocal, ChatSession, add_admin_reply
 
-# ──────────────────────────────────────────────
-# Penyimpanan Sesi Chat (in-memory)
-# ──────────────────────────────────────────────
-chat_sessions: dict[str, LexaChatbot] = {}
 rag_pipeline: RAGPipeline | None = None
 
-
-def get_or_create_session(session_id: str) -> LexaChatbot:
-    """Ambil sesi chat yang sudah ada, atau buat baru."""
-    if session_id not in chat_sessions:
-        chat_sessions[session_id] = LexaChatbot(
-            session_id=session_id,
-            rag_pipeline=rag_pipeline,
-            model=Config.MODEL_NAME,
-            max_history_turns=Config.MAX_HISTORY_TURNS,
-        )
-    return chat_sessions[session_id]
-
+def get_session(session_id: str) -> LexaChatbot:
+    """Buat instansi chatbot baru (akan memuat history otomatis dari DB)."""
+    return LexaChatbot(
+        session_id=session_id,
+        rag_pipeline=rag_pipeline,
+        model=Config.MODEL_NAME,
+        max_history_turns=Config.MAX_HISTORY_TURNS,
+    )
 
 # ──────────────────────────────────────────────
 # Lifecycle: Inisialisasi RAG saat startup
@@ -86,7 +78,6 @@ async def lifespan(app: FastAPI):
     yield  # Server berjalan
 
     # Cleanup saat shutdown
-    chat_sessions.clear()
     print("[SHUTDOWN] Lexa API Server dihentikan.")
 
 
@@ -145,7 +136,7 @@ class WidgetConfig(BaseModel):
     bot_avatar: str = "💬"
 
 # --- JWT Config ---
-JWT_SECRET = "lexa_super_secret_key_2026"
+JWT_SECRET = os.getenv("JWT_SECRET", "lexa_super_secret_key_2026")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
@@ -179,7 +170,7 @@ async def health_check():
     return {
         "status": "ok",
         "rag_loaded": rag_pipeline is not None,
-        "active_sessions": len(chat_sessions),
+        "active_sessions": "stateless",
     }
 
 # --- AUTH ENDPOINTS ---
@@ -217,7 +208,7 @@ async def get_widget_config():
 async def chat(request: Request, req: ChatRequest):
     """Kirim pesan dan terima jawaban lengkap (non-streaming)."""
     session_id = req.session_id or str(uuid.uuid4())
-    bot = get_or_create_session(session_id)
+    bot = get_session(session_id)
 
     try:
         reply = bot.send_message(req.message)
@@ -243,7 +234,7 @@ async def chat(request: Request, req: ChatRequest):
 async def chat_stream(request: Request, req: ChatRequest):
     """Kirim pesan dan terima jawaban secara streaming (SSE)."""
     session_id = req.session_id or str(uuid.uuid4())
-    bot = get_or_create_session(session_id)
+    bot = get_session(session_id)
 
     def event_generator():
         # Kirim session_id sebagai event pertama
@@ -309,11 +300,10 @@ async def chat_stream(request: Request, req: ChatRequest):
 @app.post("/chat/reset")
 async def reset_chat(session_id: str = ""):
     """Reset sesi chat tertentu."""
-    if session_id and session_id in chat_sessions:
-        chat_sessions[session_id].reset_chat()
+    if session_id:
+        bot = get_session(session_id)
+        bot.reset_chat()
         return {"status": "reset", "session_id": session_id}
-    elif session_id:
-        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
     else:
         raise HTTPException(status_code=400, detail="session_id wajib diisi")
 

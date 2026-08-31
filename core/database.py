@@ -4,12 +4,20 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON, Boolean, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Buat direktori data jika belum ada
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+from dotenv import load_dotenv
+load_dotenv()
 
-DB_PATH = os.path.join(DATA_DIR, "lexa_chat.db")
-engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("Variabel lingkungan 'DATABASE_URL' tidak ditemukan! Sistem sekarang Wajib menggunakan PostgreSQL.")
+
+# Fix untuk Heroku/Supabase format lama
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
