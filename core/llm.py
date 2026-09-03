@@ -1,11 +1,7 @@
 import os
-from dotenv import load_dotenv
 from groq import Groq
 from core.database import SessionLocal, ChatSession, UnansweredQuery
 from core.settings import SettingsManager
-
-# Memuat variabel lingkungan dari file .env
-load_dotenv()
 
 class LexaChatbot:
     """
@@ -45,7 +41,7 @@ class LexaChatbot:
         self._load_history()
 
     def _load_history(self):
-        """Memuat riwayat chat dari database SQLite."""
+        """Memuat riwayat chat dari database PostgreSQL."""
         db = SessionLocal()
         session = db.query(ChatSession).filter(ChatSession.session_id == self.session_id).first()
         if session and session.history:
@@ -55,7 +51,7 @@ class LexaChatbot:
         db.close()
 
     def _save_history(self):
-        """Menyimpan riwayat chat saat ini ke database SQLite."""
+        """Menyimpan riwayat chat saat ini ke database PostgreSQL."""
         db = SessionLocal()
         session = db.query(ChatSession).filter(ChatSession.session_id == self.session_id).first()
         if not session:
@@ -101,7 +97,8 @@ class LexaChatbot:
 
         # Lakukan pencarian RAG jika pipeline tersedia
         if self.rag_pipeline:
-            results = self.rag_pipeline.search(message, top_k=5, threshold=0.22)
+            from core.config import Config
+            results = self.rag_pipeline.search(message, top_k=Config.RAG_TOP_K, threshold=Config.RAG_THRESHOLD)
             self.last_references = results
             
             if results:

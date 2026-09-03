@@ -2,7 +2,7 @@ groq
 python-dotenv
 sentence-transformers
 numpy
-pypdf
+PyPDF2
 fastapi
 uvicorn[standard]
 chromadb
@@ -11,3 +11,5 @@ slowapi
 pytest
 httpx
 psycopg2-binary
+PyJWT
+bcrypt

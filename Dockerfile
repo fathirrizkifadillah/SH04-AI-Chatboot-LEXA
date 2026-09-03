@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Buat folder data SQLite
+# Buat folder data untuk settings & cache
 RUN mkdir -p /app/data
 
 EXPOSE 8000

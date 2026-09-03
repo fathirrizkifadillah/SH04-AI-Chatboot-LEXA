@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 import urllib.error
 import urllib.request
 import chromadb
@@ -36,7 +37,8 @@ class ChromaVectorStore:
             documents.append(chunk["content"])
             metadatas.append(chunk["metadata"])
             # Generate ID unik berdasarkan konten dan indeks
-            ids.append(f"doc_{i}_{hash(chunk['content'])}")
+            content_hash = hashlib.md5(chunk['content'].encode()).hexdigest()
+            ids.append(f"doc_{i}_{content_hash}")
             
         self.collection.add(
             documents=documents,
@@ -260,7 +262,7 @@ class RAGPipeline:
 
         all_chunks = []
         for file in os.listdir(self.db_dir):
-            if file.endswith((".md", ".txt", ".pdf")) and file != os.path.basename(self.index_path):
+            if file.endswith((".md", ".txt", ".pdf")) and file != "lexa_company_profile.md":
                 filepath = os.path.join(self.db_dir, file)
                 try:
                     text = ""

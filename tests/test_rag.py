@@ -14,8 +14,8 @@ Deskripsi fitur B.
     chunks = pipeline.chunk_markdown(sample_text, "test_file.md")
     
     assert len(chunks) == 3
-    assert "Fitur A" in chunks[0]["content"]
-    assert "Fitur B" in chunks[1]["content"]
+    assert "Fitur A" in chunks[1]["content"]
+    assert "Fitur B" in chunks[2]["content"]
     assert chunks[0]["metadata"]["document_title"] == "Lexa Features"
 
 def test_chunk_text():

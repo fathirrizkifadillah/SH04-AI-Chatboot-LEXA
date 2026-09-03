@@ -1,22 +1,25 @@
 import os
-import json
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON, Boolean, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-from dotenv import load_dotenv
-load_dotenv()
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Default ke SQLite jika DATABASE_URL tidak diset (untuk development/local)
 if not DATABASE_URL:
-    raise ValueError("Variabel lingkungan 'DATABASE_URL' tidak ditemukan! Sistem sekarang Wajib menggunakan PostgreSQL.")
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL", "sqlite:///./lexa.db"
+    ).replace("postgres://", "postgresql://", 1)
 
 # Fix untuk Heroku/Supabase format lama
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL)
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -51,15 +54,60 @@ class UnansweredQuery(Base):
     user_query = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-def get_dashboard_stats():
+def get_analytics_metrics():
+    """Ambil metrics real dari database untuk dashboard."""
     db = SessionLocal()
     try:
         total_conversations = db.query(ChatSession).count()
         unanswered_queries = db.query(UnansweredQuery).count()
+        
+        # Calculate average response time dari history yang sudah ada
+        sessions_with_timestamps = db.query(ChatSession).filter(
+            ChatSession.updated_at.isnot(None)
+        ).all()
+        
+        avg_response_time = "N/A"
+        if sessions_with_timestamps:
+            total_time_diffs = 0
+            count = 0
+            for s in sessions_with_timestamps:
+                if s.history and len(s.history) > 1:
+                    # Waktu dari pertama ke terakhir di session
+                    first = s.history[0].get("timestamp", 0)
+                    last = s.history[-1].get("timestamp", 0)
+                    if first and last:
+                        diff = (last - first) / 1000  # convert ms to detik
+                        total_time_diffs += diff
+                        count += 1
+            
+            if count > 0:
+                avg_seconds = total_time_diffs / count
+                if avg_seconds < 60:
+                    avg_response_time = f"{avg_seconds:.1f}s"
+                elif avg_seconds < 3600:
+                    avg_response_time = f"{avg_seconds/60:.1f} menit"
+                else:
+                    avg_response_time = f"{avg_seconds/3600:.1f} jam"
+        
+        # Count active users (sessions aktif dalam waktu 30 menit terakhir)
+        from datetime import datetime, timedelta
+        thirty_min_ago = datetime.utcnow() - timedelta(minutes=30)
+        active_users = db.query(ChatSession).filter(
+            ChatSession.updated_at >= thirty_min_ago
+        ).count()
+        
+        # Active users bulanan
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        monthly_active = db.query(ChatSession).filter(
+            ChatSession.created_at >= thirty_days_ago
+        ).count()
+        
         return {
             "total_conversations": total_conversations,
-            "active_users": total_conversations,
-            "unanswered_queries": unanswered_queries
+            "unanswered_queries": unanswered_queries,
+            "avg_response_time": avg_response_time,
+            "active_users_30min": active_users,
+            "monthly_active": monthly_active,
         }
     finally:
         db.close()
@@ -159,37 +207,11 @@ def set_human_handoff(session_id: str, is_handoff: bool):
     finally:
         db.close()
 
-def add_admin_reply(session_id: str, content: str):
-    db = SessionLocal()
-    try:
-        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
-        if s:
-            new_history = list(s.history)
-            new_history.append({"role": "admin", "content": content, "timestamp": datetime.utcnow().timestamp() * 1000})
-            s.history = new_history
-            s.updated_at = datetime.utcnow()
-            db.commit()
-            return True
-        return False
-    finally:
-        db.close()
-
 def get_all_users():
     db = SessionLocal()
     try:
         users = db.query(AdminUser).all()
         return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role, "status": u.status, "last_active": u.last_active} for u in users]
-    finally:
-        db.close()
-
-def create_user(name: str, email: str, role: str):
-    db = SessionLocal()
-    try:
-        user = AdminUser(name=name, email=email, role=role)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return {"id": user.id, "name": user.name, "email": user.email, "role": user.role}
     finally:
         db.close()
 
@@ -227,22 +249,28 @@ def seed_default_admin():
     try:
         if db.query(AdminUser).count() == 0:
             import bcrypt
-            pwd = "admin123".encode('utf-8')
+            admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id")
+            admin_password = os.getenv("ADMIN_PASSWORD", None)
+            # Generate secure password if not set
+            if not admin_password:
+                import secrets
+                admin_password = secrets.token_urlsafe(16)
+                print(f"[INFO] Default admin password generated. Email: {admin_email}")
+                print(f"[INFO] Save this password securely: {admin_password}")
+            pwd = admin_password.encode('utf-8')
             salt = bcrypt.gensalt()
             default_pwd = bcrypt.hashpw(pwd, salt).decode('utf-8')
             admin = AdminUser(
                 name="Super Admin",
-                email="admin@lexatech.id",
+                email=admin_email,
                 password_hash=default_pwd,
                 role="Super Admin"
             )
             db.add(admin)
             db.commit()
-            print("Default admin created: admin@lexatech.id / admin123")
+            print(f"Default admin created: {admin_email}")
     finally:
         db.close()
-
-seed_default_admin()
 
 def get_db():
     db = SessionLocal()

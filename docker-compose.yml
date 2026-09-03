@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: lexa_postgres
+    environment:
+      POSTGRES_DB: lexa_db
+      POSTGRES_USER: lexa_user
+      POSTGRES_PASSWORD: lexa_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
   lexa_api:
     build: .
     container_name: lexa_api
@@ -9,6 +22,13 @@ services:
     volumes:
       - ./knowledge_base:/app/knowledge_base
       - ./data:/app/data
+    environment:
+      - DATABASE_URL=postgresql://lexa_user:lexa_password@postgres:5432/lexa_db
     env_file:
       - .env
+    depends_on:
+      - postgres
     restart: unless-stopped
+
+volumes:
+  postgres_data:
