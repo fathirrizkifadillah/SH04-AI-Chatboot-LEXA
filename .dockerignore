@@ -12,3 +12,6 @@ frontend/.next
 admin_dashboard/node_modules
 admin_dashboard/dist
 data/lexa_chat.db
+*.db
+*.sqlite
+*.sqlite3

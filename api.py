@@ -14,16 +14,17 @@ import logging
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from core.config import Config
 from core.rag import RAGPipeline
 from core.rate_limit import limiter
-from core.database import seed_default_admin
+from core.database import seed_default_admin, init_database
 import core.state as state
 
 from routers import auth, chat, admin, widget
@@ -49,6 +50,9 @@ async def lifespan(app: FastAPI):
             pass
 
     Config.validate()
+
+    # Initialize database tables and run migrations
+    init_database()
 
     # Seed default admin jika belum ada
     seed_default_admin()
@@ -96,6 +100,7 @@ app = FastAPI(
 # Inisialisasi Limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS
 app.add_middleware(
@@ -106,9 +111,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve widget loader script (didefinisikan SEBELUM app.mount agar tidak ter-shadow)
+if os.path.exists("frontend/public/widget-loader.js"):
+    @app.get("/widget/widget-loader.js")
+    async def widget_loader():
+        from fastapi.responses import FileResponse
+        return FileResponse(
+            "frontend/public/widget-loader.js",
+            media_type="application/javascript",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
+
 # Serve file widget statis (React Build)
 if os.path.exists("frontend/dist"):
-    app.mount("/widget", StaticFiles(directory="frontend/dist"), name="widget")
+    app.mount("/widget", StaticFiles(directory="frontend/dist", html=True), name="widget")
 else:
     logger.warning("frontend/dist tidak ditemukan. Widget tidak akan disediakan.")
 
@@ -136,10 +152,18 @@ async def health_check():
 
 
 @app.websocket("/ws/admin")
-async def admin_websocket(websocket, token: str = ""):
+async def admin_websocket(websocket: WebSocket):
     import jwt as pyjwt
     from core.auth import JWT_SECRET, JWT_ALGORITHM
+    from fastapi import WebSocketDisconnect, Request
 
+    # Try to get token from query param or cookie
+    token = websocket.query_params.get("token", "")
+    if not token:
+        token = websocket.cookies.get("lexa_admin_session", "")
+    if not token:
+        # Also check headers
+        token = getattr(websocket, 'headers', {}).get('authorization', '')
     if not token:
         await websocket.close(code=4001, reason="Token required")
         return
@@ -156,7 +180,10 @@ async def admin_websocket(websocket, token: str = ""):
     try:
         while True:
             await websocket.receive_text()
-    except Exception:
+    except WebSocketDisconnect:
+        state.manager.disconnect_admin(websocket)
+    except Exception as e:
+        logger.error(f"Admin WebSocket error: {e}")
         state.manager.disconnect_admin(websocket)
 
 
@@ -170,5 +197,5 @@ if __name__ == "__main__":
         "api:app",
         host=Config.API_HOST,
         port=Config.API_PORT,
-        reload=True,
+        reload=os.getenv("ENVIRONMENT", "development") == "development",
     )

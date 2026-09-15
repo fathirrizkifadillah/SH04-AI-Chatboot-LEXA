@@ -6,9 +6,7 @@ declare global {
   }
 }
 
-interface RequestOptions extends Omit<RequestInit, 'method' | 'body'> {
-  token?: string | null;
-}
+interface RequestOptions extends Omit<RequestInit, 'method' | 'body'> {}
 
 class ApiError extends Error {
   constructor(
@@ -21,73 +19,27 @@ class ApiError extends Error {
   }
 }
 
-let isRefreshing = false;
-let refreshPromise: Promise<string> | null = null;
-
-async function refreshToken(): Promise<string> {
-  const currentToken = localStorage.getItem('lexa_admin_token');
-  if (!currentToken) throw new Error('No token');
-
-  const res = await fetch(`${API_URL}/api/auth/refresh?token=${encodeURIComponent(currentToken)}`, {
-    method: 'POST',
-  });
-
-  if (!res.ok) {
-    localStorage.removeItem('lexa_admin_token');
-    localStorage.removeItem('lexa_admin_user');
-    window.location.href = '/login';
-    throw new Error('Refresh failed');
-  }
-
-  const data = await res.json();
-  localStorage.setItem('lexa_admin_token', data.token);
-  return data.token;
-}
-
 async function request<T>(
   path: string,
   method: string,
   body?: unknown,
   options: RequestOptions = {},
-  isRetry = false
 ): Promise<T> {
-  const { token, ...fetchOptions } = options;
-
   const headers: Record<string, string> = {
-    ...(fetchOptions.headers as Record<string, string> || {}),
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
-    ...fetchOptions,
+    credentials: 'include',
+    ...options,
   });
-
-  if (res.status === 401 && !isRetry && token) {
-    try {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        refreshPromise = refreshToken();
-      }
-      const newToken = await refreshPromise!;
-      isRefreshing = false;
-      refreshPromise = null;
-      return request<T>(path, method, body, { ...options, token: newToken }, true);
-    } catch {
-      isRefreshing = false;
-      refreshPromise = null;
-      throw new ApiError(401, 'Session expired. Please login again.');
-    }
-  }
 
   if (!res.ok) {
     let data: unknown;
@@ -122,24 +74,20 @@ export const api = {
     return request<T>(path, 'POST', formData, options);
   },
 
-  getToken(): string | null {
-    return localStorage.getItem('lexa_admin_token');
-  },
-
   authGet<T>(path: string): Promise<T> {
-    return this.get<T>(path, { token: this.getToken() });
+    return this.get<T>(path);
   },
 
   authPost<T>(path: string, body?: unknown): Promise<T> {
-    return this.post<T>(path, body, { token: this.getToken() });
+    return this.post<T>(path, body);
   },
 
   authDelete<T>(path: string): Promise<T> {
-    return this.delete<T>(path, { token: this.getToken() });
+    return this.delete<T>(path);
   },
 
   authUpload<T>(path: string, formData: FormData): Promise<T> {
-    return this.upload<T>(path, formData, { token: this.getToken() });
+    return this.upload<T>(path, formData);
   },
 };
 

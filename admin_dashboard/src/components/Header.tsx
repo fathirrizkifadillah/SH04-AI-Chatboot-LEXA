@@ -27,8 +27,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   }, [isDark]);
 
   useEffect(() => {
-    const token = localStorage.getItem('lexa_admin_token');
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/admin${token ? `?token=${token}` : ''}`;
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/admin`;
     const ws = new WebSocket(wsUrl);
 
     ws.onmessage = (event) => {

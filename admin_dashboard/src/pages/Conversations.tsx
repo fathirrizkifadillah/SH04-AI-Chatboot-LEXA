@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
-import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X } from 'lucide-react';
+import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api from '../lib/apiClient';
@@ -29,6 +29,7 @@ const Conversations = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isUserTyping, setIsUserTyping] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const userTypingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -52,12 +53,14 @@ const Conversations = () => {
   // Admin WebSocket for handoff notifications
   useEffect(() => {
     let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let ws: WebSocket | null = null;
+    let isMounted = true;
     
     const connectAdminWs = () => {
+      if (!isMounted) return;
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = window.location.host;
-      const wsToken = localStorage.getItem('lexa_admin_token') || '';
-      const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/admin?token=${wsToken}`);
+      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/admin`);
 
       ws.onmessage = (event) => {
         try {
@@ -78,14 +81,21 @@ const Conversations = () => {
       };
 
       ws.onclose = () => {
-        reconnectTimeout = setTimeout(connectAdminWs, 3000);
+        if (isMounted) {
+          reconnectTimeout = setTimeout(connectAdminWs, 3000);
+        }
       };
     };
 
     connectAdminWs();
 
     return () => {
+      isMounted = false;
       clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
     };
   }, []);
 
@@ -110,6 +120,10 @@ const Conversations = () => {
     const wsHost = window.location.host;
     const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/chat/${selectedSession}`);
     wsRef.current = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'admin_authenticate' }));
+    };
     
     ws.onmessage = (event) => {
         try {
@@ -123,11 +137,16 @@ const Conversations = () => {
                 }
             } else if (data.type === 'typing') {
                 setIsUserTyping(true);
+                if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
+                userTypingTimeoutRef.current = setTimeout(() => {
+                    setIsUserTyping(false);
+                }, 4000);
             }
         } catch(e) {}
     };
 
     return () => {
+      if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
       ws.close();
       wsRef.current = null;
     };
@@ -198,10 +217,34 @@ const Conversations = () => {
       {/* Main Content */}
       <div className="w-1/3 border-r border-slate-100 flex flex-col bg-slate-50/50">
         <div className="p-4 border-b border-slate-100">
-          <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-600" /> 
-            Active Conversations
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-blue-600" /> 
+              Active Conversations
+            </h2>
+            <button
+              onClick={async () => {
+                const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                try {
+                  const res = await fetch(`${apiUrl}/api/admin/sessions/export-all?format=csv`, {
+                    credentials: 'include',
+                  });
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `lexa_all_chats.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch (e) { console.error(e); }
+              }}
+              title="Download semua percakapan (CSV)"
+              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-xs flex items-center gap-1 border border-slate-200"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
+          </div>
           <div className="mt-4 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
@@ -237,6 +280,11 @@ const Conversations = () => {
                   <div className="font-semibold text-slate-800 text-sm truncate pr-2 flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-400" />
                     {s.session_id.substring(0, 8)}...
+                    {s.is_human_handoff && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-700 rounded-full flex items-center gap-0.5">
+                        <Headphones className="w-2.5 h-2.5" /> CS
+                      </span>
+                    )}
                   </div>
                   <span className="text-[10px] text-slate-400 whitespace-nowrap flex items-center gap-1">
                     <Clock className="w-3 h-3" />
@@ -259,16 +307,58 @@ const Conversations = () => {
                 <h3 className="font-bold text-slate-800">Sesi Pelanggan</h3>
                 <p className="text-xs text-slate-500 font-mono mt-0.5">ID: {selectedSession}</p>
               </div>
-              <button 
-                onClick={handleToggleHandoff}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl border transition-colors flex items-center gap-2
-                  ${sessionData?.is_human_handoff 
-                    ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
-                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}`}
-              >
-                {sessionData?.is_human_handoff ? <ShieldAlert className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                {sessionData?.is_human_handoff ? 'Kembalikan ke AI' : 'Ambil Alih (Handoff)'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                    try {
+                      const res = await fetch(`${apiUrl}/api/admin/sessions/${selectedSession}/export?format=csv`, {
+                        credentials: 'include',
+                      });
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `chat_${selectedSession?.slice(0, 8)}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (e) { console.error(e); }
+                  }}
+                  className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                >
+                  <Download className="w-4 h-4" /> CSV
+                </button>
+                <button
+                  onClick={async () => {
+                    const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                    try {
+                      const res = await fetch(`${apiUrl}/api/admin/sessions/${selectedSession}/export?format=pdf`, {
+                        credentials: 'include',
+                      });
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `chat_${selectedSession?.slice(0, 8)}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (e) { console.error(e); }
+                  }}
+                  className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                >
+                  <Download className="w-4 h-4" /> PDF
+                </button>
+                <button 
+                  onClick={handleToggleHandoff}
+                  className={`px-4 py-2 text-sm font-semibold rounded-xl border transition-colors flex items-center gap-2
+                    ${sessionData?.is_human_handoff 
+                      ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}`}
+                >
+                  {sessionData?.is_human_handoff ? <ShieldAlert className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  {sessionData?.is_human_handoff ? 'Kembalikan ke AI' : 'Ambil Alih (Handoff)'}
+                </button>
+              </div>
             </div>
             
             <div className="flex-1 overflow-y-auto scrollbar-hidden p-6 space-y-6 bg-slate-50/30">

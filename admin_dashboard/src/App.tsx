@@ -1,6 +1,7 @@
-import { useState, lazy, Suspense, ReactNode } from 'react';
+import { useEffect, useState, lazy, Suspense, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import api from './lib/apiClient';
 
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -9,6 +10,7 @@ const KnowledgeBase = lazy(() => import('./pages/KnowledgeBase'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Users = lazy(() => import('./pages/Users'));
+const WidgetSetup = lazy(() => import('./pages/WidgetSetup'));
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -32,7 +34,17 @@ const PageLoader = () => (
 );
 
 function App() {
-  const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('lexa_admin_token'));
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    api.get('/api/auth/session')
+      .then(() => setAuthToken('authenticated'))
+      .catch(() => setAuthToken(null))
+      .finally(() => setIsCheckingSession(false));
+  }, []);
+
+  if (isCheckingSession) return <PageLoader />;
 
   return (
     <BrowserRouter>
@@ -50,6 +62,7 @@ function App() {
             <Route path="analytics" element={<Analytics />} />
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="widget" element={<WidgetSetup />} />
             <Route path="*" element={<div className="p-4 text-slate-500">Page not found</div>} />
           </Route>
         </Routes>

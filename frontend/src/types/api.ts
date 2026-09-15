@@ -10,6 +10,7 @@ export interface WidgetConfig {
 export interface ChatRequest {
   message: string;
   session_id?: string;
+  session_token?: string;
 }
 
 export interface ChatReference {
@@ -22,12 +23,14 @@ export interface ChatReference {
 export interface ChatResponse {
   reply: string;
   session_id: string;
+  session_token: string;
   references: ChatReference[];
 }
 
 export interface SSESessionEvent {
   type: 'session';
   session_id: string;
+  session_token: string;
 }
 
 export interface SSEChunkEvent {

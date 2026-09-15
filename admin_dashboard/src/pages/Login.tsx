@@ -23,9 +23,8 @@ const Login = ({ setAuthToken }: LoginProps) => {
     
     try {
       const data = await api.post<LoginResponse>('/api/auth/login', { email, password } satisfies LoginRequest);
-      localStorage.setItem('lexa_admin_token', data.token);
       localStorage.setItem('lexa_admin_user', JSON.stringify(data.user));
-      setAuthToken(data.token);
+      setAuthToken('authenticated');
       navigate('/');
     } catch (err) {
       if (err instanceof ApiError) {

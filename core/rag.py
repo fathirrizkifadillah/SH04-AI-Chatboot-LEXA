@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 import chromadb
 from chromadb.utils import embedding_functions
-import PyPDF2
+import pypdf
 
 logger = logging.getLogger("lexa")
 
@@ -43,7 +43,7 @@ class ChromaVectorStore:
             content_hash = hashlib.md5(chunk['content'].encode()).hexdigest()
             ids.append(f"doc_{i}_{content_hash}")
             
-        self.collection.add(
+        self.collection.upsert(
             documents=documents,
             metadatas=metadatas,
             ids=ids
@@ -96,10 +96,11 @@ class RAGPipeline:
         db_dir="knowledge_base",
         index_path="knowledge_base/vector_index.pkl",
         kb_url=None,
+        chroma_dir=None,
     ):
         self.db_dir = db_dir
         self.index_path = index_path
-        self.chroma_dir = os.path.join(self.db_dir, "chroma_db")
+        self.chroma_dir = chroma_dir or os.path.join(self.db_dir, "chroma_db")
         self.kb_url = kb_url or os.getenv("KNOWLEDGE_BASE_URL", DEFAULT_KB_URL)
         self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
 
@@ -263,15 +264,25 @@ class RAGPipeline:
         if not os.path.exists(self.db_dir):
             os.makedirs(self.db_dir)
 
+        # Pastikan file profil default ada jika belum ada
+        default_profile = os.path.join(self.db_dir, "lexa_company_profile.md")
+        if not os.path.exists(default_profile):
+            try:
+                text = self.fetch_remote_kb()
+                self._cache_kb_text(text)
+                logger.info("Basis pengetahuan profil perusahaan berhasil diunduh dari API.")
+            except Exception as e:
+                logger.warning(f"Gagal mengunduh profil default dari API: {e}")
+
         all_chunks = []
         for file in os.listdir(self.db_dir):
-            if file.endswith((".md", ".txt", ".pdf")) and file != "lexa_company_profile.md":
+            if file.endswith((".md", ".txt", ".pdf")):
                 filepath = os.path.join(self.db_dir, file)
                 try:
                     text = ""
                     if file.endswith(".pdf"):
                         with open(filepath, "rb") as f:
-                            reader = PyPDF2.PdfReader(f)
+                            reader = pypdf.PdfReader(f)
                             for page in reader.pages:
                                 text += page.extract_text() + "\n"
                         chunks = self.chunk_text(text, file)

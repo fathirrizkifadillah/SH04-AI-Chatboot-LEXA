@@ -14,6 +14,7 @@ const KnowledgeBase = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchFiles = () => {
     api.authGet<KBFile[]>('/api/admin/kb/files')
@@ -23,6 +24,9 @@ const KnowledgeBase = () => {
 
   useEffect(() => {
     fetchFiles();
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
   }, []);
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -69,25 +73,43 @@ const KnowledgeBase = () => {
 
   const handleReindex = async () => {
     setIsSyncing(true);
-    setSyncStatus(null);
+    setSyncStatus({ type: 'warning', message: 'Memulai proses sinkronisasi di background...' });
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
     try {
       await api.authPost('/api/admin/kb/reindex');
-      setSyncStatus({ type: 'success', message: 'Sinkronisasi berhasil! Bot kini menggunakan data terbaru.' });
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const res = await api.authGet<{ state: string; message: string }>('/api/admin/kb/reindex/status');
+          if (res.state === 'success') {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            setIsSyncing(false);
+            setSyncStatus({ type: 'success', message: res.message || 'Knowledge base berhasil diperbarui.' });
+            fetchFiles();
+          } else if (res.state === 'failed') {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            setIsSyncing(false);
+            setSyncStatus({ type: 'error', message: res.message || 'Gagal membangun index baru.' });
+          } else {
+            setSyncStatus({ type: 'warning', message: res.message || 'Sedang membangun index baru...' });
+          }
+        } catch {
+          // ignore transient errors during polling
+        }
+      }, 1500);
     } catch (err) {
       console.error(err);
-      setSyncStatus({ type: 'error', message: 'Gagal melakukan sinkronisasi.' });
-    } finally {
       setIsSyncing(false);
+      setSyncStatus({ type: 'error', message: 'Gagal melakukan sinkronisasi.' });
     }
   };
 
   const handleExport = async () => {
-    const token = localStorage.getItem('lexa_admin_token');
     const exportApiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
     try {
       const res = await fetch(`${exportApiUrl}/api/admin/kb/export`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();

@@ -35,6 +35,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
     
     session_id = Column(String, primary_key=True, index=True)
+    session_token_hash = Column(String, nullable=True)
     history = Column(JSON, default=list) # Menyimpan list of dicts [{"role": "...", "content": "..."}]
     is_human_handoff = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -60,6 +61,16 @@ class UnansweredQuery(Base):
     user_query = Column(Text)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class ChatFeedback(Base):
+    __tablename__ = "chat_feedback"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, index=True)
+    message_index = Column(Integer)
+    rating = Column(String)  # "thumbs_up" or "thumbs_down"
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 def get_analytics_metrics():
     """Ambil metrics real dari database untuk dashboard."""
     db = SessionLocal()
@@ -78,13 +89,18 @@ def get_analytics_metrics():
             count = 0
             for s in sessions_with_timestamps:
                 if s.history and len(s.history) > 1:
-                    # Waktu dari pertama ke terakhir di session
-                    first = s.history[0].get("timestamp", 0)
-                    last = s.history[-1].get("timestamp", 0)
-                    if first and last:
-                        diff = (last - first) / 1000  # convert ms to detik
-                        total_time_diffs += diff
-                        count += 1
+                    hist = s.history
+                    for i in range(len(hist) - 1):
+                        m1 = hist[i]
+                        m2 = hist[i + 1]
+                        if m1.get("role") == "user" and m2.get("role") in ("assistant", "admin"):
+                            t1 = m1.get("timestamp", 0)
+                            t2 = m2.get("timestamp", 0)
+                            if t1 and t2 and t2 >= t1:
+                                diff = (t2 - t1) / 1000  # convert ms to detik
+                                if diff < 300:  # Abaikan jeda > 5 menit
+                                    total_time_diffs += diff
+                                    count += 1
             
             if count > 0:
                 avg_seconds = total_time_diffs / count
@@ -174,6 +190,7 @@ def get_all_sessions(limit: int = 50, offset: int = 0):
             results.append({
                 "session_id": s.session_id,
                 "last_message": last_msg,
+                "is_human_handoff": bool(s.is_human_handoff),
                 "created_at": s.created_at.isoformat() if s.created_at else "",
                 "updated_at": s.updated_at.isoformat() if s.updated_at else ""
             })
@@ -235,29 +252,32 @@ def delete_user(user_id: int):
     finally:
         db.close()
 
-# Inisialisasi tabel (dan migrasi manual sederhana)
-import logging as _logging
-_db_logger = _logging.getLogger("lexa")
+def init_database():
+    """Initialize database: create tables and run pending migrations.
 
-try:
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN is_human_handoff BOOLEAN DEFAULT 0"))
-        conn.commit()
-except Exception as e:
-    msg = str(e).lower()
-    if "duplicate column" not in msg and "already exists" not in msg:
-        _db_logger.warning(f"ALTER TABLE chat_sessions failed: {e}")
+    Call this once during application startup (lifespan), NOT at import time,
+    to avoid race conditions in multi-worker deployments.
+    """
+    # Create tables first (idempotent — safe to call multiple times)
+    Base.metadata.create_all(bind=engine)
 
-try:
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE admin_users ADD COLUMN password_hash VARCHAR"))
-        conn.commit()
-except Exception as e:
-    msg = str(e).lower()
-    if "duplicate column" not in msg and "already exists" not in msg:
-        _db_logger.warning(f"ALTER TABLE admin_users failed: {e}")
+    # Run manual column migrations for columns added after initial schema
+    _migrations = [
+        ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN is_human_handoff BOOLEAN DEFAULT FALSE"),
+        ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN session_token_hash VARCHAR"),
+        ("admin_users", "ALTER TABLE admin_users ADD COLUMN password_hash VARCHAR"),
+    ]
+    for table_name, migration_sql in _migrations:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(migration_sql))
+                conn.commit()
+        except Exception as e:
+            msg = str(e).lower()
+            if "duplicate column" not in msg and "already exists" not in msg:
+                logger.warning(f"Migration failed for {table_name}: {e}")
 
-Base.metadata.create_all(bind=engine)
+    logger.info("Database initialized successfully.")
 
 def seed_default_admin():
     db = SessionLocal()
@@ -270,8 +290,16 @@ def seed_default_admin():
             if not admin_password:
                 import secrets
                 admin_password = secrets.token_urlsafe(16)
-                logger.info(f"Default admin password generated. Email: {admin_email}")
-                logger.info(f"Save this password securely: {admin_password}")
+                # Write password to file instead of logging (prevents leaking to monitoring systems)
+                password_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".admin_password")
+                try:
+                    with open(password_file, "w", encoding="utf-8") as pf:
+                        pf.write(f"Email: {admin_email}\nPassword: {admin_password}\n")
+                    logger.info(f"Default admin password saved to .admin_password — DELETE this file after reading!")
+                except OSError:
+                    # Fallback: print once to stderr only, NOT to the logger
+                    import sys
+                    print(f"[LEXA] Admin password for {admin_email}: {admin_password}", file=sys.stderr)
             pwd = admin_password.encode('utf-8')
             salt = bcrypt.gensalt()
             default_pwd = bcrypt.hashpw(pwd, salt).decode('utf-8')
@@ -291,5 +319,64 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    finally:
+        db.close()
+
+
+def submit_feedback(session_id: str, message_index: int, rating: str, comment: str = None):
+    db = SessionLocal()
+    try:
+        existing = db.query(ChatFeedback).filter(
+            ChatFeedback.session_id == session_id,
+            ChatFeedback.message_index == message_index,
+        ).first()
+        if existing:
+            existing.rating = rating
+            existing.comment = comment
+        else:
+            fb = ChatFeedback(
+                session_id=session_id,
+                message_index=message_index,
+                rating=rating,
+                comment=comment,
+            )
+            db.add(fb)
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+
+def get_feedback_stats():
+    db = SessionLocal()
+    try:
+        total = db.query(ChatFeedback).count()
+        thumbs_up = db.query(ChatFeedback).filter(ChatFeedback.rating == "thumbs_up").count()
+        thumbs_down = db.query(ChatFeedback).filter(ChatFeedback.rating == "thumbs_down").count()
+        return {
+            "total": total,
+            "thumbs_up": thumbs_up,
+            "thumbs_down": thumbs_down,
+            "satisfaction_rate": f"{(thumbs_up / max(total, 1) * 100):.1f}%",
+        }
+    finally:
+        db.close()
+
+
+def get_recent_feedback(limit: int = 20):
+    db = SessionLocal()
+    try:
+        items = db.query(ChatFeedback).order_by(ChatFeedback.created_at.desc()).limit(limit).all()
+        return [
+            {
+                "id": f.id,
+                "session_id": f.session_id,
+                "message_index": f.message_index,
+                "rating": f.rating,
+                "comment": f.comment,
+                "created_at": f.created_at.isoformat() if f.created_at else "",
+            }
+            for f in items
+        ]
     finally:
         db.close()

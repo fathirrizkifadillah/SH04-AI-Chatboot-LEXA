@@ -16,13 +16,11 @@ class LexaChatbot:
         max_history_turns=10,
     ):
         # Mengambil API key dari environment variable (.env)
-        # Mendukung baik 'GROQ_API_KEY' (standar) maupun 'GROQ API KEY' (sesuai format Anda)
-        self.api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROQ API KEY")
+        self.api_key = os.getenv("GROQ_API_KEY", "").strip()
         
         if not self.api_key:
             raise ValueError(
-                "API Key Groq tidak ditemukan! Pastikan variabel 'GROQ_API_KEY' atau "
-                "'GROQ API KEY' sudah didefinisikan dengan benar di file .env Anda."
+                "GROQ_API_KEY belum diset. Tambahkan di file .env Anda."
             )
             
         # Inisialisasi client Groq (async)
@@ -130,6 +128,11 @@ class LexaChatbot:
                     "JANGAN mengarang jawaban.\n"
                 )
 
+        # Refresh system instruction from settings if updated
+        dynamic_prompt = SettingsManager.get_settings().get("system_prompt")
+        if dynamic_prompt:
+            self.system_instruction = dynamic_prompt
+
         # Buat salinan riwayat chat untuk dikirim ke API
         messages_to_send = [msg.copy() for msg in self.history]
         
@@ -144,6 +147,7 @@ class LexaChatbot:
         Mengirim pesan ke Groq API dan menyimpan percakapan ke dalam riwayat.
         Mengembalikan jawaban model dalam bentuk string utuh.
         """
+        self._load_history()
         self.history.append({"role": "user", "content": message})
         self._save_history()
         messages_to_send = self._prepare_messages(message)
@@ -172,6 +176,7 @@ class LexaChatbot:
         Mengirim pesan ke Groq API dan menghasilkan (yield) jawaban per kata/token
         secara streaming (real-time). Cocok untuk antarmuka chat yang interaktif.
         """
+        self._load_history()
         self.history.append({"role": "user", "content": message})
         self._save_history()
         messages_to_send = self._prepare_messages(message)

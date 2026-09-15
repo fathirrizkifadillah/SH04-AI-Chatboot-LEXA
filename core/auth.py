@@ -3,19 +3,25 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 logger = logging.getLogger("lexa")
 
-JWT_SECRET: str = os.getenv("JWT_SECRET", "")
+JWT_SECRET: str = os.getenv("JWT_SECRET", "").strip()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 # Grace period: token expired < 7 hari masih bisa di-refresh
 REFRESH_GRACE_PERIOD_DAYS = 7
 
 if not JWT_SECRET:
-    logger.warning("JWT_SECRET not set! Using insecure dev default. Set JWT_SECRET in .env for production.")
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise ValueError(
+            "JWT_SECRET wajib diset di file .env untuk production. "
+            "Generate: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+    JWT_SECRET = "dev-insecure-secret-change-in-production"
+    logger.warning("JWT_SECRET not set! Using insecure dev default. SET JWT_SECRET in .env for production.")
 
 security = HTTPBearer()
 
@@ -27,9 +33,12 @@ def create_jwt_token(data: dict):
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def verify_jwt(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False))):
+    token = credentials.credentials if credentials else request.cookies.get("lexa_admin_session")
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
     try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")

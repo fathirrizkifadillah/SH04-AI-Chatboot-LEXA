@@ -1,6 +1,7 @@
-import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight, Code } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import api from '../lib/apiClient';
 
 interface SidebarProps {
   setAuthToken: (token: string | null) => void;
@@ -19,8 +20,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('lexa_admin_token');
     localStorage.removeItem('lexa_admin_user');
+    api.post('/api/auth/logout').catch(() => {});
     setAuthToken(null);
     navigate('/login');
   };
@@ -31,6 +32,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
     { name: 'Knowledge Base', icon: <BookOpen className="w-5 h-5" />, path: '/kb' },
     { name: 'Analytics', icon: <BarChart3 className="w-5 h-5" />, path: '/analytics' },
     { name: 'Users & Roles', icon: <Users className="w-5 h-5" />, path: '/users' },
+    { name: 'Widget Setup', icon: <Code className="w-5 h-5" />, path: '/widget' },
     { name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
   ];
 

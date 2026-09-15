@@ -1,8 +1,11 @@
 import bcrypt
-from fastapi import APIRouter, HTTPException, Depends, Request
+import os
+import json
+
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 
 from core.schemas import LoginRequest
-from core.auth import create_jwt_token, decode_token_allow_expired
+from core.auth import create_jwt_token, decode_token_allow_expired, verify_jwt
 from core.database import AdminUser, SessionLocal
 from core.rate_limit import limiter
 
@@ -24,14 +27,24 @@ async def login(request: Request, req: LoginRequest):
             raise HTTPException(status_code=401, detail="Email atau password salah")
 
         token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
-        return {"token": token, "user": {"name": user.name, "email": user.email, "role": user.role}}
+        response = Response(content=json.dumps({"user": {"name": user.name, "email": user.email, "role": user.role}}), media_type="application/json")
+        response.set_cookie(
+            key="lexa_admin_session",
+            value=token,
+            httponly=True,
+            secure=os.getenv("ENVIRONMENT", "development") == "production",
+            samesite="lax",
+            max_age=24 * 60 * 60,
+        )
+        return response
     finally:
         db.close()
 
 
 @router.post("/api/auth/refresh")
 @limiter.limit("10/minute")
-async def refresh_token(request: Request, token: str = ""):
+async def refresh_token(request: Request):
+    token = request.cookies.get("lexa_admin_session", "")
     if not token:
         raise HTTPException(status_code=401, detail="Token required")
 
@@ -50,6 +63,27 @@ async def refresh_token(request: Request, token: str = ""):
             raise HTTPException(status_code=401, detail="User not found")
 
         new_token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
-        return {"token": new_token, "user": {"name": user.name, "email": user.email, "role": user.role}}
+        response = Response(content=json.dumps({"user": {"name": user.name, "email": user.email, "role": user.role}}), media_type="application/json")
+        response.set_cookie(
+            key="lexa_admin_session",
+            value=new_token,
+            httponly=True,
+            secure=os.getenv("ENVIRONMENT", "development") == "production",
+            samesite="lax",
+            max_age=24 * 60 * 60,
+        )
+        return response
     finally:
         db.close()
+
+
+@router.get("/api/auth/session")
+async def get_session(payload: dict = Depends(verify_jwt)):
+    return {"user": {"name": payload.get("name"), "email": payload.get("sub"), "role": payload.get("role")}}
+
+
+@router.post("/api/auth/logout")
+async def logout():
+    response = Response(status_code=204)
+    response.delete_cookie("lexa_admin_session", samesite="lax")
+    return response

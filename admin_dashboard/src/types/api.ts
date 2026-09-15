@@ -54,7 +54,6 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
   user: {
     name: string;
     email: string;
@@ -111,6 +110,7 @@ export interface AdminStatsResponse {
 export interface ChatSession {
   session_id: string;
   last_message: string;
+  is_human_handoff?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -155,4 +155,21 @@ export interface Settings {
 export interface AdminReplyReq {
   session_id: string;
   content: string;
+}
+
+// Feedback
+export interface FeedbackStats {
+  total: number;
+  thumbs_up: number;
+  thumbs_down: number;
+  satisfaction_rate: string;
+}
+
+export interface FeedbackItem {
+  id: number;
+  session_id: string;
+  message_index: number;
+  rating: string;
+  comment: string | null;
+  created_at: string;
 }

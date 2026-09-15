@@ -9,6 +9,9 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, session_id: str):
         await websocket.accept()
+        self.add_connection(websocket, session_id)
+
+    def add_connection(self, websocket: WebSocket, session_id: str):
         if session_id not in self.active_connections:
             self.active_connections[session_id] = []
         self.active_connections[session_id].append(websocket)

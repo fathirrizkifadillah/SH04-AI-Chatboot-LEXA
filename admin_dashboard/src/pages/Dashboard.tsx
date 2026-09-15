@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Users, AlertCircle, Activity, Plus, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Users, AlertCircle, Activity, Plus, FileText, ThumbsUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../lib/apiClient';
-import type { KPIStats, ChartDataPoint, UnansweredQuery } from '../types/api';
+import type { KPIStats, ChartDataPoint, UnansweredQuery, FeedbackStats } from '../types/api';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<KPIStats>({
     active_users: 0,
     total_conversations: 0,
@@ -12,6 +14,7 @@ const Dashboard = () => {
   });
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [unansweredList, setUnansweredList] = useState<UnansweredQuery[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
   
   useEffect(() => {
     api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>('/api/admin/stats')
@@ -28,6 +31,10 @@ const Dashboard = () => {
         if (Array.isArray(data)) setUnansweredList(data);
       })
       .catch(err => console.error("Error fetching unanswered queries:", err));
+
+    api.authGet<FeedbackStats>('/api/admin/feedback/stats')
+      .then(data => setFeedbackStats(data))
+      .catch(err => console.error("Error fetching feedback stats:", err));
   }, []);
 
   const kpiData: Array<{
@@ -42,6 +49,7 @@ const Dashboard = () => {
     { title: 'Total Conversations', value: stats.total_conversations.toLocaleString(), trend: 'Real-time', trendUp: true, icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-100' },
     { title: 'Unanswered Queries', value: stats.unanswered_queries.toLocaleString(), trend: 'Real-time', trendUp: false, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-100' },
     { title: 'Active Users (30m)', value: stats.active_users.toLocaleString(), trend: 'Real-time', trendUp: true, icon: Users, color: 'text-green-600', bg: 'bg-green-100' },
+    { title: 'Satisfaction Rate', value: feedbackStats?.satisfaction_rate || '—', trend: feedbackStats ? `${feedbackStats.thumbs_up} 👍 / ${feedbackStats.thumbs_down} 👎` : 'No data', trendUp: true, icon: ThumbsUp, color: 'text-amber-600', bg: 'bg-amber-100' },
     { title: 'Resolution Rate', value: stats.total_conversations > 0 ? `${((1 - stats.unanswered_queries / Math.max(stats.total_conversations, 1)) * 100).toFixed(1)}%` : '—', trend: 'vs total', trendUp: true, icon: Activity, color: 'text-blue-600', bg: 'bg-blue-100' },
   ];
   
@@ -66,13 +74,13 @@ const Dashboard = () => {
             </p>
             <div className="flex gap-4 pt-2">
               <button
-                onClick={() => window.location.href = '/kb'}
+                onClick={() => navigate('/kb')}
                 className="px-5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/30 flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Sync Knowledge Base
               </button>
               <button
-                onClick={() => window.location.href = '/analytics'}
+                onClick={() => navigate('/analytics')}
                 className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition-colors border border-white/20 flex items-center gap-2"
               >
                 <FileText className="w-4 h-4" /> Lihat Laporan
@@ -91,7 +99,7 @@ const Dashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {kpiData.map((kpi, idx) => (
           <div key={idx} className="bg-white rounded-2xl p-6 shadow-[0_2px_10px_0_rgba(0,0,0,0.02)] border border-slate-100 card-hover">
             <div className="flex items-start justify-between">

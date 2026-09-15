@@ -68,12 +68,13 @@ class Config:
                 "CORS_ORIGINS tidak valid. Tambahkan di file .env: http://localhost:5173,http://localhost:5174"
             )
         import os
-        jwt_secret = os.getenv("JWT_SECRET", "")
+        jwt_secret = os.getenv("JWT_SECRET", "").strip()
         if not jwt_secret:
-            errors.append(
-                "JWT_SECRET belum diset. Tambahkan di file .env. "
-                "Generate: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
-            )
+            if os.getenv("ENVIRONMENT", "development") == "production":
+                errors.append(
+                    "JWT_SECRET wajib diset di file .env untuk production. "
+                    "Generate: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
         if errors:
             raise ValueError(
                 "Konfigurasi tidak valid:\n" + "\n".join(f"  - {e}" for e in errors)

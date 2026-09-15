@@ -5,6 +5,7 @@ from typing import Optional
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    session_token: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -22,6 +23,7 @@ class UserCreateRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     session_id: str
+    session_token: str
     references: list = []
 
 
