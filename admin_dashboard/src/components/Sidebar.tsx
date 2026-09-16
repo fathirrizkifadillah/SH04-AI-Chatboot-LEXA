@@ -43,7 +43,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
         {!isCollapsed && (
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg">
-              <img src="/lexa_chatbot_logo.png" alt="Lexa Logo" className="w-8 h-8 object-contain" />
+              <img src="/favicon.svg" alt="Lexa Logo" className="w-8 h-8 object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white">LEXA</h1>
@@ -53,7 +53,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
         )}
         {isCollapsed && (
           <div className="bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg">
-            <img src="/lexa_chatbot_logo.png" alt="Lexa Logo" className="w-8 h-8 object-contain" />
+            <img src="/favicon.svg" alt="Lexa Logo" className="w-8 h-8 object-contain" />
           </div>
         )}
         <button

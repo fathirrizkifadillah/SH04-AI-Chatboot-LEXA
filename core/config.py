@@ -38,7 +38,7 @@ class Config:
 
     # === API Server ===
     API_HOST: str = _getenv("API_HOST", "0.0.0.0")
-    API_PORT: int = _getenv("API_PORT", "8000", int)
+    API_PORT: int = int(os.getenv("PORT") or os.getenv("API_PORT") or "8000")
     CORS_ORIGINS: list = _getenv(
         "CORS_ORIGINS", "http://localhost:5173,http://localhost:5174"
     ).split(",")

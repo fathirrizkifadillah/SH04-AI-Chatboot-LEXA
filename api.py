@@ -155,7 +155,7 @@ async def health_check():
 async def admin_websocket(websocket: WebSocket):
     import jwt as pyjwt
     from core.auth import JWT_SECRET, JWT_ALGORITHM
-    from fastapi import WebSocketDisconnect, Request
+    from fastapi import WebSocketDisconnect
 
     # Try to get token from query param or cookie
     token = websocket.query_params.get("token", "")
