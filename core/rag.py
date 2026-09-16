@@ -286,6 +286,10 @@ class RAGPipeline:
                             for page in reader.pages:
                                 text += page.extract_text() + "\n"
                         chunks = self.chunk_text(text, file)
+                    elif file.endswith(".txt"):
+                        with open(filepath, "r", encoding="utf-8") as f:
+                            text = f.read()
+                        chunks = self.chunk_text(text, file)
                     else:
                         with open(filepath, "r", encoding="utf-8") as f:
                             text = f.read()

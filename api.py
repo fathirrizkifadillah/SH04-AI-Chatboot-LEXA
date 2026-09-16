@@ -112,12 +112,17 @@ app.add_middleware(
 )
 
 # Serve widget loader script (didefinisikan SEBELUM app.mount agar tidak ter-shadow)
-if os.path.exists("frontend/public/widget-loader.js"):
+loader_path = (
+    "frontend/public/widget-loader.js"
+    if os.path.exists("frontend/public/widget-loader.js")
+    else ("frontend/dist/widget-loader.js" if os.path.exists("frontend/dist/widget-loader.js") else None)
+)
+if loader_path:
     @app.get("/widget/widget-loader.js")
     async def widget_loader():
         from fastapi.responses import FileResponse
         return FileResponse(
-            "frontend/public/widget-loader.js",
+            loader_path,
             media_type="application/javascript",
             headers={"Cache-Control": "public, max-age=3600"},
         )

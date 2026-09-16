@@ -4,6 +4,25 @@ import { MessageSquare, Users, AlertCircle, Clock } from 'lucide-react';
 import api from '../lib/apiClient';
 import type { AdminStatsResponse, ChartDataPoint, AnalyticsMetrics } from '../types/api';
 
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+const StatCard = ({ title, value, icon: Icon, color }: StatCardProps) => (
+  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+    <div className={`p-4 rounded-xl ${color}`}>
+      <Icon className="w-6 h-6" />
+    </div>
+    <div>
+      <p className="text-sm text-slate-500 font-medium">{title}</p>
+      <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+    </div>
+  </div>
+);
+
 const Analytics = () => {
   const [stats, setStats] = useState<{ total_conversations: number; unanswered_queries: number; chart: ChartDataPoint[] } | null>(null);
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
@@ -15,25 +34,13 @@ const Analytics = () => {
         setStats({ ...data.kpi, chart: data.chart });
         setMetrics(data.metrics);
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching analytics:', err);
       }
     };
     fetchStats();
   }, []);
 
   const chatData: ChartDataPoint[] = stats?.chart || [];
-
-  const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: string | number; icon: React.ComponentType<{ className?: string }>; color: string }) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-      <div className={`p-4 rounded-xl ${color}`}>
-        <Icon className="w-6 h-6" />
-      </div>
-      <div>
-        <p className="text-sm text-slate-500 font-medium">{title}</p>
-        <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
-      </div>
-    </div>
-  );
 
   const metricsData: AnalyticsMetrics = metrics || { avg_response_time: 'N/A', active_users_30min: 0, monthly_active: 0 };
   const avgResponseTime = metricsData.avg_response_time;

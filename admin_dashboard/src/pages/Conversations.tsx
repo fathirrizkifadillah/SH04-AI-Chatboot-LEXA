@@ -142,7 +142,7 @@ const Conversations = () => {
                     setIsUserTyping(false);
                 }, 4000);
             }
-        } catch(e) {}
+        } catch {}
     };
 
     return () => {

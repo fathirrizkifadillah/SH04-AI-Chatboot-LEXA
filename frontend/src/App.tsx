@@ -18,7 +18,13 @@ type ExtendedSSEEvent =
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lexa_messages') || '[]') as ChatMessage[];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
@@ -37,30 +43,25 @@ function App() {
 
   // Initialize & fetch config
   useEffect(() => {
-    let savedMessages: ChatMessage[] = [];
-    try {
-      savedMessages = JSON.parse(localStorage.getItem('lexa_messages') || '[]') as ChatMessage[];
-    } catch {
-      savedMessages = [];
-    }
-    setMessages(savedMessages);
-
     api
       .get<WidgetConfig>('/config')
       .then((data: WidgetConfig) => {
         setConfig(data);
-        if (savedMessages.length === 0) {
-          const welcomeMsg: ChatMessage = {
-            id: Date.now(),
-            role: 'bot',
-            content: data.welcome_message,
-            timestamp: Date.now(),
-          };
-          setMessages([welcomeMsg]);
-          localStorage.setItem('lexa_messages', JSON.stringify([welcomeMsg]));
-        }
+        setMessages((prev) => {
+          if (prev.length === 0) {
+            return [
+              {
+                id: Date.now(),
+                role: 'bot',
+                content: data.welcome_message,
+                timestamp: Date.now(),
+              },
+            ];
+          }
+          return prev;
+        });
       })
-      .catch((err) => console.error('Failed to load config', err));
+      .catch((err) => console.error('Failed to load widget config:', err));
   }, []);
 
   // Save session & messages
@@ -162,7 +163,9 @@ function App() {
     };
 
     ws.onclose = () => {
-      reconnectTimeoutRef.current = setTimeout(connectWebSocket, 3000);
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectWebSocket();
+      }, 3000);
     };
 
     ws.onerror = () => {};

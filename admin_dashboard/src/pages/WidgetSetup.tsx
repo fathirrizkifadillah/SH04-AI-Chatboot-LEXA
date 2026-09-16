@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Code, Copy, Check, Globe, Palette, ExternalLink, Info } from 'lucide-react';
 import api from '../lib/apiClient';
 
@@ -20,6 +20,33 @@ const positions = [
   { value: 'top-left', label: 'Kiri Atas' },
 ];
 
+interface CopyButtonProps {
+  text: string;
+  field: string;
+  isCopied: boolean;
+  onCopy: (text: string, field: string) => void;
+}
+
+const CopyButton = ({ text, field, isCopied, onCopy }: CopyButtonProps) => (
+  <button
+    onClick={() => onCopy(text, field)}
+    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors
+      bg-white/10 hover:bg-white/20 text-white border border-white/10"
+  >
+    {isCopied ? (
+      <>
+        <Check className="w-3.5 h-3.5 text-green-400" />
+        <span className="text-green-400">Tersalin!</span>
+      </>
+    ) : (
+      <>
+        <Copy className="w-3.5 h-3.5" />
+        Salin
+      </>
+    )}
+  </button>
+);
+
 const WidgetSetup = () => {
   const [embedData, setEmbedData] = useState<EmbedCodeResponse | null>(null);
   const [apiUrl, setApiUrl] = useState('');
@@ -28,7 +55,7 @@ const WidgetSetup = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchEmbedCode = async () => {
+  const fetchEmbedCode = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ position, color });
@@ -40,37 +67,17 @@ const WidgetSetup = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [position, color, apiUrl]);
 
   useEffect(() => {
     fetchEmbedCode();
-  }, [position, color]);
+  }, [fetchEmbedCode]);
 
   const handleCopy = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
   };
-
-  const CopyButton = ({ text, field }: { text: string; field: string }) => (
-    <button
-      onClick={() => handleCopy(text, field)}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors
-        bg-white/10 hover:bg-white/20 text-white border border-white/10"
-    >
-      {copiedField === field ? (
-        <>
-          <Check className="w-3.5 h-3.5 text-green-400" />
-          <span className="text-green-400">Tersalin!</span>
-        </>
-      ) : (
-        <>
-          <Copy className="w-3.5 h-3.5" />
-          Salin
-        </>
-      )}
-    </button>
-  );
 
   return (
     <div className="p-6 max-w-5xl">
@@ -151,7 +158,7 @@ const WidgetSetup = () => {
                   <p className="text-xs text-slate-400">Copy & paste ke &lt;head&gt; atau &lt;body&gt; website Anda</p>
                 </div>
               </div>
-              <CopyButton text={embedData.embed_code} field="script" />
+              <CopyButton text={embedData.embed_code} field="script" isCopied={copiedField === 'script'} onCopy={handleCopy} />
             </div>
             <pre className="px-6 py-5 text-sm text-green-400 font-mono overflow-x-auto leading-relaxed">
               {embedData.embed_code}
@@ -170,7 +177,7 @@ const WidgetSetup = () => {
                   <p className="text-xs text-slate-500">Alternatif jika script tag tidak bisa digunakan</p>
                 </div>
               </div>
-              <CopyButton text={embedData.iframe_fallback} field="iframe" />
+              <CopyButton text={embedData.iframe_fallback} field="iframe" isCopied={copiedField === 'iframe'} onCopy={handleCopy} />
             </div>
             <pre className="px-6 py-5 text-xs text-slate-600 font-mono bg-slate-50 overflow-x-auto leading-relaxed">
               {embedData.iframe_fallback}
@@ -189,7 +196,7 @@ const WidgetSetup = () => {
                   <p className="text-xs text-slate-500">Kontrol widget secara programmatically</p>
                 </div>
               </div>
-              <CopyButton text={embedData.js_api_example} field="jsapi" />
+              <CopyButton text={embedData.js_api_example} field="jsapi" isCopied={copiedField === 'jsapi'} onCopy={handleCopy} />
             </div>
             <pre className="px-6 py-5 text-xs text-slate-600 font-mono bg-slate-50 overflow-x-auto leading-relaxed">
               {embedData.js_api_example}
