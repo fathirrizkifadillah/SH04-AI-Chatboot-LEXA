@@ -90,12 +90,33 @@ async def lifespan(app: FastAPI):
 # ──────────────────────────────────────────────
 # Inisialisasi FastAPI App
 # ──────────────────────────────────────────────
+tags_metadata = [
+    {
+        "name": "Chat & Widget",
+        "description": "Endpoints untuk komunikasi pengunjung dengan chatbot (REST, SSE Streaming, dan WebSocket).",
+    },
+    {
+        "name": "Authentication",
+        "description": "Autentikasi admin dashboard via JWT & HttpOnly Session Cookie.",
+    },
+    {
+        "name": "Admin Management",
+        "description": "Manajemen percakapan, human handoff, berkas knowledge base, dan akun staf CS.",
+    },
+    {
+        "name": "Widget Config",
+        "description": "Konfigurasi tampilan dan pesan sambutan widget.",
+    },
+]
+
 app = FastAPI(
     title="Lexa Chatbot API",
     description="API backend untuk widget chatbot customer service Lexa",
     version="2.0.0",
     lifespan=lifespan,
+    openapi_tags=tags_metadata,
 )
+
 
 # Inisialisasi Limiter
 app.state.limiter = limiter
@@ -136,10 +157,11 @@ else:
 # ──────────────────────────────────────────────
 # Include Routers
 # ──────────────────────────────────────────────
-app.include_router(auth.router)
-app.include_router(chat.router)
-app.include_router(admin.router)
-app.include_router(widget.router)
+app.include_router(auth.router, tags=["Authentication"])
+app.include_router(chat.router, tags=["Chat & Widget"])
+app.include_router(admin.router, tags=["Admin Management"])
+app.include_router(widget.router, tags=["Widget Config"])
+
 
 
 @app.get("/")
@@ -149,11 +171,31 @@ def read_root():
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "ok",
-        "rag_loaded": state.rag_pipeline is not None,
-        "active_sessions": len(state.chat_sessions),
-    }
+    db_status = "ok"
+    try:
+        from core.database import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Health check database error: {e}")
+        db_status = "unreachable"
+
+    is_healthy = db_status == "ok"
+    status_code = 200 if is_healthy else 503
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "ok" if is_healthy else "degraded",
+            "database": db_status,
+            "rag_loaded": state.rag_pipeline is not None,
+            "active_sessions": len(state.chat_sessions),
+        },
+    )
 
 
 @app.websocket("/ws/admin")

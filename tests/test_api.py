@@ -36,12 +36,38 @@ def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.json().get("database") == "ok"
+
+
+def test_health_check_database_failure(monkeypatch):
+    from unittest.mock import MagicMock
+    import core.database as db_mod
+    mock_session = MagicMock()
+    mock_session.return_value.execute.side_effect = Exception("DB Connection Lost")
+    monkeypatch.setattr(db_mod, "SessionLocal", mock_session)
+
+    response = client.get("/health")
+    assert response.status_code == 503
+    data = response.json()
+    assert data["status"] == "degraded"
+    assert data["database"] == "unreachable"
 
 def test_get_config():
     response = client.get("/config")
     assert response.status_code == 200
     assert "welcome_message" in response.json()
     assert "quick_replies" in response.json()
+
+
+def test_openapi_tags():
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    data = response.json()
+    tag_names = [t["name"] for t in data.get("tags", [])]
+    assert "Chat & Widget" in tag_names
+    assert "Authentication" in tag_names
+    assert "Admin Management" in tag_names
+
 
 
 def test_new_chat_session_uses_initialized_rag_pipeline(monkeypatch):
@@ -160,6 +186,19 @@ def test_chat_input_too_long():
     long_message = "A" * 2500
     resp = client.post("/chat", json={"message": long_message, "session_id": "test_long"})
     assert resp.status_code == 413
+
+
+def test_chat_input_empty_or_whitespace():
+    resp_empty = client.post("/chat", json={"message": "", "session_id": "test_empty"})
+    assert resp_empty.status_code == 400
+    assert "kosong" in resp_empty.json()["detail"].lower()
+
+    resp_ws = client.post("/chat", json={"message": "    ", "session_id": "test_ws"})
+    assert resp_ws.status_code == 400
+
+    resp_stream = client.post("/chat/stream", json={"message": "   ", "session_id": "test_stream_empty"})
+    assert resp_stream.status_code == 400
+
 
 def test_admin_endpoints_require_token():
     resp = client.get("/api/admin/stats")
