@@ -39,9 +39,11 @@ class Config:
     # === API Server ===
     API_HOST: str = _getenv("API_HOST", "0.0.0.0")
     API_PORT: int = int(os.getenv("PORT") or os.getenv("API_PORT") or "8000")
-    CORS_ORIGINS: list = _getenv(
-        "CORS_ORIGINS", "http://localhost:5173,http://localhost:5174"
-    ).split(",")
+    CORS_ORIGINS: list = [
+        o.strip()
+        for o in _getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",")
+        if o.strip()
+    ]
 
     # === Widget ===
     WELCOME_MESSAGE: str = _getenv(
