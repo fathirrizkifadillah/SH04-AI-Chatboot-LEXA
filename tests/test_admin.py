@@ -378,17 +378,13 @@ class TestExport:
         assert resp.status_code == 400
 
     def test_export_all_sessions_csv(self):
-        """NOTE: Route /api/admin/sessions/export-all returns 404 karena
-        di-shadow oleh /api/admin/sessions/{session_id}/export (route order bug).
-        Test ini memverifikasi bug tersebut agar bisa di-fix nanti."""
         self._seed_export_session()
         resp = client.get(
             "/api/admin/sessions/export-all?format=csv",
             headers=_auth_header(),
         )
-        # BUG: Seharusnya 200, tapi FastAPI matching {session_id} duluan
-        # Ubah assert ke 200 setelah fix route order di routers/admin.py
-        assert resp.status_code in (200, 404)
+        assert resp.status_code == 200
+        assert "text/csv" in resp.headers["content-type"]
 
 
 # ─── Feedback ───────────────────────────────────────────
