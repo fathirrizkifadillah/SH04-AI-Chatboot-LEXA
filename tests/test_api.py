@@ -36,6 +36,21 @@ def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.json().get("database") == "ok"
+
+
+def test_health_check_database_failure(monkeypatch):
+    from unittest.mock import MagicMock
+    import core.database as db_mod
+    mock_session = MagicMock()
+    mock_session.return_value.execute.side_effect = Exception("DB Connection Lost")
+    monkeypatch.setattr(db_mod, "SessionLocal", mock_session)
+
+    response = client.get("/health")
+    assert response.status_code == 503
+    data = response.json()
+    assert data["status"] == "degraded"
+    assert data["database"] == "unreachable"
 
 def test_get_config():
     response = client.get("/config")

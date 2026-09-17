@@ -149,11 +149,31 @@ def read_root():
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "ok",
-        "rag_loaded": state.rag_pipeline is not None,
-        "active_sessions": len(state.chat_sessions),
-    }
+    db_status = "ok"
+    try:
+        from core.database import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Health check database error: {e}")
+        db_status = "unreachable"
+
+    is_healthy = db_status == "ok"
+    status_code = 200 if is_healthy else 503
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "ok" if is_healthy else "degraded",
+            "database": db_status,
+            "rag_loaded": state.rag_pipeline is not None,
+            "active_sessions": len(state.chat_sessions),
+        },
+    )
 
 
 @app.websocket("/ws/admin")
