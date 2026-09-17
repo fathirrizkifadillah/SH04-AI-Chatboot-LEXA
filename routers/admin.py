@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.schemas import UserCreateRequest, AdminReplyReq
+from core.schemas import UserCreateRequest, AdminReplyReq, SettingsUpdateRequest
 from core.auth import verify_jwt, require_role
 
 logger = logging.getLogger("lexa")
@@ -126,9 +126,13 @@ async def get_admin_settings(payload: dict = Depends(verify_jwt)):
 
 @router.post("/api/admin/settings")
 @limiter.limit("10/minute")
-async def update_admin_settings(request: Request, payload: dict = Depends(require_role("Super Admin"))):
-    data = await request.json()
-    return SettingsManager.save_settings(data)
+async def update_admin_settings(
+    request: Request,
+    req: SettingsUpdateRequest,
+    payload: dict = Depends(require_role("Super Admin")),
+):
+    update_data = {k: v for k, v in req.model_dump().items() if v is not None}
+    return SettingsManager.save_settings(update_data)
 
 
 @router.get("/api/admin/stats")
@@ -279,7 +283,8 @@ async def upload_kb_file(request: Request, file: UploadFile = File(...), payload
 
 
 @router.delete("/api/admin/kb/files/{filename}")
-async def delete_kb_file(filename: str, payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
+@limiter.limit("20/minute")
+async def delete_kb_file(request: Request, filename: str, payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
     kb_dir = Config.KNOWLEDGE_BASE_DIR
     file_path = os.path.join(kb_dir, filename)
 
@@ -376,7 +381,8 @@ async def admin_create_user(request: Request, req: UserCreateRequest, payload: d
 
 
 @router.delete("/api/admin/users/{user_id}")
-async def admin_delete_user(user_id: int, payload: dict = Depends(require_role("Super Admin"))):
+@limiter.limit("15/minute")
+async def admin_delete_user(request: Request, user_id: int, payload: dict = Depends(require_role("Super Admin"))):
     db = SessionLocal()
     try:
         user = db.query(AdminUser).filter(AdminUser.id == user_id).first()
@@ -393,14 +399,16 @@ async def admin_delete_user(user_id: int, payload: dict = Depends(require_role("
 
 
 @router.post("/api/admin/handoff")
-async def admin_set_handoff(session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
+@limiter.limit("30/minute")
+async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
     if set_human_handoff(session_id, is_handoff):
         return {"status": "success", "is_human_handoff": is_handoff}
     raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
 
 
 @router.post("/api/admin/reply")
-async def admin_reply(req: AdminReplyReq, payload: dict = Depends(verify_jwt)):
+@limiter.limit("30/minute")
+async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depends(verify_jwt)):
     safe_content = _sanitize_content(req.content)
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now_ts = now_dt.timestamp() * 1000

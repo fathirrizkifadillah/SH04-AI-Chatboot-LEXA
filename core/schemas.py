@@ -37,3 +37,12 @@ class WidgetConfig(BaseModel):
 class AdminReplyReq(BaseModel):
     session_id: str
     content: str
+
+
+class SettingsUpdateRequest(BaseModel):
+    welcome_message: Optional[str] = None
+    quick_replies: Optional[list[str]] = None
+    system_prompt: Optional[str] = None
+
+    model_config = {"extra": "allow"}
+
