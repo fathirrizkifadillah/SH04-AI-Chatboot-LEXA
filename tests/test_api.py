@@ -161,6 +161,19 @@ def test_chat_input_too_long():
     resp = client.post("/chat", json={"message": long_message, "session_id": "test_long"})
     assert resp.status_code == 413
 
+
+def test_chat_input_empty_or_whitespace():
+    resp_empty = client.post("/chat", json={"message": "", "session_id": "test_empty"})
+    assert resp_empty.status_code == 400
+    assert "kosong" in resp_empty.json()["detail"].lower()
+
+    resp_ws = client.post("/chat", json={"message": "    ", "session_id": "test_ws"})
+    assert resp_ws.status_code == 400
+
+    resp_stream = client.post("/chat/stream", json={"message": "   ", "session_id": "test_stream_empty"})
+    assert resp_stream.status_code == 400
+
+
 def test_admin_endpoints_require_token():
     resp = client.get("/api/admin/stats")
     assert resp.status_code == 401 or resp.status_code == 403
