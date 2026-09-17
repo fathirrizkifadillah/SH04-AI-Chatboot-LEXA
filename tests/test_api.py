@@ -59,6 +59,17 @@ def test_get_config():
     assert "quick_replies" in response.json()
 
 
+def test_openapi_tags():
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    data = response.json()
+    tag_names = [t["name"] for t in data.get("tags", [])]
+    assert "Chat & Widget" in tag_names
+    assert "Authentication" in tag_names
+    assert "Admin Management" in tag_names
+
+
+
 def test_new_chat_session_uses_initialized_rag_pipeline(monkeypatch):
     import routers.chat as chat_router
     import core.state as state
