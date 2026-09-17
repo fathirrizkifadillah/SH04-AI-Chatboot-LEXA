@@ -156,6 +156,45 @@ async def admin_get_sessions(payload: dict = Depends(verify_jwt), limit: int = 5
     return get_all_sessions(limit=limit, offset=offset)
 
 
+@router.get("/api/admin/sessions/export-all")
+async def export_all_sessions(format: str = "csv", payload: dict = Depends(verify_jwt)):
+    db = SessionLocal()
+    try:
+        sessions = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
+
+        if format == "csv":
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["Session ID", "Role", "Content", "Timestamp", "Human Handoff"])
+            for s in sessions:
+                history = s.history or []
+                for msg in history:
+                    if msg.get("role") == "system":
+                        continue
+                    ts = msg.get("timestamp", "")
+                    if ts:
+                        ts = datetime.datetime.fromtimestamp(ts / 1000, tz=datetime.timezone.utc).isoformat()
+                    writer.writerow([
+                        s.session_id,
+                        msg.get("role", ""),
+                        msg.get("content", ""),
+                        ts,
+                        s.is_human_handoff,
+                    ])
+            output.seek(0)
+            return StreamingResponse(
+                io.BytesIO(output.getvalue().encode("utf-8")),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=lexa_all_chats.csv"},
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Format harus 'csv'")
+    finally:
+        db.close()
+
+
 @router.get("/api/admin/sessions/{session_id}")
 async def admin_get_session_history(session_id: str, payload: dict = Depends(verify_jwt)):
     db = SessionLocal()
@@ -261,7 +300,13 @@ def run_rebuild():
             return
         state.reindex_status = {"state": "indexing", "message": "Sedang membangun index baru."}
         active_pipeline = state.rag_pipeline
-        staging_dir = tempfile.mkdtemp(prefix="lexa_chroma_", dir=Config.KNOWLEDGE_BASE_DIR)
+        base_dir = (
+            active_pipeline.db_dir
+            if getattr(active_pipeline, "db_dir", None) and os.path.exists(active_pipeline.db_dir)
+            else Config.KNOWLEDGE_BASE_DIR
+        )
+        os.makedirs(base_dir, exist_ok=True)
+        staging_dir = tempfile.mkdtemp(prefix="lexa_chroma_", dir=base_dir)
         candidate = RAGPipeline(
             db_dir=active_pipeline.db_dir,
             index_path=active_pipeline.index_path,
@@ -470,41 +515,3 @@ async def export_session_chat(session_id: str, format: str = "csv", payload: dic
     finally:
         db.close()
 
-
-@router.get("/api/admin/sessions/export-all")
-async def export_all_sessions(format: str = "csv", payload: dict = Depends(verify_jwt)):
-    db = SessionLocal()
-    try:
-        sessions = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
-
-        if format == "csv":
-            import csv
-            import io
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(["Session ID", "Role", "Content", "Timestamp", "Human Handoff"])
-            for s in sessions:
-                history = s.history or []
-                for msg in history:
-                    if msg.get("role") == "system":
-                        continue
-                    ts = msg.get("timestamp", "")
-                    if ts:
-                        ts = datetime.datetime.fromtimestamp(ts / 1000, tz=datetime.timezone.utc).isoformat()
-                    writer.writerow([
-                        s.session_id,
-                        msg.get("role", ""),
-                        msg.get("content", ""),
-                        ts,
-                        s.is_human_handoff,
-                    ])
-            output.seek(0)
-            return StreamingResponse(
-                io.BytesIO(output.getvalue().encode("utf-8")),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=lexa_all_chats.csv"},
-            )
-        else:
-            raise HTTPException(status_code=400, detail="Format harus 'csv'")
-    finally:
-        db.close()
