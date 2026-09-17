@@ -443,6 +443,14 @@ class TestSettings:
         }, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 403
 
+    def test_update_settings_invalid_payload(self):
+        resp = client.post(
+            "/api/admin/settings",
+            json={"welcome_message": 12345, "quick_replies": "not-a-list"},
+            headers=_auth_header(),
+        )
+        assert resp.status_code == 422
+
 
 # ─── Widget Embed Code ─────────────────────────────────
 
