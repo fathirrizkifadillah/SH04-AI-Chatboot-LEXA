@@ -36,15 +36,21 @@ class ConnectionManager:
 
     async def broadcast_to_session(self, message: dict, session_id: str):
         if session_id in self.active_connections:
+            dead_connections = []
             for connection in self.active_connections[session_id]:
                 try:
                     await connection.send_json(message)
                 except Exception:
-                    pass
+                    dead_connections.append(connection)
+            for dead in dead_connections:
+                self.disconnect(dead, session_id)
 
     async def broadcast_to_admins(self, message: dict):
+        dead_admins = []
         for connection in self.admin_connections:
             try:
                 await connection.send_json(message)
             except Exception:
-                pass
+                dead_admins.append(connection)
+        for dead in dead_admins:
+            self.disconnect_admin(dead)

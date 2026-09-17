@@ -214,3 +214,29 @@ def test_export_session_pdf_special_characters():
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
     assert len(resp.content) > 0
+
+
+def test_chat_reset_endpoints():
+    from routers.chat import _get_or_create_session_token
+    session_id = f"test_reset_{uuid.uuid4()}"
+    token = _get_or_create_session_token(session_id, None)
+
+    # Reset with valid session token header
+    resp = client.post(
+        f"/chat/reset?session_id={session_id}",
+        headers={"X-Lexa-Session": token},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "reset"
+
+    # Reset with missing session_id
+    resp_empty = client.post("/chat/reset?session_id=")
+    assert resp_empty.status_code == 400
+
+    # Reset with invalid token
+    resp_invalid = client.post(
+        f"/chat/reset?session_id={session_id}",
+        headers={"X-Lexa-Session": "wrong-token"},
+    )
+    assert resp_invalid.status_code == 403
+
