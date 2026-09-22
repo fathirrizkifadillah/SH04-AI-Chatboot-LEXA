@@ -87,10 +87,14 @@ def get_analytics_metrics():
         total_conversations = db.query(ChatSession).count()
         unanswered_queries = db.query(UnansweredQuery).count()
         
-        # Calculate average response time dari history yang sudah ada
-        sessions_with_timestamps = db.query(ChatSession).filter(
-            ChatSession.updated_at.isnot(None)
-        ).all()
+        # Calculate average response time dari history yang sudah ada (dibatasi 200 sesi terbaru agar hemat memori)
+        sessions_with_timestamps = (
+            db.query(ChatSession)
+            .filter(ChatSession.updated_at.isnot(None))
+            .order_by(ChatSession.updated_at.desc())
+            .limit(200)
+            .all()
+        )
         
         avg_response_time = "N/A"
         if sessions_with_timestamps:
@@ -302,9 +306,10 @@ def seed_default_admin():
                 # Write password to file instead of logging (prevents leaking to monitoring systems)
                 password_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".admin_password")
                 try:
-                    with open(password_file, "w", encoding="utf-8") as pf:
+                    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+                    with open(os.open(password_file, flags, 0o600), "w", encoding="utf-8") as pf:
                         pf.write(f"Email: {admin_email}\nPassword: {admin_password}\n")
-                    logger.info(f"Default admin password saved to .admin_password — DELETE this file after reading!")
+                    logger.info("Default admin password saved to .admin_password — DELETE this file after reading!")
                 except OSError:
                     # Fallback: print once to stderr only, NOT to the logger
                     import sys

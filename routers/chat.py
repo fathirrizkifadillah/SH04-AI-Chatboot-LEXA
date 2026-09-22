@@ -113,6 +113,8 @@ def get_or_create_session(session_id: str) -> LexaChatbot:
 @router.post("/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
 async def chat(request: Request, req: ChatRequest):
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="Pesan tidak boleh kosong.")
     if len(req.message) > Config.MAX_INPUT_LENGTH:
         raise HTTPException(
             status_code=413,
@@ -165,6 +167,8 @@ async def chat(request: Request, req: ChatRequest):
 @router.post("/chat/stream")
 @limiter.limit("20/minute")
 async def chat_stream(request: Request, req: ChatRequest):
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="Pesan tidak boleh kosong.")
     if len(req.message) > Config.MAX_INPUT_LENGTH:
         raise HTTPException(
             status_code=413,
@@ -278,6 +282,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             if message_type == "message":
                 user_msg = data.get("content", "")
+                if not user_msg or not user_msg.strip():
+                    await websocket.send_json({"type": "error", "message": "Pesan tidak boleh kosong."})
+                    continue
                 if len(user_msg) > Config.MAX_INPUT_LENGTH:
                     await manager.broadcast_to_session(
                         {"type": "error", "message": f"Pesan terlalu panjang. Maksimal {Config.MAX_INPUT_LENGTH} karakter."},

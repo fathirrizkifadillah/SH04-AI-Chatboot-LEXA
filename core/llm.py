@@ -1,7 +1,11 @@
 import os
+import asyncio
+import logging
 from groq import AsyncGroq
 from core.database import SessionLocal, ChatSession, UnansweredQuery
 from core.settings import SettingsManager
+
+logger = logging.getLogger("lexa")
 
 class LexaChatbot:
     """
@@ -152,24 +156,41 @@ class LexaChatbot:
         self._save_history()
         messages_to_send = self._prepare_messages(message)
         
-        try:
-            chat_completion = await self.client.chat.completions.create(
-                messages=messages_to_send,
-                model=self.model,
-            )
-            
-            reply = chat_completion.choices[0].message.content
-            self.history.append({"role": "assistant", "content": reply})
-            self._save_history()
-            self._trim_history()
-            return reply
-            
-        except Exception as e:
-            # Jika gagal, hapus pesan terakhir user agar history tetap sinkron
+        max_retries = 3
+        backoff_delay = 0.5
+        chat_completion = None
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                chat_completion = await self.client.chat.completions.create(
+                    messages=messages_to_send,
+                    model=self.model,
+                )
+                break
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                if "invalid_api_key" in err_str or "model_not_found" in err_str:
+                    break
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        f"Groq API request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {backoff_delay}s..."
+                    )
+                    await asyncio.sleep(backoff_delay)
+                    backoff_delay *= 2
+
+        if chat_completion is None:
             if self.history and self.history[-1]["role"] == "user":
                 self.history.pop()
                 self._save_history()
-            raise RuntimeError(f"Gagal memproses request ke Groq API: {e}")
+            raise RuntimeError(f"Gagal memproses request ke Groq API: {last_error}")
+
+        reply = chat_completion.choices[0].message.content
+        self.history.append({"role": "assistant", "content": reply})
+        self._save_history()
+        self._trim_history()
+        return reply
 
     async def send_message_stream(self, message: str):
         """
@@ -181,13 +202,41 @@ class LexaChatbot:
         self._save_history()
         messages_to_send = self._prepare_messages(message)
         
+        max_retries = 3
+        backoff_delay = 0.5
+        stream = None
+
+        for attempt in range(max_retries):
+            try:
+                stream = await self.client.chat.completions.create(
+                    messages=messages_to_send,
+                    model=self.model,
+                    stream=True,
+                )
+                break
+            except Exception as e:
+                err_str = str(e).lower()
+                if "invalid_api_key" in err_str or "model_not_found" in err_str:
+                    if self.history and self.history[-1]["role"] == "user":
+                        self.history.pop()
+                        self._save_history()
+                    raise RuntimeError(f"Gagal memproses stream request ke Groq API: {e}")
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        f"Groq API stream failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {backoff_delay}s..."
+                    )
+                    await asyncio.sleep(backoff_delay)
+                    backoff_delay *= 2
+                else:
+                    if self.history and self.history[-1]["role"] == "user":
+                        self.history.pop()
+                        self._save_history()
+                    raise RuntimeError(f"Gagal memproses stream request ke Groq API: {e}")
+
+        if stream is None:
+            raise RuntimeError("Gagal mendapatkan stream dari Groq API")
+
         try:
-            stream = await self.client.chat.completions.create(
-                messages=messages_to_send,
-                model=self.model,
-                stream=True
-            )
-            
             full_reply = ""
             async for chunk in stream:
                 content = chunk.choices[0].delta.content or ""
@@ -202,4 +251,4 @@ class LexaChatbot:
             if self.history and self.history[-1]["role"] == "user":
                 self.history.pop()
                 self._save_history()
-            raise RuntimeError(f"Gagal memproses stream request ke Groq API: {e}")
+            raise RuntimeError(f"Gagal memproses stream response: {e}")

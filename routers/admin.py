@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.schemas import UserCreateRequest, AdminReplyReq
+from core.schemas import UserCreateRequest, AdminReplyReq, SettingsUpdateRequest
 from core.auth import verify_jwt, require_role
 
 logger = logging.getLogger("lexa")
@@ -126,9 +126,13 @@ async def get_admin_settings(payload: dict = Depends(verify_jwt)):
 
 @router.post("/api/admin/settings")
 @limiter.limit("10/minute")
-async def update_admin_settings(request: Request, payload: dict = Depends(require_role("Super Admin"))):
-    data = await request.json()
-    return SettingsManager.save_settings(data)
+async def update_admin_settings(
+    request: Request,
+    req: SettingsUpdateRequest,
+    payload: dict = Depends(require_role("Super Admin")),
+):
+    update_data = {k: v for k, v in req.model_dump().items() if v is not None}
+    return SettingsManager.save_settings(update_data)
 
 
 @router.get("/api/admin/stats")
@@ -154,6 +158,45 @@ async def admin_unanswered_queries(payload: dict = Depends(verify_jwt)):
 @router.get("/api/admin/sessions")
 async def admin_get_sessions(payload: dict = Depends(verify_jwt), limit: int = 50, offset: int = 0):
     return get_all_sessions(limit=limit, offset=offset)
+
+
+@router.get("/api/admin/sessions/export-all")
+async def export_all_sessions(format: str = "csv", payload: dict = Depends(verify_jwt)):
+    db = SessionLocal()
+    try:
+        sessions = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
+
+        if format == "csv":
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["Session ID", "Role", "Content", "Timestamp", "Human Handoff"])
+            for s in sessions:
+                history = s.history or []
+                for msg in history:
+                    if msg.get("role") == "system":
+                        continue
+                    ts = msg.get("timestamp", "")
+                    if ts:
+                        ts = datetime.datetime.fromtimestamp(ts / 1000, tz=datetime.timezone.utc).isoformat()
+                    writer.writerow([
+                        s.session_id,
+                        msg.get("role", ""),
+                        msg.get("content", ""),
+                        ts,
+                        s.is_human_handoff,
+                    ])
+            output.seek(0)
+            return StreamingResponse(
+                io.BytesIO(output.getvalue().encode("utf-8")),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=lexa_all_chats.csv"},
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Format harus 'csv'")
+    finally:
+        db.close()
 
 
 @router.get("/api/admin/sessions/{session_id}")
@@ -240,7 +283,8 @@ async def upload_kb_file(request: Request, file: UploadFile = File(...), payload
 
 
 @router.delete("/api/admin/kb/files/{filename}")
-async def delete_kb_file(filename: str, payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
+@limiter.limit("20/minute")
+async def delete_kb_file(request: Request, filename: str, payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
     kb_dir = Config.KNOWLEDGE_BASE_DIR
     file_path = os.path.join(kb_dir, filename)
 
@@ -261,7 +305,13 @@ def run_rebuild():
             return
         state.reindex_status = {"state": "indexing", "message": "Sedang membangun index baru."}
         active_pipeline = state.rag_pipeline
-        staging_dir = tempfile.mkdtemp(prefix="lexa_chroma_", dir=Config.KNOWLEDGE_BASE_DIR)
+        base_dir = (
+            active_pipeline.db_dir
+            if getattr(active_pipeline, "db_dir", None) and os.path.exists(active_pipeline.db_dir)
+            else Config.KNOWLEDGE_BASE_DIR
+        )
+        os.makedirs(base_dir, exist_ok=True)
+        staging_dir = tempfile.mkdtemp(prefix="lexa_chroma_", dir=base_dir)
         candidate = RAGPipeline(
             db_dir=active_pipeline.db_dir,
             kb_url=active_pipeline.kb_url,
@@ -330,7 +380,8 @@ async def admin_create_user(request: Request, req: UserCreateRequest, payload: d
 
 
 @router.delete("/api/admin/users/{user_id}")
-async def admin_delete_user(user_id: int, payload: dict = Depends(require_role("Super Admin"))):
+@limiter.limit("15/minute")
+async def admin_delete_user(request: Request, user_id: int, payload: dict = Depends(require_role("Super Admin"))):
     db = SessionLocal()
     try:
         user = db.query(AdminUser).filter(AdminUser.id == user_id).first()
@@ -347,14 +398,16 @@ async def admin_delete_user(user_id: int, payload: dict = Depends(require_role("
 
 
 @router.post("/api/admin/handoff")
-async def admin_set_handoff(session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
+@limiter.limit("30/minute")
+async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
     if set_human_handoff(session_id, is_handoff):
         return {"status": "success", "is_human_handoff": is_handoff}
     raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
 
 
 @router.post("/api/admin/reply")
-async def admin_reply(req: AdminReplyReq, payload: dict = Depends(verify_jwt)):
+@limiter.limit("30/minute")
+async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depends(verify_jwt)):
     safe_content = _sanitize_content(req.content)
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now_ts = now_dt.timestamp() * 1000
@@ -469,41 +522,3 @@ async def export_session_chat(session_id: str, format: str = "csv", payload: dic
     finally:
         db.close()
 
-
-@router.get("/api/admin/sessions/export-all")
-async def export_all_sessions(format: str = "csv", payload: dict = Depends(verify_jwt)):
-    db = SessionLocal()
-    try:
-        sessions = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
-
-        if format == "csv":
-            import csv
-            import io
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(["Session ID", "Role", "Content", "Timestamp", "Human Handoff"])
-            for s in sessions:
-                history = s.history or []
-                for msg in history:
-                    if msg.get("role") == "system":
-                        continue
-                    ts = msg.get("timestamp", "")
-                    if ts:
-                        ts = datetime.datetime.fromtimestamp(ts / 1000, tz=datetime.timezone.utc).isoformat()
-                    writer.writerow([
-                        s.session_id,
-                        msg.get("role", ""),
-                        msg.get("content", ""),
-                        ts,
-                        s.is_human_handoff,
-                    ])
-            output.seek(0)
-            return StreamingResponse(
-                io.BytesIO(output.getvalue().encode("utf-8")),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=lexa_all_chats.csv"},
-            )
-        else:
-            raise HTTPException(status_code=400, detail="Format harus 'csv'")
-    finally:
-        db.close()

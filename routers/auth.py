@@ -85,5 +85,10 @@ async def get_session(payload: dict = Depends(verify_jwt)):
 @router.post("/api/auth/logout")
 async def logout():
     response = Response(status_code=204)
-    response.delete_cookie("lexa_admin_session", samesite="lax")
+    response.delete_cookie(
+        "lexa_admin_session",
+        httponly=True,
+        secure=os.getenv("ENVIRONMENT", "development") == "production",
+        samesite="lax",
+    )
     return response
