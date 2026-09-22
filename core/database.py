@@ -21,6 +21,15 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# Jika URL mengarah ke host Docker 'postgres' tetapi dijalankan di luar Docker (host tidak terjangkau)
+if "@postgres:" in DATABASE_URL:
+    import socket
+    try:
+        socket.gethostbyname("postgres")
+    except (socket.gaierror, OSError):
+        logger.warning("Host 'postgres' tidak terjangkau (di luar Docker). Menggunakan SQLite lokal (sqlite:///./lexa.db).")
+        DATABASE_URL = "sqlite:///./lexa.db"
+
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}

@@ -96,6 +96,17 @@ function App() {
         if (data.type === 'admin_reply' || data.type === 'handoff_user_msg') {
           setIsAdminTyping(false);
           if (adminTypingTimeoutRef.current) clearTimeout(adminTypingTimeoutRef.current);
+          if (data.type === 'admin_reply' && data.content) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                role: 'admin',
+                content: data.content,
+                timestamp: Date.now(),
+              },
+            ]);
+          }
           api
             .get<{ history: Array<{ role: string; content: string; timestamp?: number }> }>(
               `/api/chat/poll?session_id=${sessionId}&t=${Date.now()}`,

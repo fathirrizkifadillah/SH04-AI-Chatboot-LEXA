@@ -21,9 +21,6 @@ class Config:
 
     # === RAG Pipeline ===
     KNOWLEDGE_BASE_DIR: str = _getenv("KNOWLEDGE_BASE_DIR", "knowledge_base")
-    VECTOR_INDEX_PATH: str = _getenv(
-        "VECTOR_INDEX_PATH", "knowledge_base/vector_index.pkl"
-    )
     KNOWLEDGE_BASE_URL: str = _getenv(
         "KNOWLEDGE_BASE_URL",
         "https://sh-01-company-profile.vercel.app/api/knowledge-base",
@@ -33,7 +30,7 @@ class Config:
     # === Chat ===
     MAX_HISTORY_TURNS: int = _getenv("MAX_HISTORY_TURNS", "10", int)
     RAG_TOP_K: int = _getenv("RAG_TOP_K", "5", int)
-    RAG_THRESHOLD: float = _getenv("RAG_THRESHOLD", "0.22", float)
+    RAG_THRESHOLD: float = _getenv("RAG_THRESHOLD", "0.40", float)
     MAX_INPUT_LENGTH: int = _getenv("MAX_INPUT_LENGTH", "2000", int)
 
     # === API Server ===
@@ -76,7 +73,10 @@ class Config:
                     "Generate: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
                 )
         if errors:
+            import sys
+            error_msg = "\n".join(f"  - {e}" for e in errors)
+            print(f"\n[CRITICAL CONFIG ERROR]\n{error_msg}\nPastikan variabel di atas diset di tab Variables di Railway/hosting Anda.\n", file=sys.stderr)
             raise ValueError(
-                "Konfigurasi tidak valid:\n" + "\n".join(f"  - {e}" for e in errors)
+                "Konfigurasi tidak valid:\n" + error_msg
             )
         return True

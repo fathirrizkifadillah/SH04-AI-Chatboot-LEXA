@@ -58,15 +58,22 @@ async def lifespan(app: FastAPI):
     seed_default_admin()
 
     logger.info("Memulai Lexa API Server...")
-    logger.info("Memuat basis pengetahuan RAG...")
 
-    state.rag_pipeline = RAGPipeline(
-        db_dir=Config.KNOWLEDGE_BASE_DIR,
-        index_path=Config.VECTOR_INDEX_PATH,
-        kb_url=Config.KNOWLEDGE_BASE_URL,
-    )
-    state.rag_pipeline.load_or_build()
-    logger.info("RAG Pipeline siap.")
+    # Load RAG in background task so Uvicorn binds to PORT immediately
+    async def init_rag_async():
+        try:
+            logger.info("Memuat basis pengetahuan RAG di background...")
+            pipeline = RAGPipeline(
+                db_dir=Config.KNOWLEDGE_BASE_DIR,
+                kb_url=Config.KNOWLEDGE_BASE_URL,
+            )
+            await asyncio.to_thread(pipeline.load_or_build)
+            state.rag_pipeline = pipeline
+            logger.info("RAG Pipeline siap.")
+        except Exception as e:
+            logger.error(f"Gagal memuat RAG Pipeline: {e}", exc_info=True)
+
+    rag_task = asyncio.create_task(init_rag_async())
 
     # Background task: cleanup expired sessions setiap 5 menit
     async def periodic_cleanup():

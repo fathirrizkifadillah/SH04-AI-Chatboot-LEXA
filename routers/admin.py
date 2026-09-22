@@ -264,7 +264,6 @@ def run_rebuild():
         staging_dir = tempfile.mkdtemp(prefix="lexa_chroma_", dir=Config.KNOWLEDGE_BASE_DIR)
         candidate = RAGPipeline(
             db_dir=active_pipeline.db_dir,
-            index_path=active_pipeline.index_path,
             kb_url=active_pipeline.kb_url,
             chroma_dir=staging_dir,
         )

@@ -386,11 +386,9 @@ async def reset_chat(request: Request, session_id: str = ""):
     if not session_id:
         raise HTTPException(status_code=400, detail="session_id wajib diisi")
     _require_session_token(session_id, request.headers.get("X-Lexa-Session"))
-    if session_id and session_id in chat_sessions:
-        chat_sessions[session_id].reset_chat()
-        return {"status": "reset", "session_id": session_id}
-    elif session_id:
-        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+    bot = get_or_create_session(session_id)
+    bot.reset_chat(save=True)
+    return {"status": "reset", "session_id": session_id}
 
 
 @router.get("/api/chat/poll")

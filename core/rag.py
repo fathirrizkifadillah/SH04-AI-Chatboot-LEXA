@@ -24,7 +24,20 @@ class ChromaVectorStore:
         
         self.collection = self.client.get_or_create_collection(
             name="lexa_kb",
-            embedding_function=self.embedding_fn
+            embedding_function=self.embedding_fn,
+            metadata={"hnsw:space": "cosine"}
+        )
+
+    def reset_collection(self):
+        """Menghapus koleksi lama agar sinkronisasi dokumen bersih dari file yang sudah dihapus."""
+        try:
+            self.client.delete_collection("lexa_kb")
+        except Exception:
+            pass
+        self.collection = self.client.get_or_create_collection(
+            name="lexa_kb",
+            embedding_function=self.embedding_fn,
+            metadata={"hnsw:space": "cosine"}
         )
 
     def add_chunks(self, chunks):
@@ -49,7 +62,7 @@ class ChromaVectorStore:
             ids=ids
         )
 
-    def search(self, query: str, top_k: int = 3, threshold: float = 0.2):
+    def search(self, query: str, top_k: int = 3, threshold: float = 0.40):
         """Mencari chunk dokumen teratas yang relevan."""
         if self.collection.count() == 0:
             return []
@@ -62,10 +75,14 @@ class ChromaVectorStore:
         
         formatted_results = []
         if results['documents'] and len(results['documents']) > 0:
+            is_cosine = bool(self.collection.metadata and self.collection.metadata.get("hnsw:space") == "cosine")
             for i in range(len(results['documents'][0])):
                 distance = results['distances'][0][i]
-                # Konversi jarak L2 default ChromaDB ke pseudo-similarity score
-                score = 1.0 / (1.0 + distance)
+                # Hitung similarity score berdasarkan metric distance
+                if is_cosine:
+                    score = max(0.0, 1.0 - distance)
+                else:
+                    score = 1.0 / (1.0 + distance)
                 
                 if score >= threshold:
                     formatted_results.append({
@@ -77,15 +94,6 @@ class ChromaVectorStore:
                     })
         return formatted_results
 
-    def save(self, filepath: str):
-        """ChromaDB otomatis menyimpan ke disk, metode ini dipertahankan untuk kompatibilitas."""
-        pass
-
-    def load(self, filepath: str):
-        """ChromaDB otomatis memuat dari disk, metode ini dipertahankan untuk kompatibilitas."""
-        pass
-
-
 class RAGPipeline:
     """
     RAG Pipeline untuk mengelola pembacaan folder dokumen, chunking,
@@ -94,12 +102,10 @@ class RAGPipeline:
     def __init__(
         self,
         db_dir="knowledge_base",
-        index_path="knowledge_base/vector_index.pkl",
         kb_url=None,
         chroma_dir=None,
     ):
         self.db_dir = db_dir
-        self.index_path = index_path
         self.chroma_dir = chroma_dir or os.path.join(self.db_dir, "chroma_db")
         self.kb_url = kb_url or os.getenv("KNOWLEDGE_BASE_URL", DEFAULT_KB_URL)
         self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
@@ -197,17 +203,6 @@ class RAGPipeline:
             })
         return result_chunks
 
-    def add_temporary_document(self, file_name: str, text: str):
-        """
-        Menambahkan teks dokumen sementara (seperti unggahan user)
-        ke dalam vector store aktif di memori saja (tanpa menyimpannya ke disk).
-        """
-        chunks = self.chunk_text(text, file_name)
-        if chunks:
-            self.vector_store.add_chunks(chunks)
-            logger.info(f"Berhasil menambahkan {len(chunks)} chunks dari dokumen sementara '{file_name}' ke memori.")
-
-
     def fetch_remote_kb(self, url: str = None) -> str:
         """Mengambil basis pengetahuan markdown dari API company profile."""
         url = url or self.kb_url
@@ -255,8 +250,8 @@ class RAGPipeline:
             raise RuntimeError("Basis pengetahuan kosong setelah chunking.")
 
         self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
+        self.vector_store.reset_collection()
         self.vector_store.add_chunks(chunks)
-        self.vector_store.save(self.index_path)
         logger.info(f"Indeks RAG berhasil dibuat dengan {len(chunks)} chunks dari API.")
 
     def build_index(self):
@@ -301,8 +296,8 @@ class RAGPipeline:
 
         if all_chunks:
             self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
+            self.vector_store.reset_collection()
             self.vector_store.add_chunks(all_chunks)
-            self.vector_store.save(self.index_path)
             logger.info(f"Indeks berhasil dibuat dengan {len(all_chunks)} chunks dokumen lokal.")
         else:
             logger.info("Tidak ada dokumen lokal. Mengambil basis pengetahuan dari API...")
@@ -324,6 +319,6 @@ class RAGPipeline:
         else:
             self.build_index()
 
-    def search(self, query: str, top_k: int = 5, threshold: float = 0.22):
+    def search(self, query: str, top_k: int = 5, threshold: float = 0.40):
         """Mencari dokumen yang relevan dengan query user."""
         return self.vector_store.search(query, top_k=top_k, threshold=threshold)
