@@ -14,6 +14,8 @@ type ExtendedSSEEvent =
   | { type: 'admin_reply'; content: string }
   | { type: 'handoff_user_msg'; content: string }
   | { type: 'handoff_requested' }
+  | { type: 'handoff_status'; is_handoff: boolean }
+  | { type: 'handoff_ended' }
   | { type: 'typing'; role?: string };
 
 function App() {
@@ -72,6 +74,22 @@ function App() {
       localStorage.setItem('lexa_messages', JSON.stringify(messages));
     }
   }, [messages, sessionId, sessionToken]);
+
+  // Sinkronkan status handoff saat widget dimuat ulang (agar tidak nyangkut di mode CS setelah refresh)
+  useEffect(() => {
+    if (!sessionId || !sessionToken) return;
+    api
+      .get<{ history: unknown[]; is_human_handoff: boolean }>(
+        `/api/chat/poll?session_id=${sessionId}&t=${Date.now()}`,
+        { headers: { 'X-Lexa-Session': sessionToken } }
+      )
+      .then((data) => {
+        if (typeof data.is_human_handoff === 'boolean') {
+          setIsHandoffRequested(data.is_human_handoff);
+        }
+      })
+      .catch(() => {});
+  }, [sessionId, sessionToken]);
 
   // WebSocket connection for real-time sync
   const wsRef = useRef<WebSocket | null>(null);
@@ -132,6 +150,20 @@ function App() {
             .catch(() => {});
         } else if (data.type === 'handoff_requested') {
           setIsHandoffRequested(true);
+        } else if (data.type === 'handoff_status') {
+          // Sinkronkan status handoff real-time saat CS mengambil alih atau mengembalikan ke AI
+          setIsHandoffRequested(data.is_handoff);
+        } else if (data.type === 'handoff_ended') {
+          setIsHandoffRequested(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now(),
+              role: 'bot',
+              content: 'Percakapan dengan staf CS telah berakhir. Anda kembali terhubung dengan Lexa AI. Ada lagi yang bisa saya bantu?',
+              timestamp: Date.now(),
+            },
+          ]);
         } else if (data.type === 'typing') {
           if (data.role === 'admin') {
             setIsAdminTyping(true);
@@ -268,6 +300,20 @@ function App() {
       const wantsHuman = ['admin', 'cs', 'manusia', 'operator', 'staf', 'ngobrol sama admin', 'hubungi admin', 'bantuan manusia'].some(k => lowerText.includes(k));
       if (wantsHuman) {
         setEscalationShown(true);
+      }
+
+      // Jika sesi dalam mode CS Manusia, backend hanya mengembalikan event 'done'
+      // sehingga kita perlu menampilkan pesan konfirmasi agar user tahu pesannya terkirim.
+      if (!fullResponse) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 2,
+            role: 'bot',
+            content: 'Pesan Anda telah diteruskan ke staf CS. Mohon tunggu balasan sebentar ya.',
+            timestamp: Date.now(),
+          },
+        ]);
       }
 
       const userMessageCount = messages.filter((m) => m.role === 'user').length + 1;
