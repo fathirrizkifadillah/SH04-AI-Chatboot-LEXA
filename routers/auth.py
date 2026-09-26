@@ -42,7 +42,13 @@ async def login(request: Request, req: LoginRequest):
             raise HTTPException(status_code=401, detail="Email atau password salah")
 
         token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
-        response = Response(content=json.dumps({"user": {"name": user.name, "email": user.email, "role": user.role}}), media_type="application/json")
+        response = Response(
+            content=json.dumps({
+                "token": token,
+                "user": {"name": user.name, "email": user.email, "role": user.role}
+            }), 
+            media_type="application/json"
+        )
         response.set_cookie(
             key="lexa_admin_session",
             value=token,
@@ -78,7 +84,13 @@ async def refresh_token(request: Request):
             raise HTTPException(status_code=401, detail="User not found")
 
         new_token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
-        response = Response(content=json.dumps({"user": {"name": user.name, "email": user.email, "role": user.role}}), media_type="application/json")
+        response = Response(
+            content=json.dumps({
+                "token": new_token,
+                "user": {"name": user.name, "email": user.email, "role": user.role}
+            }), 
+            media_type="application/json"
+        )
         response.set_cookie(
             key="lexa_admin_session",
             value=new_token,
