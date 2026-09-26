@@ -143,8 +143,16 @@ def _is_allowed_websocket_origin(websocket: WebSocket) -> bool:
     origin = websocket.headers.get("origin")
     if not origin:
         return False
+    if "*" in Config.CORS_ORIGINS:
+        return True
     request_origin = f"{websocket.url.scheme.replace('ws', 'http', 1)}://{websocket.url.netloc}"
-    return origin.rstrip("/") in {request_origin.rstrip("/"), *(item.rstrip("/") for item in Config.CORS_ORIGINS)}
+    allowed = {request_origin.rstrip("/"), *(item.rstrip("/") for item in Config.CORS_ORIGINS)}
+    if origin.rstrip("/") in allowed:
+        return True
+    # Izinkan komunikasi antar-subdomain jika di-deploy di Railway
+    if "up.railway.app" in websocket.url.netloc and "up.railway.app" in origin:
+        return True
+    return False
 
 
 def get_or_create_session(session_id: str) -> LexaChatbot:
@@ -187,6 +195,7 @@ async def chat(request: Request, req: ChatRequest):
             "type": "new_message",
             "session_id": session_id,
             "content": req.message,
+            "role": "user",
             "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
         })
         return ChatResponse(
@@ -248,6 +257,7 @@ async def chat_stream(request: Request, req: ChatRequest):
                     "type": "new_message",
                     "session_id": session_id,
                     "content": req.message,
+                    "role": "user",
                     "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
                 })
 
@@ -356,6 +366,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         "type": "new_message",
                         "session_id": session_id,
                         "content": user_msg,
+                        "role": "user",
                         "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
                     })
                 else:
