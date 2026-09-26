@@ -312,28 +312,16 @@ def seed_default_admin():
     try:
         db = SessionLocal()
         try:
-            if db.query(AdminUser).count() == 0:
-                import bcrypt
-                admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id")
-                admin_password = os.getenv("ADMIN_PASSWORD", None)
-                # Generate secure password if not set
-                if not admin_password:
-                    import secrets
-                    admin_password = secrets.token_urlsafe(16)
-                    # Write password to file instead of logging (prevents leaking to monitoring systems)
-                    password_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".admin_password")
-                    try:
-                        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-                        with open(os.open(password_file, flags, 0o600), "w", encoding="utf-8") as pf:
-                            pf.write(f"Email: {admin_email}\nPassword: {admin_password}\n")
-                        logger.info("Default admin password saved to .admin_password — DELETE this file after reading!")
-                    except OSError:
-                        # Fallback: print once to stderr only, NOT to the logger
-                        import sys
-                        print(f"[LEXA] Admin password for {admin_email}: {admin_password}", file=sys.stderr)
-                pwd = admin_password.encode('utf-8')
-                salt = bcrypt.gensalt()
-                default_pwd = bcrypt.hashpw(pwd, salt).decode('utf-8')
+            import bcrypt
+            admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id").strip()
+            admin_password = os.getenv("ADMIN_PASSWORD", "$$adminlexa&&").strip()
+
+            pwd = admin_password.encode('utf-8')
+            salt = bcrypt.gensalt()
+            default_pwd = bcrypt.hashpw(pwd, salt).decode('utf-8')
+
+            admin = db.query(AdminUser).filter(AdminUser.email == admin_email).first()
+            if not admin:
                 admin = AdminUser(
                     name="Super Admin",
                     email=admin_email,
@@ -343,6 +331,11 @@ def seed_default_admin():
                 db.add(admin)
                 db.commit()
                 logger.info(f"Default admin created: {admin_email}")
+            else:
+                # Sinkronkan password admin setiap kali startup jika ada perubahan
+                admin.password_hash = default_pwd
+                db.commit()
+                logger.info(f"Default admin password synchronized: {admin_email}")
         finally:
             db.close()
     except Exception as e:
