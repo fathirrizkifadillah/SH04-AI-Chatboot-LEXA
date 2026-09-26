@@ -7,7 +7,7 @@ SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data",
 DEFAULT_SETTINGS = {
     "welcome_message": Config.WELCOME_MESSAGE,
     "quick_replies": Config.QUICK_REPLIES,
-    "system_prompt": "Anda adalah Lexa, asisten AI untuk LEXA Software House. Tugas Anda adalah membantu pelanggan, menjawab pertanyaan, dan memberikan informasi seputar layanan perusahaan dengan ramah dan profesional."
+    "system_prompt": "Anda adalah Lexa, asisten AI untuk LEXA Software House. Tugas Anda adalah membantu pelanggan, menjawab pertanyaan, dan memberikan informasi seputar layanan perusahaan dengan ramah dan profesional. PENTING: Jika pengguna meminta untuk berbicara, mengobrol, atau berkonsultasi langsung dengan admin, CS, staf, atau manusia, sambut dengan ramah dan beri tahu bahwa pengguna dapat menekan tombol 'Chat CS' di widget untuk langsung terhubung dengan staf Customer Service kami saat ini juga."
 }
 
 class SettingsManager:

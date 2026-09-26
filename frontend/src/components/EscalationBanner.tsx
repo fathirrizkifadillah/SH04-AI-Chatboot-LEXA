@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Headphones } from 'lucide-react';
+import { Headphones, CheckCircle2 } from 'lucide-react';
 
 interface EscalationBannerProps {
   isHandoffRequested: boolean;
@@ -19,32 +19,48 @@ export const EscalationBanner = ({
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="px-5 py-3 bg-blue-50/90 backdrop-blur-md border-t border-blue-200 flex items-center gap-3 shrink-0"
+          className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md flex items-center justify-between gap-3 shrink-0"
         >
-          <Headphones className="w-5 h-5 text-blue-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-blue-800">Menunggu CS Manusia</p>
-            <p className="text-[10px] text-blue-600">Tim kami akan segera merespon.</p>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-amber-200 animate-pulse shrink-0" />
+            <div>
+              <p className="text-xs font-bold leading-tight">Terhubung ke CS Manusia</p>
+              <p className="text-[10px] text-amber-100">Notifikasi telah dikirim ke Admin. Mohon tunggu balasan.</p>
+            </div>
           </div>
+          <span className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-semibold uppercase tracking-wider shrink-0">
+            Aktif
+          </span>
         </motion.div>
       ) : (
-        escalationShown && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="px-5 py-3 bg-amber-50/90 backdrop-blur-md border-t border-amber-200 flex items-center justify-between shrink-0"
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className={`px-4 py-2.5 flex items-center justify-between shrink-0 border-t transition-all ${
+            escalationShown
+              ? 'bg-amber-50/95 border-amber-200 shadow-sm'
+              : 'bg-slate-50/90 border-slate-100'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Headphones className={`w-4 h-4 shrink-0 ${escalationShown ? 'text-amber-600 animate-bounce' : 'text-slate-500'}`} />
+            <span className="text-xs font-medium text-slate-700">
+              {escalationShown ? 'Ingin berbicara langsung dengan CS?' : 'Butuh bantuan staf admin?'}
+            </span>
+          </div>
+          <button
+            onClick={onRequestHandoff}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 ${
+              escalationShown
+                ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
           >
-            <span className="text-xs font-semibold text-amber-800">Butuh bantuan manusia?</span>
-            <button
-              onClick={onRequestHandoff}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
-            >
-              <Headphones className="w-3.5 h-3.5" />
-              Chat CS
-            </button>
-          </motion.div>
-        )
+            <Headphones className="w-3.5 h-3.5" />
+            <span>Hubungi CS</span>
+          </button>
+        </motion.div>
       )}
     </AnimatePresence>
   );
