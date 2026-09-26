@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
-import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download } from 'lucide-react';
+import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download, BellRing } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api from '../lib/apiClient';
@@ -19,6 +19,40 @@ interface HandoffNotification {
   timestamp: number;
 }
 
+// Suara notifikasi handoff menggunakan Web Audio API murni
+const playHandoffChime = () => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    
+    // Nada 1: D5 (587.33 Hz)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.25, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.25);
+
+    // Nada 2: A5 (880 Hz) - jeda sedikit
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now + 0.12);
+    gain2.gain.setValueAtTime(0.3, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.45);
+  } catch (e) {
+    console.warn('Audio notification failed:', e);
+  }
+};
+
 const Conversations = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
@@ -30,7 +64,6 @@ const Conversations = () => {
   const [isUserTyping, setIsUserTyping] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const userTypingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch session list
@@ -39,6 +72,10 @@ const Conversations = () => {
       .then(data => {
         setSessions(data.items);
         setIsLoading(false);
+        // Otomatis pilih sesi pertama jika belum ada yang dipilih
+        if (!selectedSession && data.items.length > 0) {
+          setSelectedSession(data.items[0].session_id);
+        }
       })
       .catch(err => {
         console.error("Error fetching sessions:", err);
@@ -50,7 +87,7 @@ const Conversations = () => {
     fetchSessions();
   }, []);
 
-  // Admin WebSocket for handoff notifications
+  // Admin WebSocket for handoff notifications & real-time alerts
   useEffect(() => {
     let reconnectTimeout: ReturnType<typeof setTimeout>;
     let ws: WebSocket | null = null;
@@ -67,11 +104,15 @@ const Conversations = () => {
           const data = JSON.parse(event.data);
           if (data.type === 'handoff_request' || data.type === 'new_message') {
             if (data.type === 'handoff_request') {
-              setHandoffNotifications(prev => [...prev, {
-                session_id: data.session_id,
-                user_name: data.user_name,
-                timestamp: data.timestamp,
-              }]);
+              playHandoffChime();
+              setHandoffNotifications(prev => {
+                if (prev.some(n => n.session_id === data.session_id)) return prev;
+                return [{
+                  session_id: data.session_id,
+                  user_name: data.user_name || 'Customer',
+                  timestamp: data.timestamp || Date.now(),
+                }, ...prev];
+              });
             }
             fetchSessions();
           }
@@ -111,7 +152,7 @@ const Conversations = () => {
       .catch(err => console.error("Error fetching session history:", err));
   };
 
-  // WebSocket connection for real-time sync
+  // WebSocket connection for real-time sync in selected session
   useEffect(() => {
     if (!selectedSession) return;
     loadSessionHistory(selectedSession);
@@ -126,23 +167,23 @@ const Conversations = () => {
     };
     
     ws.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data) as SSEEvent;
-            if (data.type === 'admin_reply' || data.type === 'handoff_user_msg' || data.type === 'done' || data.type === 'chunk') {
-                if (data.type !== 'chunk') {
-                    loadSessionHistory(selectedSession);
-                }
-                if (data.type === 'done') {
-                    setIsUserTyping(false);
-                }
-            } else if (data.type === 'typing') {
-                setIsUserTyping(true);
-                if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
-                userTypingTimeoutRef.current = setTimeout(() => {
-                    setIsUserTyping(false);
-                }, 4000);
-            }
-        } catch {}
+      try {
+        const data = JSON.parse(event.data) as SSEEvent;
+        if (data.type === 'admin_reply' || data.type === 'handoff_user_msg' || data.type === 'done' || data.type === 'chunk') {
+          if (data.type !== 'chunk') {
+            loadSessionHistory(selectedSession);
+          }
+          if (data.type === 'done') {
+            setIsUserTyping(false);
+          }
+        } else if (data.type === 'typing') {
+          setIsUserTyping(true);
+          if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
+          userTypingTimeoutRef.current = setTimeout(() => {
+            setIsUserTyping(false);
+          }, 4000);
+        }
+      } catch {}
     };
 
     return () => {
@@ -153,13 +194,14 @@ const Conversations = () => {
   }, [selectedSession]);
 
   const handleToggleHandoff = () => {
-    if (!sessionData) return;
+    if (!sessionData || !selectedSession) return;
     const newState = !sessionData.is_human_handoff;
     api.authPost(`/api/admin/handoff?session_id=${selectedSession}&is_handoff=${newState}`)
-    .then(() => {
-      setSessionData(prev => prev ? {...prev, is_human_handoff: newState} : null);
-    })
-    .catch(err => console.error("Error toggling handoff:", err));
+      .then(() => {
+        setSessionData(prev => prev ? {...prev, is_human_handoff: newState} : null);
+        fetchSessions();
+      })
+      .catch(err => console.error("Error toggling handoff:", err));
   };
 
   const dismissNotification = (sessionId: string) => {
@@ -169,290 +211,327 @@ const Conversations = () => {
   const handleSendReply = () => {
     if (!replyText.trim() || !selectedSession) return;
     
-    const payload: AdminReplyReq = { session_id: selectedSession, content: replyText };
+    const payload: AdminReplyReq = { session_id: selectedSession, content: replyText.trim() };
     api.authPost('/api/admin/reply', payload)
-    .then(() => {
-      setReplyText('');
-      loadSessionHistory(selectedSession);
-    })
-    .catch(err => console.error("Error sending reply:", err));
+      .then(() => {
+        setReplyText('');
+        loadSessionHistory(selectedSession);
+      })
+      .catch(err => console.error("Error sending reply:", err));
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col bg-white rounded-2xl shadow-[0_2px_10px_0_rgba(0,0,0,0.02)] border border-slate-100 overflow-hidden">
+    <div className="h-[calc(100vh-130px)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       
-      {/* Handoff Notifications */}
-      {handoffNotifications.map((notif) => (
-        <div
-          key={notif.session_id}
-          className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center gap-3 animate-[slideDown_0.3s_ease-out]"
-        >
-          <Headphones className="w-5 h-5 text-amber-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">
-              {notif.user_name} meminta obrolan dengan CS manusia
-            </p>
-            <p className="text-xs text-amber-600">
-              Sesi: {notif.session_id.substring(0, 8)}...
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setSelectedSession(notif.session_id);
-              dismissNotification(notif.session_id);
-            }}
-            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium rounded-lg transition-colors"
-          >
-            Lihat
-          </button>
-          <button
-            onClick={() => dismissNotification(notif.session_id)}
-            className="p-1 text-amber-400 hover:text-amber-600 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      ))}
-
-      {/* Main Content */}
-      <div className="w-1/3 border-r border-slate-100 flex flex-col bg-slate-50/50">
-        <div className="p-4 border-b border-slate-100">
-          <div className="flex justify-between items-center">
-            <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" /> 
-              Active Conversations
-            </h2>
-            <button
-              onClick={async () => {
-                const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
-                try {
-                  const res = await fetch(`${apiUrl}/api/admin/sessions/export-all?format=csv`, {
-                    credentials: 'include',
-                  });
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `lexa_all_chats.csv`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch (e) { console.error(e); }
-              }}
-              title="Download semua percakapan (CSV)"
-              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-xs flex items-center gap-1 border border-slate-200"
+      {/* Handoff Notifications Bar at Top */}
+      {handoffNotifications.length > 0 && (
+        <div className="shrink-0 bg-amber-500 text-white border-b border-amber-600 divide-y divide-amber-400/40">
+          {handoffNotifications.map((notif) => (
+            <div
+              key={notif.session_id}
+              className="px-4 py-2.5 flex items-center justify-between gap-3 animate-pulse"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
-            </button>
-          </div>
-          <div className="mt-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Cari ID Sesi atau pesan..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 text-sm rounded-lg py-2 pl-9 pr-3 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto scrollbar-hidden p-2 space-y-1">
-          {isLoading ? (
-            <div className="p-4 text-center text-sm text-slate-500 animate-pulse">Loading sessions...</div>
-          ) : sessions.length === 0 ? (
-            <div className="p-4 text-center text-sm text-slate-500">Belum ada percakapan.</div>
-          ) : (
-            sessions
-              .filter(s => {
-                if (!searchQuery.trim()) return true;
-                const q = searchQuery.toLowerCase();
-                return s.session_id.toLowerCase().includes(q) ||
-                       (s.last_message && s.last_message.toLowerCase().includes(q));
-              })
-              .map((s) => (
-              <button 
-                key={s.session_id}
-                onClick={() => setSelectedSession(s.session_id)}
-                className={`w-full text-left p-3 rounded-xl transition-colors ${selectedSession === s.session_id ? 'bg-blue-50 border border-blue-100 shadow-sm' : 'hover:bg-slate-100 border border-transparent'}`}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <div className="font-semibold text-slate-800 text-sm truncate pr-2 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    {s.session_id.substring(0, 8)}...
-                    {s.is_human_handoff && (
-                      <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-700 rounded-full flex items-center gap-0.5">
-                        <Headphones className="w-2.5 h-2.5" /> CS
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(s.updated_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 truncate">{s.last_message || "Memulai percakapan..."}</p>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Right Pane: Chat History */}
-      <div className="flex-1 flex flex-col bg-white">
-        {selectedSession ? (
-          <>
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white shadow-sm z-10">
-              <div>
-                <h3 className="font-bold text-slate-800">Sesi Pelanggan</h3>
-                <p className="text-xs text-slate-500 font-mono mt-0.5">ID: {selectedSession}</p>
+              <div className="flex items-center gap-2.5">
+                <BellRing className="w-5 h-5 animate-bounce shrink-0" />
+                <span className="text-sm font-semibold">
+                  {notif.user_name} meminta bantuan CS Manusia! (Sesi: {notif.session_id.substring(0, 8)}...)
+                </span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={async () => {
-                    const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
-                    try {
-                      const res = await fetch(`${apiUrl}/api/admin/sessions/${selectedSession}/export?format=csv`, {
-                        credentials: 'include',
-                      });
-                      const blob = await res.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `chat_${selectedSession?.slice(0, 8)}.csv`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    } catch (e) { console.error(e); }
+                  onClick={() => {
+                    setSelectedSession(notif.session_id);
+                    dismissNotification(notif.session_id);
                   }}
-                  className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1 bg-white text-amber-700 hover:bg-amber-50 text-xs font-bold rounded-lg shadow-sm transition-colors"
                 >
-                  <Download className="w-4 h-4" /> CSV
+                  Buka Chat
                 </button>
                 <button
-                  onClick={async () => {
-                    const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
-                    try {
-                      const res = await fetch(`${apiUrl}/api/admin/sessions/${selectedSession}/export?format=pdf`, {
-                        credentials: 'include',
-                      });
-                      const blob = await res.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `chat_${selectedSession?.slice(0, 8)}.pdf`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    } catch (e) { console.error(e); }
-                  }}
-                  className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                  onClick={() => dismissNotification(notif.session_id)}
+                  className="p-1 hover:bg-amber-600 rounded transition-colors text-white"
                 >
-                  <Download className="w-4 h-4" /> PDF
-                </button>
-                <button 
-                  onClick={handleToggleHandoff}
-                  className={`px-4 py-2 text-sm font-semibold rounded-xl border transition-colors flex items-center gap-2
-                    ${sessionData?.is_human_handoff 
-                      ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' 
-                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}`}
-                >
-                  {sessionData?.is_human_handoff ? <ShieldAlert className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                  {sessionData?.is_human_handoff ? 'Kembalikan ke AI' : 'Ambil Alih (Handoff)'}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            
-            <div className="flex-1 overflow-y-auto scrollbar-hidden p-6 space-y-6 bg-slate-50/30">
-              {!sessionData ? (
-                <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : sessionData.history && sessionData.history.length > 0 ? (
-                sessionData.history.map((msg: Message, idx) => {
-                  const isUser = msg.role === 'user';
-                  const isAdmin = msg.role === 'admin';
+          ))}
+        </div>
+      )}
+
+      {/* Main Split Row: Left Session List + Right Chat Room */}
+      <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
+        
+        {/* Left Pane: Sessions (Fixed Width 320px) */}
+        <div className="w-80 shrink-0 border-r border-slate-100 flex flex-col bg-slate-50/60 min-h-0">
+          <div className="p-3.5 border-b border-slate-100 shrink-0">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-blue-600" /> 
+                Active Chats
+              </h2>
+              <button
+                onClick={async () => {
+                  const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                  try {
+                    const res = await fetch(`${apiUrl}/api/admin/sessions/export-all?format=csv`, {
+                      credentials: 'include',
+                    });
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `lexa_all_chats.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (e) { console.error(e); }
+                }}
+                title="Download semua percakapan (CSV)"
+                className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors text-xs flex items-center gap-1 border border-slate-200"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Cari sesi atau pesan..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 text-xs rounded-lg py-1.5 pl-8 pr-2.5 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
+            {isLoading ? (
+              <div className="p-4 text-center text-xs text-slate-400 animate-pulse">Memuat sesi...</div>
+            ) : sessions.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-400">Belum ada percakapan.</div>
+            ) : (
+              sessions
+                .filter(s => {
+                  if (!searchQuery.trim()) return true;
+                  const q = searchQuery.toLowerCase();
+                  return s.session_id.toLowerCase().includes(q) ||
+                         (s.last_message && s.last_message.toLowerCase().includes(q));
+                })
+                .map((s) => {
+                  const isSelected = selectedSession === s.session_id;
                   return (
-                    <div key={idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-                      {!isUser && (
-                        <span className="text-[10px] text-slate-400 mb-1 ml-1 font-medium uppercase tracking-wider">
-                          {isAdmin ? 'Human Agent' : 'Lexa AI'}
+                    <button 
+                      key={s.session_id}
+                      onClick={() => setSelectedSession(s.session_id)}
+                      className={`w-full text-left p-2.5 rounded-xl transition-all ${
+                        isSelected 
+                          ? 'bg-blue-600 text-white shadow-sm' 
+                          : 'hover:bg-slate-200/60 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="font-semibold text-xs truncate pr-1 flex items-center gap-1.5">
+                          <User className={`w-3 h-3 ${isSelected ? 'text-blue-200' : 'text-slate-400'}`} />
+                          {s.session_id.substring(0, 8)}...
+                          {s.is_human_handoff && (
+                            <span className={`px-1.5 py-0.2 text-[9px] font-bold rounded-full flex items-center gap-0.5 ${
+                              isSelected ? 'bg-amber-400 text-slate-900' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              <Headphones className="w-2.5 h-2.5" /> CS
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[10px] whitespace-nowrap flex items-center gap-0.5 ${
+                          isSelected ? 'text-blue-100' : 'text-slate-400'
+                        }`}>
+                          <Clock className="w-2.5 h-2.5" />
+                          {s.updated_at ? new Date(s.updated_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : ''}
+                        </span>
+                      </div>
+                      <p className={`text-[11px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                        {s.last_message || "Memulai percakapan..."}
+                      </p>
+                    </button>
+                  );
+                })
+            )}
+          </div>
+        </div>
+
+        {/* Right Pane: Active Chat Room */}
+        <div className="flex-1 flex flex-col bg-white min-w-0 min-h-0">
+          {selectedSession ? (
+            <>
+              {/* Chat Header Bar */}
+              <div className="shrink-0 p-3.5 border-b border-slate-100 flex justify-between items-center bg-white shadow-sm z-10">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-800 text-sm">Sesi Pelanggan</h3>
+                      {sessionData?.is_human_handoff ? (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold text-[10px] rounded-full flex items-center gap-1 border border-amber-200">
+                          <Headphones className="w-3 h-3" /> Mode CS Manusia Aktif
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-full flex items-center gap-1 border border-blue-200">
+                          <Bot className="w-3 h-3" /> Mode AI Bot Aktif
                         </span>
                       )}
-                      <div className={`max-w-[75%] rounded-2xl px-5 py-3.5 text-[14px] leading-relaxed shadow-sm ${
-                        isUser 
-                          ? 'bg-blue-600 text-white rounded-tr-sm' 
-                          : isAdmin
-                            ? 'bg-amber-500 text-white rounded-tl-sm markdown-body'
-                            : 'bg-white text-slate-700 border border-slate-200/60 rounded-tl-sm markdown-body'
-                      }`}>
-                        {isUser ? msg.content : (
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">ID: {selectedSession}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                      try {
+                        const res = await fetch(`${apiUrl}/api/admin/sessions/${selectedSession}/export?format=csv`, {
+                          credentials: 'include',
+                        });
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `chat_${selectedSession?.slice(0, 8)}.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (e) { console.error(e); }
+                    }}
+                    className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1"
+                  >
+                    <Download className="w-3.5 h-3.5" /> CSV
+                  </button>
+
+                  <button 
+                    onClick={handleToggleHandoff}
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg border shadow-sm transition-all flex items-center gap-1.5 ${
+                      sessionData?.is_human_handoff 
+                        ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600' 
+                        : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700'
+                    }`}
+                  >
+                    {sessionData?.is_human_handoff ? <Bot className="w-3.5 h-3.5" /> : <Headphones className="w-3.5 h-3.5" />}
+                    {sessionData?.is_human_handoff ? 'Kembalikan ke AI' : 'Ambil Alih (Handoff)'}
+                  </button>
+                </div>
+              </div>
+              
+              {/* Chat Message Scroll Area */}
+              <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-slate-50/40">
+                {!sessionData ? (
+                  <div className="h-full flex items-center justify-center text-slate-400 text-xs">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : sessionData.history && sessionData.history.length > 0 ? (
+                  sessionData.history.map((msg: Message, idx) => {
+                    const isUser = msg.role === 'user';
+                    const isAdmin = msg.role === 'admin';
+                    const isSystem = msg.role === 'system';
+
+                    if (isSystem) {
+                      return (
+                        <div key={idx} className="flex justify-center my-2">
+                          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full border border-amber-200 flex items-center gap-1">
+                            <Headphones className="w-3 h-3" /> {msg.content}
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                        <span className="text-[10px] text-slate-400 mb-0.5 ml-1 font-medium">
+                          {isUser ? 'Pelanggan' : isAdmin ? 'Staf CS (Anda)' : 'Lexa AI'}
+                        </span>
+                        <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed shadow-sm ${
+                          isUser 
+                            ? 'bg-blue-600 text-white rounded-tr-sm' 
+                            : isAdmin
+                              ? 'bg-amber-500 text-white rounded-tl-sm'
+                              : 'bg-white text-slate-700 border border-slate-200/80 rounded-tl-sm'
+                        }`}>
+                          {isUser ? msg.content : (
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {msg.content}
                             </ReactMarkdown>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                  <AlertCircle className="w-12 h-12 mb-3 text-slate-300" />
-                  <p>Tidak ada pesan dalam sesi ini.</p>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            
-            {/* Input Area (Only visible if Handoff is true) */}
-            {sessionData?.is_human_handoff ? (
-              <div className="p-4 border-t border-slate-100 bg-white">
-                {isUserTyping && (
-                  <div className="text-xs text-blue-500 mb-2 font-medium animate-pulse">
-                    Pelanggan sedang mengetik...
+                    );
+                  })
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                    <AlertCircle className="w-8 h-8 mb-2 text-slate-300" />
+                    <p>Tidak ada pesan dalam sesi ini.</p>
                   </div>
                 )}
-                <div className="flex gap-2">
-                  <textarea 
-                    value={replyText}
-                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
-                      setReplyText(e.target.value);
-                      if (wsRef.current?.readyState === WebSocket.OPEN) {
-                        wsRef.current.send(JSON.stringify({ type: 'typing', role: 'admin' }));
-                      }
-                    }}
-                    onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-                      if(e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendReply();
-                      }
-                    }}
-                    placeholder="Ketik balasan untuk pelanggan..."
-                    className="flex-1 resize-none border border-amber-200 bg-amber-50 rounded-xl px-4 py-2 outline-none focus:border-amber-400 text-sm"
-                    rows={2}
-                  />
-                  <button 
-                    onClick={handleSendReply}
-                    className="px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-                <p className="text-[10px] text-amber-600 mt-2 font-medium">⚠️ Saat diambil alih, AI tidak akan otomatis membalas pesan pelanggan.</p>
+                <div ref={messagesEndRef} />
               </div>
-            ) : (
-              <div className="p-4 border-t border-slate-100 bg-slate-50">
-                <div className="flex items-center justify-center text-xs text-slate-500 bg-white p-3 rounded-xl border border-slate-200/60">
-                  Klik tombol "Ambil Alih (Handoff)" di atas untuk membalas secara manual.
-                </div>
+              
+              {/* Bottom Input Area */}
+              <div className="shrink-0 p-3.5 border-t border-slate-100 bg-white">
+                {sessionData?.is_human_handoff ? (
+                  <div>
+                    {isUserTyping && (
+                      <div className="text-[11px] text-blue-500 mb-1.5 font-medium animate-pulse">
+                        Pelanggan sedang mengetik...
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <textarea 
+                        value={replyText}
+                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
+                          setReplyText(e.target.value);
+                          if (wsRef.current?.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(JSON.stringify({ type: 'typing', role: 'admin' }));
+                          }
+                        }}
+                        onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendReply();
+                          }
+                        }}
+                        placeholder="Ketik balasan untuk pelanggan (Enter untuk kirim)..."
+                        className="flex-1 resize-none border border-amber-300 bg-amber-50/50 rounded-xl px-3 py-2 outline-none focus:border-amber-500 text-xs text-slate-800"
+                        rows={2}
+                      />
+                      <button 
+                        onClick={handleSendReply}
+                        className="px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl flex items-center justify-center transition-colors shadow-sm"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-amber-600 mt-1.5 font-medium flex items-center gap-1">
+                      <ShieldAlert className="w-3 h-3" /> Mode Handoff Aktif: Bot AI tidak akan membalas pesan. Anda sedang berbicara langsung.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span>AI sedang membalas otomatis. Klik <b>"Ambil Alih (Handoff)"</b> jika ingin menjawab manual.</span>
+                    <button
+                      onClick={handleToggleHandoff}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                    >
+                      Ambil Alih Sekarang
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400">
-            <MessageSquare className="w-16 h-16 mb-4 text-slate-200" />
-            <p className="text-lg font-medium text-slate-500">Pilih Percakapan</p>
-            <p className="text-sm mt-1">Klik salah satu sesi di sebelah kiri untuk melihat riwayat chat.</p>
-          </div>
-        )}
+            </>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400">
+              <MessageSquare className="w-12 h-12 mb-2 text-slate-200" />
+              <p className="text-sm font-medium text-slate-500">Pilih Percakapan</p>
+              <p className="text-xs text-slate-400 mt-0.5">Pilih salah satu sesi di sebelah kiri untuk melihat pesan.</p>
+            </div>
+          )}
+        </div>
+
       </div>
 
     </div>

@@ -264,8 +264,14 @@ function App() {
         }
       }
 
+      const lowerText = text.toLowerCase();
+      const wantsHuman = ['admin', 'cs', 'manusia', 'operator', 'staf', 'ngobrol sama admin', 'hubungi admin', 'bantuan manusia'].some(k => lowerText.includes(k));
+      if (wantsHuman) {
+        setEscalationShown(true);
+      }
+
       const userMessageCount = messages.filter((m) => m.role === 'user').length + 1;
-      if (userMessageCount >= 5 && !escalationShown) {
+      if ((userMessageCount >= 3 || wantsHuman) && !escalationShown) {
         setEscalationShown(true);
       }
     } catch {
@@ -319,16 +325,32 @@ function App() {
     }, 600);
   };
 
-  const handleRequestHandoff = () => {
-    if (!sessionId || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({ type: 'handoff_request', user_name: 'Customer' }));
+  const handleRequestHandoff = async () => {
     setIsHandoffRequested(true);
+
+    // Kirim via WebSocket jika koneksi terbuka
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'handoff_request', user_name: 'Customer' }));
+    }
+
+    // Kirim juga via REST API sebagai garansi pengiriman notifikasi ke admin
+    if (sessionId) {
+      try {
+        await api.post('/api/chat/request-handoff', {
+          session_id: sessionId,
+          user_name: 'Customer',
+        });
+      } catch (err) {
+        console.warn('REST handoff fallback error:', err);
+      }
+    }
+
     setMessages((prev) => [
       ...prev,
       {
         id: Date.now(),
         role: 'bot',
-        content: 'Permintaan obrolan dengan CS manusia sudah dikirim. Mohon tunggu sebentar...',
+        content: 'Permintaan bantuan CS Manusia telah diteruskan ke tim kami. Notifikasi sudah dikirim ke Admin CS dan staf kami akan segera bergabung di sini.',
         timestamp: Date.now(),
       },
     ]);
@@ -395,6 +417,8 @@ function App() {
               onReset={handleReset}
               onClose={() => setIsOpen(false)}
               botAvatar={lexaBotHead}
+              onRequestHandoff={handleRequestHandoff}
+              isHandoffRequested={isHandoffRequested}
             />
 
             {/* Messages */}

@@ -59,6 +59,59 @@ def _save_handoff_message(session_id: str, content: str, role: str = "user"):
         db.close()
 
 
+@router.post("/api/chat/request-handoff")
+async def request_handoff_api(req: Request):
+    """Endpoint REST bagi user widget untuk meminta handoff ke staf CS."""
+    data = await req.json()
+    session_id = data.get("session_id")
+    user_name = data.get("user_name", "Customer")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now_ts = now_dt.timestamp() * 1000
+    sys_msg = {
+        "role": "system",
+        "content": f"[HANDOFF REQUESTED by {user_name}]",
+        "timestamp": now_ts,
+    }
+    db = SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if s:
+            s.is_human_handoff = True
+            new_hist = list(s.history or [])
+            new_hist.append(sys_msg)
+            s.history = new_hist
+            s.updated_at = now_dt
+        else:
+            s = ChatSession(
+                session_id=session_id,
+                history=[sys_msg],
+                is_human_handoff=True,
+                created_at=now_dt,
+                updated_at=now_dt,
+            )
+            db.add(s)
+        db.commit()
+
+        if session_id in chat_sessions:
+            chat_sessions[session_id].history = list(s.history)
+    except Exception as e:
+        logger.error(f"Error handling handoff REST request: {e}")
+    finally:
+        db.close()
+
+    await manager.broadcast_to_admins({
+        "type": "handoff_request",
+        "session_id": session_id,
+        "user_name": user_name,
+        "timestamp": now_ts,
+    })
+    await manager.broadcast_to_session({"type": "handoff_requested"}, session_id)
+    return {"status": "ok", "message": "Permintaan handoff berhasil dikirim ke Admin CS"}
+
+
 def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
