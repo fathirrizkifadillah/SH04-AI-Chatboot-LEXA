@@ -510,7 +510,22 @@ class TestSeedDefaultAdmin:
         finally:
             db.close()
 
-    def test_does_not_seed_when_users_exist(self):
+    def test_does_not_duplicate_admin_when_already_exists(self):
+        # Initial seed
+        seed_default_admin()
+
+        # Re-run seed: harus sinkronkan tanpa menduplikasi admin
+        seed_default_admin()
+
+        db = SessionLocal()
+        try:
+            admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id").strip()
+            admins = db.query(AdminUser).filter(AdminUser.email == admin_email).all()
+            assert len(admins) == 1
+        finally:
+            db.close()
+
+    def test_seeds_admin_when_other_users_exist(self):
         db = SessionLocal()
         try:
             db.add(AdminUser(name="Existing", email="existing@test.com", role="CS Agent"))
@@ -522,8 +537,12 @@ class TestSeedDefaultAdmin:
 
         db = SessionLocal()
         try:
-            # Harusnya tetap cuma 1 user (yang existing), bukan nambah admin
+            # Memastikan super admin tetap dijamin dibuat meskipun ada user lain
             count = db.query(AdminUser).count()
-            assert count == 1
+            assert count == 2
+            admin = db.query(AdminUser).filter(
+                AdminUser.email == os.getenv("ADMIN_EMAIL", "admin@lexatech.id").strip()
+            ).first()
+            assert admin is not None
         finally:
             db.close()
