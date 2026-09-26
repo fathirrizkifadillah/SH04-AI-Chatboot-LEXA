@@ -17,6 +17,9 @@ export default {
       animation: {
         'float': 'float 3s ease-in-out infinite',
       },
+      screens: {
+        'xs': '400px',
+      },
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
