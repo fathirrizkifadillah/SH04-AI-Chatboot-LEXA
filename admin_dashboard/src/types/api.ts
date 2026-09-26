@@ -45,7 +45,16 @@ export interface SSEErrorEvent {
   message: string;
 }
 
-export type SSEEvent = SSESessionEvent | SSEChunkEvent | SSEDoneEvent | SSEErrorEvent;
+export type SSEEvent =
+  | SSESessionEvent
+  | SSEChunkEvent
+  | SSEDoneEvent
+  | SSEErrorEvent
+  | { type: 'handoff_status'; is_handoff: boolean }
+  | { type: 'handoff_ended' }
+  | { type: 'handoff_user_msg'; content: string }
+  | { type: 'admin_reply'; content: string }
+  | { type: 'typing'; role?: string };
 
 // Auth
 export interface LoginRequest {
