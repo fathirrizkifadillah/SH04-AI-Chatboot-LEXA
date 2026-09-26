@@ -133,7 +133,8 @@ app.add_middleware(SlowAPIMiddleware)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=Config.CORS_ORIGINS,
+    allow_origins=Config.CORS_ORIGINS if Config.CORS_ORIGINS else ["*"],
+    allow_origin_regex=r"https://.*\.railway\.app|https://.*\.up\.railway\.app|http://localhost.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
