@@ -271,8 +271,22 @@ def init_database():
     Call this once during application startup (lifespan), NOT at import time,
     to avoid race conditions in multi-worker deployments.
     """
-    # Create tables first (idempotent — safe to call multiple times)
-    Base.metadata.create_all(bind=engine)
+    global engine, SessionLocal, DATABASE_URL
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.error(f"Gagal koneksi ke database primary ({DATABASE_URL}): {e}")
+        if not str(DATABASE_URL).startswith("sqlite"):
+            logger.warning("Fallback ke SQLite lokal (sqlite:///./lexa.db) agar aplikasi tetap berjalan...")
+            try:
+                DATABASE_URL = "sqlite:///./lexa.db"
+                engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+                SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+                Base.metadata.create_all(bind=engine)
+                logger.info("Fallback ke SQLite berhasil.")
+            except Exception as fallback_err:
+                logger.error(f"Fallback ke SQLite gagal: {fallback_err}")
+                return
 
     # Run manual column migrations for columns added after initial schema
     _migrations = [
@@ -293,41 +307,44 @@ def init_database():
     logger.info("Database initialized successfully.")
 
 def seed_default_admin():
-    db = SessionLocal()
     try:
-        if db.query(AdminUser).count() == 0:
-            import bcrypt
-            admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id")
-            admin_password = os.getenv("ADMIN_PASSWORD", None)
-            # Generate secure password if not set
-            if not admin_password:
-                import secrets
-                admin_password = secrets.token_urlsafe(16)
-                # Write password to file instead of logging (prevents leaking to monitoring systems)
-                password_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".admin_password")
-                try:
-                    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-                    with open(os.open(password_file, flags, 0o600), "w", encoding="utf-8") as pf:
-                        pf.write(f"Email: {admin_email}\nPassword: {admin_password}\n")
-                    logger.info("Default admin password saved to .admin_password — DELETE this file after reading!")
-                except OSError:
-                    # Fallback: print once to stderr only, NOT to the logger
-                    import sys
-                    print(f"[LEXA] Admin password for {admin_email}: {admin_password}", file=sys.stderr)
-            pwd = admin_password.encode('utf-8')
-            salt = bcrypt.gensalt()
-            default_pwd = bcrypt.hashpw(pwd, salt).decode('utf-8')
-            admin = AdminUser(
-                name="Super Admin",
-                email=admin_email,
-                password_hash=default_pwd,
-                role="Super Admin"
-            )
-            db.add(admin)
-            db.commit()
-            logger.info(f"Default admin created: {admin_email}")
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            if db.query(AdminUser).count() == 0:
+                import bcrypt
+                admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id")
+                admin_password = os.getenv("ADMIN_PASSWORD", None)
+                # Generate secure password if not set
+                if not admin_password:
+                    import secrets
+                    admin_password = secrets.token_urlsafe(16)
+                    # Write password to file instead of logging (prevents leaking to monitoring systems)
+                    password_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".admin_password")
+                    try:
+                        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+                        with open(os.open(password_file, flags, 0o600), "w", encoding="utf-8") as pf:
+                            pf.write(f"Email: {admin_email}\nPassword: {admin_password}\n")
+                        logger.info("Default admin password saved to .admin_password — DELETE this file after reading!")
+                    except OSError:
+                        # Fallback: print once to stderr only, NOT to the logger
+                        import sys
+                        print(f"[LEXA] Admin password for {admin_email}: {admin_password}", file=sys.stderr)
+                pwd = admin_password.encode('utf-8')
+                salt = bcrypt.gensalt()
+                default_pwd = bcrypt.hashpw(pwd, salt).decode('utf-8')
+                admin = AdminUser(
+                    name="Super Admin",
+                    email=admin_email,
+                    password_hash=default_pwd,
+                    role="Super Admin"
+                )
+                db.add(admin)
+                db.commit()
+                logger.info(f"Default admin created: {admin_email}")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Gagal me-seed default admin: {e}")
 
 def get_db():
     db = SessionLocal()

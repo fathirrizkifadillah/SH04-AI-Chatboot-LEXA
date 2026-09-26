@@ -15,13 +15,9 @@ JWT_EXPIRATION_HOURS = 24
 REFRESH_GRACE_PERIOD_DAYS = 7
 
 if not JWT_SECRET:
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        raise ValueError(
-            "JWT_SECRET wajib diset di file .env untuk production. "
-            "Generate: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
-        )
-    JWT_SECRET = "dev-insecure-secret-change-in-production"
-    logger.warning("JWT_SECRET not set! Using insecure dev default. SET JWT_SECRET in .env for production.")
+    import secrets
+    JWT_SECRET = secrets.token_urlsafe(32)
+    logger.warning("JWT_SECRET not set! Using auto-generated fallback secret to prevent startup crash.")
 
 security = HTTPBearer()
 

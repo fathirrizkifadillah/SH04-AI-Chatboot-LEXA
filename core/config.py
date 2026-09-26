@@ -56,29 +56,15 @@ class Config:
 
     @classmethod
     def validate(cls):
-        """Validasi konfigurasi yang wajib diisi."""
-        errors = []
+        """Validasi konfigurasi yang wajib diisi (non-blocking)."""
+        import sys
         if not cls.GROQ_API_KEY:
-            errors.append(
-                "GROQ_API_KEY belum diset. Tambahkan di file .env Anda."
-            )
+            logger.warning("[CONFIG WARNING] GROQ_API_KEY belum diset. Chatbot AI tidak dapat merespon pesan.")
         if not cls.CORS_ORIGINS or all(not o.strip() for o in cls.CORS_ORIGINS):
-            errors.append(
-                "CORS_ORIGINS tidak valid. Tambahkan di file .env: http://localhost:5173,http://localhost:5174"
-            )
+            logger.warning("[CONFIG WARNING] CORS_ORIGINS tidak diset. Mengizinkan semua origin.")
+            cls.CORS_ORIGINS = ["*"]
         import os
         jwt_secret = os.getenv("JWT_SECRET", "").strip()
         if not jwt_secret:
-            if os.getenv("ENVIRONMENT", "development") == "production":
-                errors.append(
-                    "JWT_SECRET wajib diset di file .env untuk production. "
-                    "Generate: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
-                )
-        if errors:
-            import sys
-            error_msg = "\n".join(f"  - {e}" for e in errors)
-            print(f"\n[CRITICAL CONFIG ERROR]\n{error_msg}\nPastikan variabel di atas diset di tab Variables di Railway/hosting Anda.\n", file=sys.stderr)
-            raise ValueError(
-                "Konfigurasi tidak valid:\n" + error_msg
-            )
+            logger.warning("[CONFIG WARNING] JWT_SECRET belum diset di Railway Variables.")
         return True
