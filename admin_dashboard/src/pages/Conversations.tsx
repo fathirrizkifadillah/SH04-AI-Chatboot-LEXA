@@ -6,10 +6,12 @@ import api from '../lib/apiClient';
 import type { ChatSession, SessionHistory, Message, AdminReplyReq } from '../types/api';
 
 interface SSEEvent {
-  type: 'admin_reply' | 'handoff_user_msg' | 'done' | 'chunk' | 'typing' | 'error';
+  type: 'admin_reply' | 'handoff_user_msg' | 'done' | 'chunk' | 'typing' | 'error' | 'handoff_status' | 'handoff_ended';
   content?: string;
   session_id?: string;
   message?: string;
+  is_handoff?: boolean;
+  role?: string;
   references?: Array<{ title: string; source: string; score: number }>;
 }
 
@@ -63,6 +65,8 @@ const Conversations = () => {
   const [replyText, setReplyText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUserTyping, setIsUserTyping] = useState(false);
+  const [handoffToast, setHandoffToast] = useState('');
+  const [replyError, setReplyError] = useState('');
   const selectedSessionRef = useRef<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const userTypingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -220,6 +224,10 @@ const Conversations = () => {
           if (data.type === 'done') {
             setIsUserTyping(false);
           }
+        } else if (data.type === 'handoff_status') {
+          // Sinkronkan status handoff pada header sesi yang sedang dibuka
+          const nextState = Boolean(data.is_handoff);
+          setSessionData(prev => prev ? { ...prev, is_human_handoff: nextState } : null);
         } else if (data.type === 'typing') {
           setIsUserTyping(true);
           if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
@@ -251,28 +259,44 @@ const Conversations = () => {
   const handleToggleHandoff = () => {
     if (!sessionData || !selectedSession) return;
     const newState = !sessionData.is_human_handoff;
+    setReplyError('');
+    setHandoffToast(newState ? 'Mengambil alih obrolan...' : 'Mengembalikan obrolan ke AI...');
     api.authPost(`/api/admin/handoff?session_id=${selectedSession}&is_handoff=${newState}`)
       .then(() => {
         setSessionData(prev => prev ? {...prev, is_human_handoff: newState} : null);
         fetchSessions();
+        setHandoffToast(newState ? '✅ Anda sekarang terhubung ke pelanggan!' : '✅ Obrolan dikembalikan ke Lexa AI');
+        setTimeout(() => setHandoffToast(''), 3000);
         if (newState) {
           setTimeout(() => replyInputRef.current?.focus(), 200);
         }
       })
-      .catch(err => console.error("Error toggling handoff:", err));
+      .catch(err => {
+        console.error("Error toggling handoff:", err);
+        setHandoffToast('');
+        setReplyError('Gagal mengubah status handoff. Coba lagi.');
+        setTimeout(() => setReplyError(''), 4000);
+      });
   };
 
   const handleAcceptHandoffModal = (sessionId: string) => {
     setSelectedSession(sessionId);
     setActiveModalAlert(null);
     setHandoffNotifications(prev => prev.filter(n => n.session_id !== sessionId));
+    setHandoffToast('Mengambil alih obrolan...');
     api.authPost(`/api/admin/handoff?session_id=${sessionId}&is_handoff=true`)
       .then(() => {
         loadSessionHistory(sessionId);
         fetchSessions();
+        setHandoffToast('✅ Anda sekarang terhubung ke pelanggan!');
+        setTimeout(() => setHandoffToast(''), 3000);
         setTimeout(() => replyInputRef.current?.focus(), 300);
       })
-      .catch(() => {});
+      .catch(() => {
+        setHandoffToast('');
+        setReplyError('Gagal mengambil alih obrolan. Coba lagi.');
+        setTimeout(() => setReplyError(''), 4000);
+      });
   };
 
   const dismissNotification = (sessionId: string) => {
@@ -283,17 +307,34 @@ const Conversations = () => {
     if (!replyText.trim() || !selectedSession) return;
     
     const payload: AdminReplyReq = { session_id: selectedSession, content: replyText.trim() };
+    setReplyError('');
     api.authPost('/api/admin/reply', payload)
       .then(() => {
         setReplyText('');
         loadSessionHistory(selectedSession);
       })
-      .catch(err => console.error("Error sending reply:", err));
+      .catch(err => {
+        console.error("Error sending reply:", err);
+        setReplyError('Gagal mengirim balasan. Periksa koneksi Anda.');
+        setTimeout(() => setReplyError(''), 4000);
+      });
   };
 
   return (
     <div className="h-[calc(100vh-130px)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
-      
+
+      {/* Toast Notifikasi Handoff (Sukses/Gagal) */}
+      {handoffToast && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 bg-slate-900 text-white text-xs font-semibold rounded-full shadow-2xl animate-[fadeIn_0.2s_ease-out] flex items-center gap-2">
+          {handoffToast}
+        </div>
+      )}
+      {replyError && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 bg-red-600 text-white text-xs font-semibold rounded-full shadow-2xl animate-[fadeIn_0.2s_ease-out] flex items-center gap-2">
+          ⚠️ {replyError}
+        </div>
+      )}
+
       {/* Pop-up Modal Alert: Permintaan Handoff Baru Masuk */}
       {activeModalAlert && (
         <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]">

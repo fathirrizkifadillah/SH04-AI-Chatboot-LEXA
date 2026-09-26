@@ -401,6 +401,12 @@ async def admin_delete_user(request: Request, user_id: int, payload: dict = Depe
 @limiter.limit("30/minute")
 async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
     if set_human_handoff(session_id, is_handoff):
+        # Beri tahu widget pelanggan secara real-time bahwa status handoff berubah
+        if is_handoff:
+            await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": True}, session_id)
+        else:
+            await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": False}, session_id)
+            await manager.broadcast_to_session({"type": "handoff_ended"}, session_id)
         return {"status": "success", "is_human_handoff": is_handoff}
     raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
 
