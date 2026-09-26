@@ -63,10 +63,16 @@ const Conversations = () => {
   const [replyText, setReplyText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUserTyping, setIsUserTyping] = useState(false);
+  const selectedSessionRef = useRef<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const userTypingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Simpan reference selectedSession agar selalu up-to-date di handler WebSocket
+  useEffect(() => {
+    selectedSessionRef.current = selectedSession;
+  }, [selectedSession]);
 
   // Request browser desktop notification permission on mount
   useEffect(() => {
@@ -147,6 +153,11 @@ const Conversations = () => {
               });
             }
             fetchSessions();
+
+            // Real-time conversation sync: jika ada pesan masuk pada sesi yang sedang dibuka CS, langsung muat percakapan terbaru
+            if (data.session_id && data.session_id === selectedSessionRef.current) {
+              loadSessionHistory(data.session_id);
+            }
           }
         } catch (e) {
           console.error('WebSocket message parse error:', e);
@@ -195,7 +206,8 @@ const Conversations = () => {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'admin_authenticate' }));
+      const token = localStorage.getItem('lexa_admin_token') || undefined;
+      ws.send(JSON.stringify({ type: 'admin_authenticate', token }));
     };
     
     ws.onmessage = (event) => {
@@ -224,6 +236,17 @@ const Conversations = () => {
       wsRef.current = null;
     };
   }, [selectedSession]);
+
+  // Polling fallback saat dalam mode Human Handoff (menjamin pesan tidak pernah terlewat jika WS terputus)
+  useEffect(() => {
+    if (!selectedSession || !sessionData?.is_human_handoff) return;
+
+    const interval = setInterval(() => {
+      loadSessionHistory(selectedSession);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [selectedSession, sessionData?.is_human_handoff]);
 
   const handleToggleHandoff = () => {
     if (!sessionData || !selectedSession) return;
