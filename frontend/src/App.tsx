@@ -378,11 +378,15 @@ function App() {
     typeof window !== 'undefined' &&
     window.innerWidth > 480;
 
+  // Deteksi layar kecil untuk menyesuaikan ukuran panel
+  const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 480;
+
   return (
     <div className="fixed inset-0 pointer-events-none z-[99999] font-sans">
       {/* Floating Button */}
       <motion.div
-        className="absolute bottom-6 right-6 pointer-events-auto"
+        className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 pointer-events-auto"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         initial={{ scale: 0, y: 50 }}
         animate={{ scale: isOpen ? 0 : 1, y: isOpen ? 50 : 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
@@ -390,6 +394,7 @@ function App() {
         <button
           onClick={() => setIsOpen(true)}
           className="w-[64px] h-[64px] bg-transparent text-white flex items-center justify-center transition-colors"
+          aria-label="Buka chat Lexa"
         >
           <img src={lexaBotHead} alt="Lexa" className="w-[48px] h-[48px] object-contain drop-shadow-md" />
         </button>
@@ -400,7 +405,7 @@ function App() {
         {isOpen && (
           <motion.div
             ref={panelRef}
-            drag
+            drag={!isSmallScreen}
             dragConstraints={{ left: -800, right: 0, top: -800, bottom: 0 }}
             dragElastic={0.1}
             dragMomentum={false}
@@ -408,8 +413,16 @@ function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            style={{ position: 'absolute', bottom: '24px', right: '24px' }}
-            className="w-[380px] h-[640px] min-w-[320px] min-h-[400px] max-w-[90vw] max-h-[calc(100vh-100px)] resize overflow-hidden bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/50 flex flex-col pointer-events-auto"
+            style={
+              isSmallScreen
+                ? { position: 'absolute', inset: 0, width: '100vw', height: '100vh' }
+                : { position: 'absolute', bottom: '24px', right: '24px' }
+            }
+            className={
+              isSmallScreen
+                ? 'w-screen h-screen max-w-full max-h-full bg-white rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
+                : 'w-[380px] h-[640px] min-w-[320px] min-h-[400px] max-w-[90vw] max-h-[calc(100vh-100px)] resize overflow-hidden bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/50 flex flex-col pointer-events-auto'
+            }
           >
             {/* Header */}
             <ChatHeader
