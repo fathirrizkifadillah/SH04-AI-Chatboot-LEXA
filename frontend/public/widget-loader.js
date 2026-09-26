@@ -110,11 +110,12 @@
     }
     @media (max-width: 480px) {
       #lexa-chat-frame {
-        width: calc(100vw - 16px);
-        height: calc(100vh - 80px);
+        width: 100vw;
+        height: 100vh;
         max-width: none;
         max-height: none;
-        border-radius: 16px;
+        border-radius: 0;
+        /* Perbaikan mobile: jika dibuka dari posisi bottom-right/left, tampilkan fullscreen */
       }
       #lexa-chat-launcher {
         width: 56px;
@@ -123,6 +124,15 @@
       #lexa-chat-launcher img {
         width: 40px;
         height: 40px;
+      }
+    }
+    /* Jaga agar launcher selalu terlihat di layar kecil (safe-area iOS) */
+    @media (max-width: 768px) {
+      #lexa-chat-launcher {
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+        right: 16px !important;
+        top: auto !important;
+        left: auto !important;
       }
     }
   `;
