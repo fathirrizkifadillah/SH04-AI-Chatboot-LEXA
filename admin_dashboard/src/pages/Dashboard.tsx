@@ -244,12 +244,12 @@ const Dashboard = () => {
           <div className="mb-3">
             <div className="flex items-center gap-1.5">
               <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Unanswered Queries</h3>
-              <span title="Pertanyaan user yang tidak memiliki konteks relevan di Knowledge Base">
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+              <span title="Pertanyaan pelanggan yang tidak ditemukan referensi dokumennya di basis pengetahuan. Bot tidak mengarang jawaban (anti-halusinasi). Tim dapat menambahkan topik ini ke Knowledge Base.">
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 cursor-pointer" />
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug">
-              Pertanyaan yang belum ditemukan jawabannya pada Knowledge Base.
+              Pertanyaan pelanggan tanpa referensi dokumen di Knowledge Base. Tambahkan topik ini ke dokumen KB agar AI bisa menjawabnya otomatis.
             </p>
           </div>
 
