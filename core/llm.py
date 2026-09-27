@@ -164,7 +164,11 @@ class LexaChatbot:
                     has_system = True
                 continue
                 
-            messages_to_send.append({"role": role, "content": content})
+            clean_content = content.strip()
+            if not clean_content:
+                continue
+
+            messages_to_send.append({"role": role, "content": clean_content})
             
         if not has_system:
             messages_to_send.insert(0, {

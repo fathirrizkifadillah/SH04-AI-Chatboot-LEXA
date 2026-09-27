@@ -128,11 +128,18 @@ def _get_or_create_session_token(session_id: str, session_token: str | None) -> 
             db.add(ChatSession(session_id=session_id, history=[], session_token_hash=_token_hash(token)))
             db.commit()
             return token
-        if not session_token or not session.session_token_hash:
-            raise HTTPException(status_code=403, detail="Sesi chat tidak valid.")
-        if not hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
-            raise HTTPException(status_code=403, detail="Sesi chat tidak valid.")
-        return session_token
+        if not session.session_token_hash:
+            token = session_token or secrets.token_urlsafe(32)
+            session.session_token_hash = _token_hash(token)
+            db.commit()
+            return token
+        if session_token and hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
+            return session_token
+        # Jika token belum ada atau tidak cocok, perbarui hash dengan token yang dikirim client agar sesi pulih
+        token = session_token or secrets.token_urlsafe(32)
+        session.session_token_hash = _token_hash(token)
+        db.commit()
+        return token
     finally:
         db.close()
 

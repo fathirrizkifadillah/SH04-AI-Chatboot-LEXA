@@ -272,13 +272,30 @@ function App() {
     setIsWaitingForResponse(true);
 
     try {
-      const response = await api.stream('/chat/stream', {
+      let response = await api.stream('/chat/stream', {
         message: text,
-        session_id: sessionId,
-        session_token: sessionToken,
+        session_id: sessionId || undefined,
+        session_token: sessionToken || undefined,
       });
 
-      if (!response.ok) throw new Error('API Error');
+      // Jika session invalid / 403, otomatis buat session baru dan retry
+      if (!response.ok && (response.status === 403 || response.status === 401)) {
+        console.warn('Session expired or mismatched (403), auto-recovering with new session token...');
+        const newSessionId = crypto.randomUUID();
+        const newSessionToken = crypto.randomUUID();
+        setSessionId(newSessionId);
+        setSessionToken(newSessionToken);
+        localStorage.setItem('lexa_session_id', newSessionId);
+        localStorage.setItem('lexa_session_token', newSessionToken);
+
+        response = await api.stream('/chat/stream', {
+          message: text,
+          session_id: newSessionId,
+          session_token: newSessionToken,
+        });
+      }
+
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
