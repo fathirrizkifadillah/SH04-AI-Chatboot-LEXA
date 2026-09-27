@@ -43,8 +43,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
     { name: 'Knowledge Base', icon: <BookOpen className="w-5 h-5" />, path: '/kb', roles: ['Super Admin', 'Editor (Knowledge Base)'] },
     { name: 'Analytics', icon: <BarChart3 className="w-5 h-5" />, path: '/analytics', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
     { name: 'Users & Roles', icon: <Users className="w-5 h-5" />, path: '/users', roles: ['Super Admin'] },
-    { name: 'Widget Setup', icon: <Code className="w-5 h-5" />, path: '/widget', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
-    { name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings', roles: ['Super Admin'] },
+    { name: 'Widget Setup', icon: <Code className="w-5 h-5" />, path: '/widget' },
+    { name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
   ];
 
   const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));

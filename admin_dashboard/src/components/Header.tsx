@@ -139,7 +139,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
     { title: 'Analytics', description: 'Laporan kepuasan dan tren percakapan', path: '/analytics', icon: BarChart3 },
     { title: 'Users & Roles', description: 'Kelola anggota tim dan hak akses', path: '/users', icon: Users, roles: ['Super Admin'] },
     { title: 'Widget Setup', description: 'Panduan integrasi dan kode embed widget', path: '/widget', icon: Code },
-    { title: 'Settings', description: 'Konfigurasi prompt dan parameter model AI', path: '/settings', icon: Settings, roles: ['Super Admin'] },
+    { title: 'Settings', description: 'Konfigurasi prompt dan parameter model AI', path: '/settings', icon: Settings },
   ];
 
   const searchItems = allSearchItems
