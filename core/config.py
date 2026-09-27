@@ -45,7 +45,7 @@ class Config:
     # === Widget ===
     WELCOME_MESSAGE: str = _getenv(
         "WELCOME_MESSAGE",
-        "Halo! 👋 Saya Lexa, asisten customer service LEXA Software House. Ada yang bisa saya bantu?",
+        "Halo! Saya Lexa, asisten customer service LEXA Software House. Ada yang bisa saya bantu?",
     )
     QUICK_REPLIES: list = [
         "Layanan apa saja yang tersedia?",

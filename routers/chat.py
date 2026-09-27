@@ -85,8 +85,10 @@ async def request_handoff_api(req: Request):
             s.history = new_hist
             s.updated_at = now_dt
         else:
+            session_token = data.get("session_token") or secrets.token_urlsafe(32)
             s = ChatSession(
                 session_id=session_id,
+                session_token_hash=_token_hash(session_token),
                 history=[sys_msg],
                 is_human_handoff=True,
                 created_at=now_dt,
@@ -122,7 +124,7 @@ def _get_or_create_session_token(session_id: str, session_token: str | None) -> 
     try:
         session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if not session:
-            token = secrets.token_urlsafe(32)
+            token = session_token or secrets.token_urlsafe(32)
             db.add(ChatSession(session_id=session_id, history=[], session_token_hash=_token_hash(token)))
             db.commit()
             return token
@@ -413,8 +415,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         s.history = new_hist
                         s.updated_at = now_dt
                     else:
+                        token = secrets.token_urlsafe(32)
                         s = ChatSession(
                             session_id=session_id,
+                            session_token_hash=_token_hash(token),
                             history=[sys_msg],
                             is_human_handoff=True,
                             created_at=now_dt,

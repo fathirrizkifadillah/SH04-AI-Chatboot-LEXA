@@ -241,6 +241,18 @@ def set_human_handoff(session_id: str, is_handoff: bool):
     finally:
         db.close()
 
+def delete_chat_session(session_id: str):
+    db = SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if s:
+            db.delete(s)
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
+
 def get_all_users(limit: int = 50, offset: int = 0):
     db = SessionLocal()
     try:

@@ -30,6 +30,7 @@ from core.database import (
     SessionLocal,
     ChatSession,
     set_human_handoff,
+    delete_chat_session,
     get_feedback_stats,
     get_recent_feedback,
 )
@@ -399,7 +400,7 @@ async def admin_delete_user(request: Request, user_id: int, payload: dict = Depe
 
 @router.post("/api/admin/handoff")
 @limiter.limit("30/minute")
-async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool, payload: dict = Depends(verify_jwt)):
+async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     if set_human_handoff(session_id, is_handoff):
         # Beri tahu widget pelanggan secara real-time bahwa status handoff berubah
         if is_handoff:
@@ -413,7 +414,7 @@ async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool,
 
 @router.post("/api/admin/reply")
 @limiter.limit("30/minute")
-async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depends(verify_jwt)):
+async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     safe_content = _sanitize_content(req.content)
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now_ts = now_dt.timestamp() * 1000
@@ -448,6 +449,28 @@ async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depe
         "timestamp": now_ts,
     })
     return {"status": "success"}
+
+
+@router.delete("/api/admin/sessions/{session_id}")
+@limiter.limit("30/minute")
+async def admin_delete_session(request: Request, session_id: str, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
+    # Hapus dari memory jika ada
+    if session_id in chat_sessions:
+        chat_sessions.pop(session_id, None)
+
+    # Hapus dari database
+    deleted = delete_chat_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan atau sudah dihapus")
+
+    # Notifikasi WebSocket ke user (bahwa sesi ditutup/dihapus) dan ke semua admin dashboard
+    await manager.broadcast_to_session({"type": "session_deleted", "session_id": session_id}, session_id)
+    await manager.broadcast_to_admins({
+        "type": "session_deleted",
+        "session_id": session_id
+    })
+
+    return {"status": "success", "message": "Percakapan berhasil dihapus"}
 
 
 @router.get("/api/admin/feedback/stats")

@@ -44,7 +44,7 @@ export const ChatHeader = ({
             title={isHandoffRequested ? "Menunggu CS Manusia" : "Bicara Langsung dengan Admin CS"}
           >
             <Headphones size={13} className={isHandoffRequested ? 'animate-pulse' : ''} />
-            <span className="hidden xs:inline sm:inline">{isHandoffRequested ? 'Menunggu CS' : 'Chat CS'}</span>
+            <span className="hidden xs:inline sm:inline">{isHandoffRequested ? 'Menunggu CS' : 'Hubungi CS'}</span>
           </button>
         )}
         <button

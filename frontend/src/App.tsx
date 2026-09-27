@@ -16,6 +16,7 @@ type ExtendedSSEEvent =
   | { type: 'handoff_requested' }
   | { type: 'handoff_status'; is_handoff: boolean }
   | { type: 'handoff_ended' }
+  | { type: 'session_deleted'; session_id?: string }
   | { type: 'typing'; role?: string };
 
 function App() {
@@ -31,8 +32,22 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [isAdminTyping, setIsAdminTyping] = useState(false);
-  const [sessionId, setSessionId] = useState(() => localStorage.getItem('lexa_session_id') || '');
-  const [sessionToken, setSessionToken] = useState(() => localStorage.getItem('lexa_session_token') || '');
+  const [sessionId, setSessionId] = useState(() => {
+    let id = localStorage.getItem('lexa_session_id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('lexa_session_id', id);
+    }
+    return id;
+  });
+  const [sessionToken, setSessionToken] = useState(() => {
+    let token = localStorage.getItem('lexa_session_token');
+    if (!token) {
+      token = crypto.randomUUID();
+      localStorage.setItem('lexa_session_token', token);
+    }
+    return token;
+  });
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [escalationShown, setEscalationShown] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -164,6 +179,22 @@ function App() {
               timestamp: Date.now(),
             },
           ]);
+        } else if (data.type === 'session_deleted') {
+          setIsHandoffRequested(false);
+          const newId = crypto.randomUUID();
+          const newToken = crypto.randomUUID();
+          setSessionId(newId);
+          setSessionToken(newToken);
+          localStorage.setItem('lexa_session_id', newId);
+          localStorage.setItem('lexa_session_token', newToken);
+          const resetMsg: ChatMessage = {
+            id: Date.now(),
+            role: 'bot',
+            content: 'Percakapan telah ditutup oleh staf admin. Silakan ketik pesan baru jika ada hal lain yang ingin Anda tanyakan.',
+            timestamp: Date.now(),
+          };
+          setMessages([resetMsg]);
+          localStorage.setItem('lexa_messages', JSON.stringify([resetMsg]));
         } else if (data.type === 'typing') {
           if (data.role === 'admin') {
             setIsAdminTyping(true);
@@ -349,8 +380,13 @@ function App() {
       }
     }
 
-    setSessionId('');
-    setSessionToken('');
+    const newId = crypto.randomUUID();
+    const newToken = crypto.randomUUID();
+    setSessionId(newId);
+    setSessionToken(newToken);
+    localStorage.setItem('lexa_session_id', newId);
+    localStorage.setItem('lexa_session_token', newToken);
+    setIsHandoffRequested(false);
     setEscalationShown(false);
 
     setTimeout(() => {
@@ -368,27 +404,24 @@ function App() {
         localStorage.removeItem('lexa_messages');
       }
       setIsRefreshing(false);
-    }, 600);
+    }, 400);
   };
 
   const handleRequestHandoff = async () => {
     setIsHandoffRequested(true);
 
-    // Kirim via WebSocket jika koneksi terbuka
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'handoff_request', user_name: 'Customer' }));
+      wsRef.current.send(JSON.stringify({ type: 'handoff_request', session_id: sessionId, user_name: 'Pelanggan' }));
     }
 
-    // Kirim juga via REST API sebagai garansi pengiriman notifikasi ke admin
-    if (sessionId) {
-      try {
-        await api.post('/api/chat/request-handoff', {
-          session_id: sessionId,
-          user_name: 'Customer',
-        });
-      } catch (err) {
-        console.warn('REST handoff fallback error:', err);
-      }
+    try {
+      await api.post('/api/chat/request-handoff', {
+        session_id: sessionId,
+        session_token: sessionToken,
+        user_name: 'Pelanggan',
+      });
+    } catch (err) {
+      console.warn('REST handoff fallback error:', err);
     }
 
     setMessages((prev) => [
@@ -396,7 +429,7 @@ function App() {
       {
         id: Date.now(),
         role: 'bot',
-        content: 'Permintaan bantuan CS Manusia telah diteruskan ke tim kami. Notifikasi sudah dikirim ke Admin CS dan staf kami akan segera bergabung di sini.',
+        content: 'Permintaan bantuan CS telah diteruskan ke staf admin kami. Notifikasi sudah dikirim dan staf kami akan segera bergabung di sini.',
         timestamp: Date.now(),
       },
     ]);

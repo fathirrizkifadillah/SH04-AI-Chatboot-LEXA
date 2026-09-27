@@ -13,28 +13,41 @@ interface NavItem {
   name: string;
   icon: ReactNode;
   path: string;
+  roles?: string[];
 }
 
 const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const userStr = localStorage.getItem('lexa_admin_user');
+  let userRole = 'Super Admin';
+  try {
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u.role) userRole = u.role;
+    }
+  } catch {}
+
   const handleLogout = () => {
     localStorage.removeItem('lexa_admin_user');
+    localStorage.removeItem('lexa_admin_token');
     api.post('/api/auth/logout').catch(() => {});
     setAuthToken(null);
     navigate('/login');
   };
 
-  const navItems: NavItem[] = [
-    { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/' },
-    { name: 'Conversations', icon: <MessageSquare className="w-5 h-5" />, path: '/conversations' },
-    { name: 'Knowledge Base', icon: <BookOpen className="w-5 h-5" />, path: '/kb' },
-    { name: 'Analytics', icon: <BarChart3 className="w-5 h-5" />, path: '/analytics' },
-    { name: 'Users & Roles', icon: <Users className="w-5 h-5" />, path: '/users' },
-    { name: 'Widget Setup', icon: <Code className="w-5 h-5" />, path: '/widget' },
-    { name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
+  const allNavItems: NavItem[] = [
+    { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
+    { name: 'Conversations', icon: <MessageSquare className="w-5 h-5" />, path: '/conversations', roles: ['Super Admin', 'CS Agent'] },
+    { name: 'Knowledge Base', icon: <BookOpen className="w-5 h-5" />, path: '/kb', roles: ['Super Admin', 'Editor (Knowledge Base)'] },
+    { name: 'Analytics', icon: <BarChart3 className="w-5 h-5" />, path: '/analytics', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
+    { name: 'Users & Roles', icon: <Users className="w-5 h-5" />, path: '/users', roles: ['Super Admin'] },
+    { name: 'Widget Setup', icon: <Code className="w-5 h-5" />, path: '/widget', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
+    { name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings', roles: ['Super Admin'] },
   ];
+
+  const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
 
   return (
     <aside className={`${isCollapsed ? 'w-[72px]' : 'w-64'} bg-slate-900 dark:bg-slate-950 text-white flex flex-col h-screen fixed left-0 top-0 shadow-2xl transition-all duration-300 z-50`}>
@@ -107,14 +120,12 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
               </div>
               <h3 className="font-semibold text-sm">LEXA CS Bot</h3>
               <p className="text-[11px] text-slate-300/80 leading-tight">Smarter Answers, Better Experiences</p>
-              <a
-                href="https://github.com/anomalyco/opencode"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to="/widget"
                 className="mt-2 w-full py-2 bg-white/10 hover:bg-white/20 text-xs font-medium rounded-lg transition-colors border border-white/10 block text-center"
               >
-                Documentation
-              </a>
+                Panduan Integrasi
+              </Link>
             </div>
           </div>
           <p className="text-[10px] text-slate-500 text-center mt-4">
