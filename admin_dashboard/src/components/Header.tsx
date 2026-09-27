@@ -150,55 +150,58 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
     );
 
   return (
-    <header className="h-20 bg-white/70 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-40 transition-colors">
-      <div className="flex items-center gap-4">
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-40 transition-colors">
+      <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <span className="text-xs font-medium tracking-wide uppercase px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md border border-slate-200/60 dark:border-slate-700/60">
-          LEXA Console
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
+            LEXA Console
+          </h2>
+        </div>
       </div>
 
       {/* Global Search Bar */}
-      <div className="flex-1 max-w-lg px-8">
+      <div className="flex-1 max-w-md mx-6">
         <button
           onClick={() => setShowSearchModal(true)}
-          className="w-full flex items-center justify-between bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-sm rounded-xl py-2 px-3.5 hover:border-slate-300 dark:hover:border-slate-600 transition-all text-slate-500 dark:text-slate-400 shadow-sm"
+          className="w-full flex items-center justify-between bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs rounded-xl py-2 px-3 hover:border-blue-400 dark:hover:border-blue-500 transition-all text-slate-500 dark:text-slate-400 shadow-none cursor-pointer"
         >
-          <div className="flex items-center gap-2.5">
-            <Search className="w-4 h-4 text-slate-400" />
-            <span className="text-xs sm:text-sm">Cari menu, halaman, fitur...</span>
+          <div className="flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-slate-400" />
+            <span>Cari menu, halaman, aksi...</span>
           </div>
-          <span className="text-[11px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">
+          <span className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">
             ⌘K
           </span>
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setIsDark(!isDark)}
-          className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           title={isDark ? 'Beralih ke Light Mode' : 'Beralih ke Dark Mode'}
         >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
         </button>
 
         {/* Notification Bell */}
         <div className="relative" ref={notificationDropdownRef}>
           <button
             onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
-            className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors relative"
+            className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors relative"
             title="Notifikasi"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 min-w-[16px] h-[16px] bg-blue-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center px-1">
+              <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
                 {unreadCount}
               </span>
             )}
@@ -272,7 +275,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         {/* Help Center Button */}
         <button
           onClick={() => setShowHelpModal(true)}
-          className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           title="Pusat Bantuan"
         >
           <HelpCircle className="w-4 h-4" />
@@ -284,21 +287,18 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         <div className="relative" ref={profileDropdownRef}>
           <button
             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-            className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group text-left"
+            className="flex items-center gap-2 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group text-left cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-blue-600 flex items-center justify-center text-white font-semibold text-xs tracking-wider shadow-sm">
+            <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white font-semibold text-[11px] tracking-wider">
               {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'A'}
             </div>
-            <div className="hidden md:block">
-              <div className="flex items-center gap-1.5">
+            <div className="hidden md:block pr-1">
+              <div className="flex items-center gap-1">
                 <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                   {currentUser.name}
                 </span>
-                <ChevronDown className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-transform" />
+                <ChevronDown className="w-3 h-3 text-slate-400" />
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-none mt-0.5">
-                {currentUser.role}
-              </p>
             </div>
           </button>
 

@@ -20,13 +20,7 @@ export default defineConfig({
     }
   },
   build: {
-    assetsInlineLimit: 100000000,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-        entryFileNames: 'admin-dashboard.js',
-      },
-    },
+    assetsInlineLimit: 4096,
   },
   resolve: {
     alias: {

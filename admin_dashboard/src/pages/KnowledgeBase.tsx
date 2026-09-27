@@ -159,8 +159,18 @@ const KnowledgeBase = () => {
         {/* Kiri: Daftar File & Status */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/80 p-6 transition-colors">
-            <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-4">
-              Dokumen Terindeks ({files.length})
+            <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-4 flex items-center justify-between">
+              <span>Dokumen Terindeks ({files.length})</span>
+              {files.length > 0 && (
+                <button
+                  onClick={handleExport}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                  title="Unduh seluruh dokumen sebagai ZIP"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh ZIP</span>
+                </button>
+              )}
             </h2>
             
             <div className="space-y-2.5">
@@ -248,26 +258,16 @@ const KnowledgeBase = () => {
               </div>
             )}
 
-            <div className="space-y-2.5">
-              <button
-                onClick={handleExport}
-                className="w-full py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-white/10"
-                title="Download semua dokumen sebagai ZIP"
+            {canManageKB && (
+              <button 
+                onClick={handleReindex}
+                disabled={isSyncing}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
               >
-                <Download className="w-3.5 h-3.5" /> Unduh Arsip Dokumen (ZIP)
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Sedang Memproses Index...' : 'Sinkronisasi Pengetahuan'}
               </button>
-
-              {canManageKB && (
-                <button 
-                  onClick={handleReindex}
-                  disabled={isSyncing}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? 'Sedang Memproses Index...' : 'Sinkronisasi Pengetahuan'}
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
         </div>
