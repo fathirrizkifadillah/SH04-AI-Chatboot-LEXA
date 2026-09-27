@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.schemas import UserCreateRequest, AdminReplyReq, SettingsUpdateRequest
+from core.schemas import UserCreateRequest, AdminReplyReq, SettingsUpdateRequest, ChangePasswordRequest
 from core.auth import verify_jwt, require_role
 
 logger = logging.getLogger("lexa")
@@ -396,6 +396,98 @@ async def admin_delete_user(request: Request, user_id: int, payload: dict = Depe
         return {"status": "success", "message": "User berhasil dihapus"}
     finally:
         db.close()
+
+
+@router.post("/api/admin/users/{user_id}/change-password")
+@limiter.limit("10/minute")
+async def admin_change_user_password(
+    request: Request,
+    user_id: int,
+    req: ChangePasswordRequest,
+    payload: dict = Depends(verify_jwt),
+):
+    if not req.new_password or len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter")
+
+    current_email = payload.get("sub")
+    current_role = payload.get("role")
+
+    db = SessionLocal()
+    try:
+        user = db.query(AdminUser).filter(AdminUser.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User tidak ditemukan")
+
+        is_self = (user.email == current_email)
+        is_super_admin = (current_role == "Super Admin")
+
+        if not is_self and not is_super_admin:
+            raise HTTPException(status_code=403, detail="Akses ditolak. Anda hanya dapat mengubah password akun Anda sendiri.")
+
+        # Jika user biasa mengubah passwordnya sendiri, wajib validasi password lama
+        if not is_super_admin:
+            if not req.old_password:
+                raise HTTPException(status_code=400, detail="Password lama wajib diisi")
+            old_bytes = req.old_password.encode('utf-8')
+            hash_bytes = (user.password_hash or "").encode('utf-8')
+            try:
+                valid = bcrypt.checkpw(old_bytes, hash_bytes)
+            except Exception:
+                valid = False
+            if not valid:
+                raise HTTPException(status_code=400, detail="Password lama salah")
+
+        pwd_bytes = req.new_password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        user.password_hash = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+        db.commit()
+        return {"status": "success", "message": f"Password untuk {user.name} berhasil diperbarui"}
+    finally:
+        db.close()
+
+
+@router.post("/api/admin/change-password")
+@limiter.limit("10/minute")
+async def admin_change_my_password(
+    request: Request,
+    req: ChangePasswordRequest,
+    payload: dict = Depends(verify_jwt),
+):
+    if not req.new_password or len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password baru minimal 6 karakter")
+
+    current_email = payload.get("sub")
+    current_role = payload.get("role")
+
+    db = SessionLocal()
+    try:
+        user = db.query(AdminUser).filter(AdminUser.email == current_email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User tidak ditemukan")
+
+        is_super_admin = (current_role == "Super Admin")
+
+        # Jika bukan super admin, wajib cek password lama
+        if not is_super_admin:
+            if not req.old_password:
+                raise HTTPException(status_code=400, detail="Password lama wajib diisi")
+            old_bytes = req.old_password.encode('utf-8')
+            hash_bytes = (user.password_hash or "").encode('utf-8')
+            try:
+                valid = bcrypt.checkpw(old_bytes, hash_bytes)
+            except Exception:
+                valid = False
+            if not valid:
+                raise HTTPException(status_code=400, detail="Password lama salah")
+
+        pwd_bytes = req.new_password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        user.password_hash = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+        db.commit()
+        return {"status": "success", "message": "Password berhasil diperbarui"}
+    finally:
+        db.close()
+
 
 
 @router.post("/api/admin/handoff")

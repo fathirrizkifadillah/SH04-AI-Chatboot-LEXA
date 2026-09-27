@@ -18,7 +18,7 @@ const KnowledgeBase = () => {
 
   const currentUser = (() => {
     try {
-      const u = localStorage.getItem('lexa_admin_user');
+      const u = sessionStorage.getItem('lexa_admin_user');
       return u ? JSON.parse(u) : null;
     } catch {
       return null;

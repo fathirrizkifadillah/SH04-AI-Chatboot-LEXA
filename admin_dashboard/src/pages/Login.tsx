@@ -24,9 +24,12 @@ const Login = ({ setAuthToken }: LoginProps) => {
     try {
       const data = await api.post<LoginResponse>('/api/auth/login', { email, password } satisfies LoginRequest);
       if (data.token) {
-        localStorage.setItem('lexa_admin_token', data.token);
+        sessionStorage.setItem('lexa_admin_token', data.token);
       }
-      localStorage.setItem('lexa_admin_user', JSON.stringify(data.user));
+      sessionStorage.setItem('lexa_admin_user', JSON.stringify(data.user));
+      // Hapus token lama dari localStorage agar tidak bocor antar tab
+      localStorage.removeItem('lexa_admin_token');
+      localStorage.removeItem('lexa_admin_user');
       setAuthToken('authenticated');
       navigate('/');
     } catch (err) {

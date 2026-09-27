@@ -46,3 +46,9 @@ class SettingsUpdateRequest(BaseModel):
 
     model_config = {"extra": "allow"}
 
+
+class ChangePasswordRequest(BaseModel):
+    old_password: Optional[str] = None
+    new_password: str
+
+

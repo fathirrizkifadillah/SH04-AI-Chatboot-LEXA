@@ -76,7 +76,7 @@ const Conversations = () => {
   // Authenticated user & role check
   const currentUser = (() => {
     try {
-      const u = localStorage.getItem('lexa_admin_user');
+      const u = sessionStorage.getItem('lexa_admin_user');
       return u ? JSON.parse(u) : null;
     } catch {
       return null;
@@ -219,7 +219,7 @@ const Conversations = () => {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      const token = localStorage.getItem('lexa_admin_token') || undefined;
+      const token = sessionStorage.getItem('lexa_admin_token') || undefined;
       ws.send(JSON.stringify({ type: 'admin_authenticate', token }));
     };
     

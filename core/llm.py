@@ -137,12 +137,40 @@ class LexaChatbot:
         if dynamic_prompt:
             self.system_instruction = dynamic_prompt
 
-        # Buat salinan riwayat chat untuk dikirim ke API
-        messages_to_send = [msg.copy() for msg in self.history]
+        # Buat salinan riwayat chat yang valid untuk dikirim ke API Groq (OpenAI format)
+        messages_to_send = []
+        has_system = False
         
-        # Sisipkan konteks dokumen ke pesan system (pesan pertama) jika ada
-        if context_str and messages_to_send and messages_to_send[0]["role"] == "system":
-            messages_to_send[0]["content"] = self.system_instruction + context_str
+        for msg in self.history:
+            role = msg.get("role", "user")
+            content = str(msg.get("content", ""))
+            
+            # Map role custom agar sesuai format Groq/OpenAI (hanya system, user, assistant)
+            if role in ("admin", "bot"):
+                role = "assistant"
+            elif role not in ("system", "user", "assistant"):
+                continue
+                
+            # Filter internal system markers seperti [HANDOFF REQUESTED]
+            if role == "system" and (content.startswith("[HANDOFF") or content.startswith("[CATATAN SISTEM]")):
+                continue
+                
+            if role == "system":
+                if not has_system:
+                    messages_to_send.append({
+                        "role": "system", 
+                        "content": (self.system_instruction or "Anda adalah asisten AI.") + context_str
+                    })
+                    has_system = True
+                continue
+                
+            messages_to_send.append({"role": role, "content": content})
+            
+        if not has_system:
+            messages_to_send.insert(0, {
+                "role": "system",
+                "content": (self.system_instruction or "Anda adalah asisten AI.") + context_str
+            })
             
         return messages_to_send
 

@@ -20,8 +20,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const userStr = localStorage.getItem('lexa_admin_user');
-  let userRole = 'Super Admin';
+  const userStr = sessionStorage.getItem('lexa_admin_user');
+  let userRole = 'CS Agent';
   try {
     if (userStr) {
       const u = JSON.parse(userStr);
@@ -30,6 +30,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   } catch {}
 
   const handleLogout = () => {
+    sessionStorage.removeItem('lexa_admin_user');
+    sessionStorage.removeItem('lexa_admin_token');
     localStorage.removeItem('lexa_admin_user');
     localStorage.removeItem('lexa_admin_token');
     api.post('/api/auth/logout').catch(() => {});

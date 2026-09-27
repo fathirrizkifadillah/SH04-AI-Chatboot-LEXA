@@ -166,6 +166,65 @@ class TestUserCRUD:
         finally:
             db.close()
 
+    def test_super_admin_change_user_password(self):
+        # Buat user baru
+        client.post("/api/admin/users", json={
+            "name": "Pwd User",
+            "email": "pwduser@test.com",
+            "password": "oldpassword123",
+            "role": "CS Agent",
+        }, headers=_auth_header())
+
+        db = SessionLocal()
+        try:
+            u = db.query(AdminUser).filter(AdminUser.email == "pwduser@test.com").first()
+            user_id = u.id
+        finally:
+            db.close()
+
+        # Super admin mengubah password user lain (tanpa old_password)
+        resp = client.post(f"/api/admin/users/{user_id}/change-password", json={
+            "new_password": "newpassword456",
+        }, headers=_auth_header())
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "success"
+
+        # Verifikasi bisa login dengan password baru
+        login_resp = client.post("/api/auth/login", json={
+            "email": "pwduser@test.com",
+            "password": "newpassword456",
+        })
+        assert login_resp.status_code == 200
+
+    def test_change_my_password_flow(self):
+        # Login sebagai user
+        login_resp = client.post("/api/auth/login", json={
+            "email": "pwduser@test.com",
+            "password": "newpassword456",
+        })
+        user_token = login_resp.json()["token"]
+
+        # Gagal jika old_password salah
+        resp_fail = client.post("/api/admin/change-password", json={
+            "old_password": "wrongpassword",
+            "new_password": "brandnewpassword789",
+        }, headers={"Authorization": f"Bearer {user_token}"})
+        assert resp_fail.status_code == 400
+
+        # Sukses jika old_password benar
+        resp_ok = client.post("/api/admin/change-password", json={
+            "old_password": "newpassword456",
+            "new_password": "brandnewpassword789",
+        }, headers={"Authorization": f"Bearer {user_token}"})
+        assert resp_ok.status_code == 200
+
+        # Verifikasi login dengan brandnewpassword789
+        login_new = client.post("/api/auth/login", json={
+            "email": "pwduser@test.com",
+            "password": "brandnewpassword789",
+        })
+        assert login_new.status_code == 200
+
 
 # ─── Session Management ────────────────────────────────
 

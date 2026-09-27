@@ -38,9 +38,24 @@ function App() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
+    // Bersihkan sisa token di localStorage agar tab baru tidak otomatis login
+    localStorage.removeItem('lexa_admin_token');
+    localStorage.removeItem('lexa_admin_user');
+
+    const token = sessionStorage.getItem('lexa_admin_token');
+    if (!token) {
+      setAuthToken(null);
+      setIsCheckingSession(false);
+      return;
+    }
+
     api.get('/api/auth/session')
       .then(() => setAuthToken('authenticated'))
-      .catch(() => setAuthToken(null))
+      .catch(() => {
+        sessionStorage.removeItem('lexa_admin_token');
+        sessionStorage.removeItem('lexa_admin_user');
+        setAuthToken(null);
+      })
       .finally(() => setIsCheckingSession(false));
   }, []);
 

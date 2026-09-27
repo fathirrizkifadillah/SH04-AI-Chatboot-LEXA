@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { Shield, ShieldAlert, User, Plus, Trash2, X, MessageSquare, Lock } from 'lucide-react';
+import { Shield, ShieldAlert, User, Plus, Trash2, X, MessageSquare, Lock, KeyRound, Loader2, Check } from 'lucide-react';
 import api from '../lib/apiClient';
 import type { AdminUser, UserCreateRequest } from '../types/api';
 
@@ -13,9 +13,16 @@ const Users = () => {
     role: 'CS Agent'
   });
 
+  // State for Admin resetting user password
+  const [selectedUserForPwd, setSelectedUserForPwd] = useState<AdminUser | null>(null);
+  const [newPasswordForUser, setNewPasswordForUser] = useState('');
+  const [pwdUserLoading, setPwdUserLoading] = useState(false);
+  const [pwdUserError, setPwdUserError] = useState('');
+  const [pwdUserSuccess, setPwdUserSuccess] = useState('');
+
   const currentUser = (() => {
     try {
-      const u = localStorage.getItem('lexa_admin_user');
+      const u = sessionStorage.getItem('lexa_admin_user');
       return u ? JSON.parse(u) : null;
     } catch {
       return null;
@@ -73,6 +80,36 @@ const Users = () => {
     .catch(err => {
       console.error(err);
       alert(err.message || 'Gagal menambah pengguna.');
+    });
+  };
+
+  const handleResetPasswordForUser = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedUserForPwd) return;
+    if (newPasswordForUser.length < 6) {
+      setPwdUserError('Password minimal 6 karakter.');
+      return;
+    }
+    setPwdUserLoading(true);
+    setPwdUserError('');
+    setPwdUserSuccess('');
+
+    api.authPost(`/api/admin/users/${selectedUserForPwd.id}/change-password`, {
+      new_password: newPasswordForUser
+    })
+    .then(() => {
+      setPwdUserSuccess(`Password untuk ${selectedUserForPwd.name} berhasil diperbarui.`);
+      setNewPasswordForUser('');
+      setTimeout(() => {
+        setSelectedUserForPwd(null);
+        setPwdUserSuccess('');
+      }, 1500);
+    })
+    .catch((err: any) => {
+      setPwdUserError(err.message || 'Gagal mengubah password user.');
+    })
+    .finally(() => {
+      setPwdUserLoading(false);
     });
   };
 
@@ -139,13 +176,27 @@ const Users = () => {
                     {user.last_active || 'Sekarang'}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => handleDelete(user.id)} 
-                      className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      title="Hapus user"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button 
+                        onClick={() => {
+                          setSelectedUserForPwd(user);
+                          setNewPasswordForUser('');
+                          setPwdUserError('');
+                          setPwdUserSuccess('');
+                        }} 
+                        className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title="Ganti Password User"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(user.id)} 
+                        className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title="Hapus user"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -195,6 +246,77 @@ const Users = () => {
               <div className="pt-3 flex gap-2.5">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Batal</button>
                 <button type="submit" className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-colors">Simpan Pengguna</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ganti Password User (Super Admin) */}
+      {selectedUserForPwd && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ganti Password User</h3>
+                  <p className="text-[11px] text-slate-500">{selectedUserForPwd.name} ({selectedUserForPwd.email})</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedUserForPwd(null)} 
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPasswordForUser} className="p-5 space-y-3.5 text-xs">
+              {pwdUserError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900">
+                  {pwdUserError}
+                </div>
+              )}
+              {pwdUserSuccess && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-900 flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {pwdUserSuccess}
+                </div>
+              )}
+
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Password Baru untuk {selectedUserForPwd.name}
+                </label>
+                <input
+                  required
+                  type="password"
+                  minLength={6}
+                  value={newPasswordForUser}
+                  onChange={(e) => setNewPasswordForUser(e.target.value)}
+                  placeholder="Ketik password baru (min 6 karakter)"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-3 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserForPwd(null)}
+                  className="flex-1 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={pwdUserLoading}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {pwdUserLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Perbarui Password'}
+                </button>
               </div>
             </form>
           </div>

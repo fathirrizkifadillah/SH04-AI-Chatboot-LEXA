@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
+import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users, KeyRound, Loader2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
 
@@ -34,17 +34,26 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDark, setIsDark] = useState(() => localStorage.getItem('lexa_dark_mode') === 'true');
 
+  // Password change state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSuccess, setPwdSuccess] = useState('');
+
   const notificationDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Read current authenticated user
+  // Read current authenticated user from sessionStorage
   const [currentUser] = useState<{ name: string; email: string; role: string }>(() => {
     try {
-      const u = localStorage.getItem('lexa_admin_user');
-      return u ? JSON.parse(u) : { name: 'Admin LEXA', email: 'admin@lexatech.id', role: 'Super Admin' };
+      const u = sessionStorage.getItem('lexa_admin_user');
+      return u ? JSON.parse(u) : { name: 'Pengguna', email: '', role: 'CS Agent' };
     } catch {
-      return { name: 'Admin LEXA', email: 'admin@lexatech.id', role: 'Super Admin' };
+      return { name: 'Pengguna', email: '', role: 'CS Agent' };
     }
   });
 
@@ -126,10 +135,47 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   }, []);
 
   const handleLogout = () => {
+    sessionStorage.removeItem('lexa_admin_user');
+    sessionStorage.removeItem('lexa_admin_token');
     localStorage.removeItem('lexa_admin_user');
     localStorage.removeItem('lexa_admin_token');
     api.post('/api/auth/logout').catch(() => {});
     navigate('/login');
+  };
+
+  const handleChangePassword = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPwdError('');
+    setPwdSuccess('');
+
+    if (newPassword.length < 6) {
+      setPwdError('Password baru minimal 6 karakter.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdError('Konfirmasi password tidak cocok.');
+      return;
+    }
+
+    setPwdLoading(true);
+    try {
+      await api.post('/api/admin/change-password', {
+        old_password: currentUser.role === 'Super Admin' ? (oldPassword || undefined) : oldPassword,
+        new_password: newPassword,
+      });
+      setPwdSuccess('Password Anda berhasil diperbarui!');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPwdSuccess('');
+      }, 1500);
+    } catch (err: any) {
+      setPwdError(err.message || 'Gagal mengubah password. Pastikan password lama sesuai.');
+    } finally {
+      setPwdLoading(false);
+    }
   };
 
   const allSearchItems: SearchItem[] = [
@@ -317,6 +363,18 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
                 <button
                   onClick={() => {
                     setShowProfileDropdown(false);
+                    setShowPasswordModal(true);
+                    setPwdError('');
+                    setPwdSuccess('');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                  Ganti Password Saya
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProfileDropdown(false);
                     handleLogout();
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-colors"
@@ -473,6 +531,102 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
                 Tutup Panduan
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ganti Password Saya</h3>
+                  <p className="text-[11px] text-slate-500">{currentUser.email || currentUser.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPasswordModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="p-5 space-y-3.5 text-xs">
+              {pwdError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900">
+                  {pwdError}
+                </div>
+              )}
+              {pwdSuccess && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-900 flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {pwdSuccess}
+                </div>
+              )}
+
+              {currentUser.role !== 'Super Admin' && (
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Password Saat Ini</label>
+                  <input
+                    required
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    placeholder="Ketik password lama Anda"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
+                <input
+                  required
+                  type="password"
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimal 6 karakter"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password Baru</label>
+                <input
+                  required
+                  type="password"
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Ulangi password baru"
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-3 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={pwdLoading}
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {pwdLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Simpan Password'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

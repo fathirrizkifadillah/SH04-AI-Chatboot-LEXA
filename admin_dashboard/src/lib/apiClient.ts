@@ -25,9 +25,14 @@ async function request<T>(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<T> {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('lexa_admin_token') : null;
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
   };
+
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (body && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';

@@ -335,7 +335,7 @@ function App() {
 
       // Jika sesi dalam mode CS Manusia, backend hanya mengembalikan event 'done'
       // sehingga kita perlu menampilkan pesan konfirmasi agar user tahu pesannya terkirim.
-      if (!fullResponse) {
+      if (!fullResponse && isHandoffRequested) {
         setMessages((prev) => [
           ...prev,
           {
