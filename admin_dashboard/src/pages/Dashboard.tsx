@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  MessageSquare, Users, BookOpen, Layers, Activity, Plus, FileText, 
-  ArrowRight, MoreVertical, GraduationCap, Library, Landmark, 
-  Briefcase, HeartPulse, Compass, TrendingUp, Cpu, UploadCloud, 
+  MessageSquare, Users, BookOpen, Activity, Plus, FileText, 
+  HelpCircle, Cpu, UploadCloud, 
   Share2, BarChart3, Settings
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
@@ -27,133 +26,19 @@ const defaultChartData: ChartDataPoint[] = (() => {
   return result;
 })();
 
-interface LexaModule {
-  id: string;
-  name: string;
-  category: string;
-  desc: string;
-  status: 'Aktif' | 'Konfigurasi';
-  icon: any;
-  color: string;
-  bg: string;
-}
-
-const lexaModules: LexaModule[] = [
-  {
-    id: 'campus',
-    name: 'Campus AI',
-    category: 'Akademik',
-    desc: 'Asisten cerdas untuk kampus, mahasiswa & layanan akademik',
-    status: 'Aktif',
-    icon: GraduationCap,
-    color: 'text-violet-600 dark:text-violet-400',
-    bg: 'bg-violet-500/10 text-violet-600',
-  },
-  {
-    id: 'library',
-    name: 'Library AI',
-    category: 'Perpustakaan',
-    desc: 'Pencarian buku, katalog pintar & informasi perpustakaan',
-    status: 'Aktif',
-    icon: Library,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-500/10 text-emerald-600',
-  },
-  {
-    id: 'journal',
-    name: 'Journal AI',
-    category: 'Publikasi',
-    desc: 'Asisten editor & reviewer untuk jurnal ilmiah (OJS)',
-    status: 'Aktif',
-    icon: FileText,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-500/10 text-blue-600',
-  },
-  {
-    id: 'gov',
-    name: 'Government AI',
-    category: 'Pelayanan Publik',
-    desc: 'Layanan informasi & administrasi instansi pemerintahan',
-    status: 'Aktif',
-    icon: Landmark,
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-500/10 text-amber-600',
-  },
-  {
-    id: 'biz',
-    name: 'Business AI',
-    category: 'Enterprise',
-    desc: 'Dukungan bisnis, customer service & layanan pelanggan 24/7',
-    status: 'Aktif',
-    icon: Briefcase,
-    color: 'text-teal-600 dark:text-teal-400',
-    bg: 'bg-teal-500/10 text-teal-600',
-  },
-  {
-    id: 'health',
-    name: 'Healthcare AI',
-    category: 'Kesehatan',
-    desc: 'Asisten informasi rumah sakit, dokter, poli & klinik',
-    status: 'Aktif',
-    icon: HeartPulse,
-    color: 'text-rose-600 dark:text-rose-400',
-    bg: 'bg-rose-500/10 text-rose-600',
-  },
-  {
-    id: 'tourism',
-    name: 'Tourism AI',
-    category: 'Pariwisata',
-    desc: 'Informasi wisata, pemesanan tiket, fasilitas & promo lokal',
-    status: 'Aktif',
-    icon: Compass,
-    color: 'text-sky-600 dark:text-sky-400',
-    bg: 'bg-sky-500/10 text-sky-600',
-  },
-  {
-    id: 'hr',
-    name: 'HR AI',
-    category: 'Internal',
-    desc: 'Rekrutmen, screening kandidat & layanan karyawan mandiri',
-    status: 'Aktif',
-    icon: Users,
-    color: 'text-indigo-600 dark:text-indigo-400',
-    bg: 'bg-indigo-500/10 text-indigo-600',
-  },
-  {
-    id: 'sales',
-    name: 'Sales AI',
-    category: 'Growth',
-    desc: 'Automasi penjualan, kualifikasi leads & follow-up prospek',
-    status: 'Aktif',
-    icon: TrendingUp,
-    color: 'text-amber-500 dark:text-amber-300',
-    bg: 'bg-amber-500/10 text-amber-600',
-  },
-  {
-    id: 'research',
-    name: 'Research AI',
-    category: 'R&D',
-    desc: 'Bantu riset, sintesis literatur & analisis data komprehensif',
-    status: 'Aktif',
-    icon: Layers,
-    color: 'text-blue-500 dark:text-blue-300',
-    bg: 'bg-blue-500/10 text-blue-600',
-  },
-];
-
 const recentActivities = [
   {
     id: 1,
-    title: 'Modul Campus AI diperbarui',
+    title: 'Knowledge Base diperbarui',
     author: 'Admin LEXA',
     time: '10 menit lalu',
-    icon: GraduationCap,
+    icon: BookOpen,
     bg: 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
     statusDot: 'bg-emerald-500',
   },
   {
     id: 2,
-    title: 'Dokumen baru ditambahkan ke Library AI System',
+    title: 'Dokumen baru diindeks ke Vector Store',
     author: 'Editor Team',
     time: '1 jam lalu',
     icon: FileText,
@@ -232,13 +117,13 @@ const Dashboard = () => {
       iconBg: 'bg-violet-50 dark:bg-violet-950/30',
     },
     {
-      title: 'Active Modules',
-      value: '9',
-      growth: '+12.5%',
-      subtext: 'vs last month',
-      icon: Layers,
-      iconColor: 'text-emerald-500',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/30',
+      title: 'Unanswered Queries',
+      value: stats.unanswered_queries.toString(),
+      growth: stats.unanswered_queries === 0 ? '0 issues' : 'Perlu respon',
+      subtext: 'Pending review',
+      icon: HelpCircle,
+      iconColor: 'text-amber-500',
+      iconBg: 'bg-amber-50 dark:bg-amber-950/30',
     },
     {
       title: 'Knowledge Base',
@@ -271,7 +156,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 pb-12 antialiased">
-      {/* 1. Hero Banner matching Reference Image 1 */}
+      {/* 1. Hero Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-[#091E42] text-white shadow-xl border border-white/10">
         {/* Subtle radial tech gradient background */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#091E42] via-[#0D2A5C] to-[#0A1A3A] opacity-95"></div>
@@ -299,7 +184,7 @@ const Dashboard = () => {
                 className="px-4 py-2.5 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/30 flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Buat Modul Baru</span>
+                <span>Kelola Knowledge Base</span>
               </button>
               <button
                 onClick={() => navigate('/widget')}
@@ -311,7 +196,7 @@ const Dashboard = () => {
             </div>
           </div>
           
-          {/* Glowing AI Emblem matching Image 1 */}
+          {/* Glowing AI Emblem */}
           <div className="relative shrink-0 flex items-center justify-center p-4">
             <div className="relative w-44 h-44 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-2xl animate-pulse"></div>
@@ -367,83 +252,17 @@ const Dashboard = () => {
         })}
       </div>
 
-      {/* 3. "Modul LEXA AI" Section matching Reference Image 1 */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-              Modul LEXA AI
-            </h2>
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-              {lexaModules.length} Modul
-            </span>
-          </div>
-          <button 
-            onClick={() => navigate('/kb')}
-            className="text-xs font-semibold text-[#0066FF] hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <span>Lihat Semua Modul</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-          {lexaModules.map((mod) => {
-            const Icon = mod.icon;
-            return (
-              <div
-                key={mod.id}
-                className="bg-white dark:bg-[#0D182E] rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 hover:border-[#0066FF]/50 transition-all hover:shadow-md group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-xl ${mod.bg} flex items-center justify-center shrink-0`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <button 
-                      onClick={() => navigate('/kb')}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
-                      title="Menu modul"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#0066FF] transition-colors">
-                    {mod.name}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                    {mod.desc}
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                  <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    {mod.status}
-                  </span>
-                  <button
-                    onClick={() => navigate('/conversations')}
-                    className="text-[11px] font-medium text-slate-400 hover:text-[#0066FF] transition-colors"
-                  >
-                    Buka →
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. Lower 3-Column Section matching Image 1: Chart | Aktivitas Terbaru | Aksi Cepat */}
+      {/* 3. Lower 3-Column Section: Chart | Aktivitas Terbaru | Aksi Cepat */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
-        {/* Col 1: Statistik Percakapan (approx 5 cols) */}
-        <div className="lg:col-span-5 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
+        {/* Col 1: Statistik Percakapan (6 cols for wider visualization) */}
+        <div className="lg:col-span-6 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between min-h-[380px]">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                 Statistik Percakapan
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Tren volume obrolan masuk</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Tren volume obrolan masuk mingguan</p>
             </div>
             <select 
               className="text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
@@ -455,8 +274,8 @@ const Dashboard = () => {
             </select>
           </div>
 
-          <div className="w-full h-[230px] relative">
-            <ResponsiveContainer width="100%" height={230}>
+          <div className="w-full h-[280px] relative">
+            <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
@@ -494,8 +313,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Col 2: Aktivitas Terbaru (approx 4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col">
+        {/* Col 2: Aktivitas Terbaru (3 cols) */}
+        <div className="lg:col-span-3 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col min-h-[380px]">
           <div className="flex items-center justify-between mb-3.5">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
               Aktivitas Terbaru
@@ -531,8 +350,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Col 3: Aksi Cepat (approx 3 cols) */}
-        <div className="lg:col-span-3 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
+        {/* Col 3: Aksi Cepat (3 cols) */}
+        <div className="lg:col-span-3 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between min-h-[380px]">
           <div className="mb-3.5">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
               Aksi Cepat
@@ -545,15 +364,15 @@ const Dashboard = () => {
               onClick={() => navigate('/kb')}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-[#0066FF] group-hover:scale-110 transition-transform" />
-              <span>Buat Modul Baru</span>
+              <UploadCloud className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span>Upload Dokumen KB</span>
             </button>
             <button
-              onClick={() => navigate('/kb')}
+              onClick={() => navigate('/conversations')}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
             >
-              <UploadCloud className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-              <span>Upload Dokumen</span>
+              <MessageSquare className="w-4 h-4 text-[#0066FF] group-hover:scale-110 transition-transform" />
+              <span>Live Chat Handoff</span>
             </button>
             <button
               onClick={() => navigate('/widget')}
