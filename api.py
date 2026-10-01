@@ -57,6 +57,10 @@ async def lifespan(app: FastAPI):
     # Seed default admin jika belum ada
     seed_default_admin()
 
+    # Create uploads directory
+    os.makedirs("uploads", exist_ok=True)
+    logger.info("Upload directory ensured.")
+
     logger.info("Memulai Lexa API Server...")
 
     # Load RAG in background task so Uvicorn binds to PORT immediately

@@ -23,7 +23,7 @@ from core.rate_limit import limiter
 router = APIRouter()
 
 
-def _save_handoff_message(session_id: str, content: str, role: str = "user"):
+def _save_handoff_message(session_id: str, content: str, role: str = "user", file_metadata: dict = None):
     """Simpan pesan handoff ke database."""
     db = SessionLocal()
     try:
@@ -34,6 +34,8 @@ def _save_handoff_message(session_id: str, content: str, role: str = "user"):
             "content": content,
             "timestamp": now_ts,
         }
+        if file_metadata:
+            msg_entry["file"] = file_metadata
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if s:
             new_hist = list(s.history or [])

@@ -270,12 +270,15 @@ function App() {
     setInput('');
     setSelectedFile(null);
     
+    // Create object URL for preview, will be replaced by server URL after upload
+    const filePreviewUrl = fileToSend ? URL.createObjectURL(fileToSend) : undefined;
+    
     const userMsg: ChatMessage = { 
       id: Date.now(), 
       role: 'user', 
       content: text || '[File attached]', 
       timestamp: Date.now(),
-      ...(fileToSend && { file: { name: fileToSend.name, type: fileToSend.type, url: URL.createObjectURL(fileToSend) } })
+      ...(fileToSend && { file: { name: fileToSend.name, type: fileToSend.type, url: filePreviewUrl } })
     };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
@@ -421,6 +424,10 @@ function App() {
     } finally {
       setIsStreaming(false);
       setIsWaitingForResponse(false);
+      // Cleanup object URL after upload completes
+      if (filePreviewUrl) {
+        URL.revokeObjectURL(filePreviewUrl);
+      }
     }
   };
 

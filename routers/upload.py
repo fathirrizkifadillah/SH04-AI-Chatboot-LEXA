@@ -15,7 +15,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 
 from core.database import get_session_by_id, get_session_history
 from core.llm import LLMClient
@@ -93,8 +93,8 @@ async def upload_file(
 
     # --- Build context string for LLM ---
     if content_type.startswith("image/"):
-        # Pass image as base64 context description
-        extra_context = f"[User melampirkan gambar: {file.filename}. Data base64: {_image_to_base64(file_data, content_type)[:200]}...]"
+        # Describe image attachment without full base64 (use placeholder for LLM context)
+        extra_context = f"[User melampirkan gambar '{file.filename}' (format: {content_type}). File telah disimpan untuk referensi.]"
     elif content_type == "application/pdf":
         extracted = _extract_pdf_text(file_data)
         extra_context = f"[User melampirkan PDF '{file.filename}'. Isi dokumen:\n{extracted}]"
@@ -112,13 +112,22 @@ async def upload_file(
 
     combined_message = f"{extra_context}\n\n{message}".strip() if message else extra_context
 
+    # Prepare file metadata for persistence
+    file_metadata = {
+        "name": file.filename or "upload",
+        "type": content_type,
+        "path": file_path,
+        "url": f"/api/uploads/{safe_name}",
+        "size": len(file_data)
+    }
+
     # --- Stream response same as /chat/stream ---
     session_id = session_id or str(uuid.uuid4())
-    session_token = _get_or_create_session_token(session_id, session_token)
+    active_session_token = _get_or_create_session_token(session_id, session_token)
     bot = get_or_create_session(session_id)
 
     async def event_generator():
-        yield f"data: {json.dumps({'type': 'session', 'session_id': session_id, 'session_token': session_token})}\n\n"
+        yield f"data: {json.dumps({'type': 'session', 'session_id': session_id, 'session_token': active_session_token})}\n\n"
 
         try:
             history_data = get_session_history(session_id)
@@ -128,7 +137,7 @@ async def upload_file(
 
             if is_handoff:
                 async with get_session_lock(session_id):
-                    _save_handoff_message(session_id, combined_message)
+                    _save_handoff_message(session_id, combined_message, file_metadata=file_metadata)
                 await manager.broadcast_to_session({"type": "handoff_user_msg", "content": combined_message}, session_id)
                 await manager.broadcast_to_admins({
                     "type": "new_message",
@@ -175,3 +184,19 @@ async def upload_file(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/api/uploads/{filename}")
+async def serve_upload(filename: str):
+    """Serve uploaded files securely."""
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Security: ensure file is within UPLOAD_DIR (prevent path traversal)
+    abs_file_path = os.path.abspath(file_path)
+    abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+    if not abs_file_path.startswith(abs_upload_dir):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return FileResponse(file_path)

@@ -2,7 +2,7 @@ import { RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ThumbsUp, ThumbsDown, FileText } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, FileText, FileType } from 'lucide-react';
 import type { Message } from '../types/api';
 
 export interface ChatMessage extends Message {
@@ -74,8 +74,30 @@ export const ChatMessageList = ({
                       <img src={msg.file.url} alt={msg.file.name} className="max-w-[200px] rounded-lg border border-slate-200" />
                     ) : (
                       <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg px-3 py-2 inline-flex">
-                        <FileText size={14} className="text-slate-500" />
-                        <span className="text-xs text-slate-600">{msg.file.name}</span>
+                        {msg.file.type === 'application/pdf' ? (
+                          <>
+                            <FileText size={14} className="text-red-500" />
+                            <span className="text-xs text-slate-600">{msg.file.name}</span>
+                            <span className="text-[10px] text-slate-400 ml-1">PDF</span>
+                          </>
+                        ) : msg.file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
+                          <>
+                            <FileText size={14} className="text-blue-500" />
+                            <span className="text-xs text-slate-600">{msg.file.name}</span>
+                            <span className="text-[10px] text-slate-400 ml-1">DOCX</span>
+                          </>
+                        ) : msg.file.type === 'text/plain' ? (
+                          <>
+                            <FileType size={14} className="text-slate-500" />
+                            <span className="text-xs text-slate-600">{msg.file.name}</span>
+                            <span className="text-[10px] text-slate-400 ml-1">TXT</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={14} className="text-slate-500" />
+                            <span className="text-xs text-slate-600">{msg.file.name}</span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
