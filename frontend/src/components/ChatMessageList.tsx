@@ -48,14 +48,21 @@ export const ChatMessageList = ({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className={`flex gap-3 max-w-[92%] ${isUser ? 'ml-auto flex-row-reverse' : ''}`}
+              className={`flex gap-3 max-w-[88%] sm:max-w-[82%] ${isUser ? 'ml-auto flex-row-reverse' : ''}`}
             >
               {!isUser && (
                 <div className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/10 p-1 shrink-0 flex items-center justify-center mt-1 shadow-inner">
                   {isAdmin ? (
                     <Headphones size={15} className="text-amber-400" />
                   ) : (
-                    <img src={botAvatar} alt="LEXA" className="w-full h-full object-contain filter drop-shadow-sm" />
+                    <img
+                      src={botAvatar}
+                      alt="LEXA"
+                      width={28}
+                      height={28}
+                      style={{ width: '28px', height: '28px', maxWidth: '28px', maxHeight: '28px', objectFit: 'contain' }}
+                      className="filter drop-shadow-sm select-none"
+                    />
                   )}
                 </div>
               )}
@@ -80,12 +87,16 @@ export const ChatMessageList = ({
 
                 {/* Message Body */}
                 <div
+                  style={{
+                    backgroundColor: isUser ? '#1D4ED8' : isAdmin ? '#241A0B' : '#0E1A33',
+                    color: isUser ? '#FFFFFF' : isAdmin ? '#FEF3C7' : '#E2E8F0',
+                  }}
                   className={`px-4 py-3 text-[13.5px] leading-[1.65] shadow-sm break-words whitespace-pre-wrap ${
                     isUser
-                      ? 'bg-[#1D4ED8] text-white rounded-2xl rounded-tr-xs border border-blue-400/25 shadow-[0_4px_16px_rgba(29,78,216,0.3)]'
+                      ? 'rounded-2xl rounded-tr-xs border border-blue-400/25 shadow-[0_4px_16px_rgba(29,78,216,0.3)]'
                       : isAdmin
-                        ? 'bg-[#241A0B]/90 text-amber-100 border border-amber-500/30 rounded-2xl rounded-tl-xs shadow-[0_4px_20px_rgba(0,0,0,0.3)] markdown-body'
-                        : 'bg-[#0E1A33]/90 text-slate-100 border border-white/[0.08] rounded-2xl rounded-tl-xs shadow-[0_4px_20px_rgba(0,0,0,0.3)] markdown-body'
+                        ? 'rounded-2xl rounded-tl-xs border border-amber-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.3)] markdown-body'
+                        : 'rounded-2xl rounded-tl-xs border border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.3)] markdown-body'
                   }`}
                 >
                   {isUser ? (

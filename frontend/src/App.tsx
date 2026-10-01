@@ -537,29 +537,26 @@ function App() {
       <motion.div
         className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 pointer-events-auto"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        initial={{ scale: 0, y: 50 }}
-        animate={{ scale: isOpen ? 0 : 1, y: isOpen ? 50 : 0 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+        initial={{ scale: 0, y: 30 }}
+        animate={{ scale: isOpen ? 0 : 1, y: isOpen ? 30 : 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
       >
-        <div className="p-1 rounded-full bg-white/[0.08] border border-white/15 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.7)] backdrop-blur-xl group">
-          <button
-            onClick={() => setIsOpen(true)}
-            className="px-4 py-2.5 rounded-full bg-[#0D182E] hover:bg-[#132342] border border-blue-400/30 text-white flex items-center gap-3 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] active:scale-[0.96] cursor-pointer"
-            aria-label="Buka dialog chat Lexa"
-          >
-            <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
-              <img src={lexaBotHead} alt="Lexa" className="w-full h-full object-contain filter drop-shadow" />
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0D182E]"></span>
-            </div>
-            <div className="flex flex-col text-left pr-1">
-              <span className="text-xs font-bold tracking-tight text-white flex items-center gap-1.5 leading-none">
-                Tanya LEXA
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono mt-0.5">Online AI</span>
-            </div>
-          </button>
-        </div>
+        <button
+          onClick={() => setIsOpen(true)}
+          style={{ width: '58px', height: '58px', minWidth: '58px', minHeight: '58px', maxWidth: '58px', maxHeight: '58px' }}
+          className="w-[58px] h-[58px] rounded-full bg-[#0D182E] hover:bg-[#152545] border border-blue-400/35 text-white flex items-center justify-center shadow-[0_12px_32px_-6px_rgba(0,0,0,0.75)] hover:shadow-[0_16px_36px_-6px_rgba(37,99,235,0.4)] transition-all duration-200 active:scale-[0.92] relative group cursor-pointer p-0 overflow-hidden"
+          aria-label="Buka dialog chat Lexa"
+        >
+          <img
+            src={lexaBotHead}
+            alt="Lexa"
+            width={38}
+            height={38}
+            style={{ width: '38px', height: '38px', maxWidth: '38px', maxHeight: '38px', objectFit: 'contain' }}
+            className="filter drop-shadow-sm select-none transition-transform group-hover:scale-105"
+          />
+          <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0D182E] shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+        </button>
       </motion.div>
 
       {/* Chat Panel */}
@@ -573,19 +570,28 @@ function App() {
             dragMomentum={false}
             dragElastic={0}
             dragConstraints={{ left: -1000, right: 0, top: -850, bottom: 0 }}
-            initial={{ opacity: 0, y: 30, scale: 0.96 }}
+            initial={{ opacity: 0, y: 25, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={
               isSmallScreen
-                ? { position: 'absolute', inset: 0, width: '100vw', height: '100vh' }
-                : { position: 'absolute', bottom: '24px', right: '24px' }
+                ? { position: 'fixed', inset: 0, width: '100vw', height: '100vh', zIndex: 99999 }
+                : {
+                    position: 'fixed',
+                    bottom: '24px',
+                    right: '24px',
+                    width: isExpanded ? '520px' : '380px',
+                    height: isExpanded ? '700px' : '580px',
+                    maxWidth: 'calc(100vw - 32px)',
+                    maxHeight: 'calc(100vh - 48px)',
+                    zIndex: 99999,
+                  }
             }
             className={
               isSmallScreen
-                ? 'w-screen h-screen max-w-full max-h-full bg-[#080E21] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
-                : `${isExpanded ? 'w-[680px] h-[820px]' : 'w-[400px] h-[640px]'} min-w-[320px] min-h-[440px] max-w-[94vw] max-h-[calc(100vh-50px)] overflow-hidden bg-[#0A1224] rounded-[26px] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto select-auto`
+                ? 'w-screen h-screen bg-[#0A1224] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
+                : 'bg-[#0A1224] rounded-[24px] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto overflow-hidden select-auto'
             }
           >
             {/* Header */}

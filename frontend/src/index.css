@@ -43,6 +43,13 @@
 .markdown-body {
   font-size: 13.5px;
   line-height: 1.65;
+  color: #E2E8F0 !important;
+}
+
+.markdown-body p,
+.markdown-body span,
+.markdown-body li,
+.markdown-body div {
   color: #E2E8F0;
 }
 
@@ -55,7 +62,12 @@
 
 .markdown-body strong {
   font-weight: 600;
-  color: #FFFFFF;
+  color: #FFFFFF !important;
+}
+
+/* Guard against giant image overflow */
+#lexa-widget-root img {
+  max-width: 100%;
 }
 
 .markdown-body ul {
