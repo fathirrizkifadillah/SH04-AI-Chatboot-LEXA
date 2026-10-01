@@ -27,7 +27,7 @@ from core.rate_limit import limiter
 from core.database import seed_default_admin, init_database
 import core.state as state
 
-from routers import auth, chat, admin, widget
+from routers import auth, chat, admin, widget, upload
 
 logger = logging.getLogger("lexa")
 
@@ -169,6 +169,7 @@ app.include_router(auth.router, tags=["Authentication"])
 app.include_router(chat.router, tags=["Chat & Widget"])
 app.include_router(admin.router, tags=["Admin Management"])
 app.include_router(widget.router, tags=["Widget Config"])
+app.include_router(upload.router, tags=["Chat & Widget"])
 
 
 

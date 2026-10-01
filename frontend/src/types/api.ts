@@ -55,4 +55,5 @@ export interface Message {
   content: string;
   timestamp: number;
   id: number;
+  file?: { name: string; type: string; url?: string };
 }

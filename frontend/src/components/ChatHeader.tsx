@@ -1,4 +1,4 @@
-import { Minus, RotateCcw, GripHorizontal, Headphones } from 'lucide-react';
+import { Minus, RotateCcw, GripHorizontal, Headphones, Maximize2, Minimize2 } from 'lucide-react';
 
 interface ChatHeaderProps {
   isRefreshing: boolean;
@@ -7,6 +7,9 @@ interface ChatHeaderProps {
   botAvatar: string;
   onRequestHandoff?: () => void;
   isHandoffRequested?: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
+  isSmallScreen: boolean;
 }
 
 export const ChatHeader = ({
@@ -16,6 +19,9 @@ export const ChatHeader = ({
   botAvatar,
   onRequestHandoff,
   isHandoffRequested,
+  isExpanded,
+  onToggleExpanded,
+  isSmallScreen,
 }: ChatHeaderProps) => {
   return (
     <div className="cursor-grab active:cursor-grabbing flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 bg-[#0A1F44] border-b border-[#1B3B6F]/30 shrink-0 z-10 relative gap-2">
@@ -45,6 +51,15 @@ export const ChatHeader = ({
           >
             <Headphones size={13} className={isHandoffRequested ? 'animate-pulse' : ''} />
             <span className="hidden xs:inline sm:inline">{isHandoffRequested ? 'Menunggu CS' : 'Hubungi CS'}</span>
+          </button>
+        )}
+        {!isSmallScreen && (
+          <button
+            onClick={onToggleExpanded}
+            className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
+            title={isExpanded ? 'Perkecil' : 'Perbesar'}
+          >
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         )}
         <button

@@ -57,9 +57,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
       <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
         {!isCollapsed && (
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="bg-white p-2 rounded-xl flex items-center justify-center shadow-md">
-              <img src="/favicon.svg" alt="Lexa Logo" className="w-8 h-8 object-contain" />
-            </div>
+            <img src="/lexa_logo.jpeg" alt="LEXA" className="h-10 w-auto object-contain rounded-xl" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">LEXA</h1>
               <p className="text-[11px] text-[#0D7AFF] font-medium tracking-widest uppercase">AI Platform</p>
@@ -67,9 +65,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
           </Link>
         )}
         {isCollapsed && (
-          <div className="bg-white p-2 rounded-xl flex items-center justify-center shadow-md">
-            <img src="/favicon.svg" alt="Lexa Logo" className="w-8 h-8 object-contain" />
-          </div>
+          <img src="/lexa_logo.jpeg" alt="LEXA" className="h-8 w-8 object-contain rounded-lg" />
         )}
         <button
           onClick={onToggle}

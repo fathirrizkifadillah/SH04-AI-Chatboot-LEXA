@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { ShieldCheck, Lock, Mail, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api, { ApiError } from '../lib/apiClient';
 import type { LoginRequest, LoginResponse } from '../types/api';
@@ -51,9 +51,7 @@ const Login = ({ setAuthToken }: LoginProps) => {
       
       <div className="w-full max-w-md p-8 bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 relative z-10 transition-colors">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-[#0D7AFF] rounded-2xl flex items-center justify-center shadow-lg shadow-[#0D7AFF]/25">
-            <ShieldCheck className="w-8 h-8 text-white" />
-          </div>
+          <img src="/lexa_logo.jpeg" alt="LEXA" className="h-16 w-auto object-contain" />
         </div>
         
         <h1 className="text-2xl font-bold text-center text-slate-800 dark:text-slate-200 mb-2">Lexa Admin Portal</h1>

@@ -24,6 +24,8 @@ chroma_db/
 *.sqlite3
 lexa_chat.db
 data/
+uploads/*
+!uploads/.gitkeep
 
 # Node / Frontend
 node_modules/
@@ -41,6 +43,7 @@ frontend/dist/
 *.swo
 Thumbs.db
 .DS_Store
+.agents
 
 # TypeScript build info
 *.tsbuildinfo

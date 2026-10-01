@@ -53,6 +53,8 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isHandoffRequested, setIsHandoffRequested] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'thumbs_up' | 'thumbs_down'>>({});
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -261,22 +263,47 @@ function App() {
     }
   }, [messages, isStreaming, isWaitingForResponse]);
 
-  const handleSend = async (textToSend = input) => {
+  const handleSend = async (textToSend = input, fileToSend: File | null = selectedFile) => {
     const text = textToSend.trim();
-    if (!text || isStreaming || isWaitingForResponse) return;
+    if ((!text && !fileToSend) || isStreaming || isWaitingForResponse) return;
 
     setInput('');
-    const userMsg: ChatMessage = { id: Date.now(), role: 'user', content: text, timestamp: Date.now() };
+    setSelectedFile(null);
+    
+    const userMsg: ChatMessage = { 
+      id: Date.now(), 
+      role: 'user', 
+      content: text || '[File attached]', 
+      timestamp: Date.now(),
+      ...(fileToSend && { file: { name: fileToSend.name, type: fileToSend.type, url: URL.createObjectURL(fileToSend) } })
+    };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
     setIsWaitingForResponse(true);
 
     try {
-      let response = await api.stream('/chat/stream', {
-        message: text,
-        session_id: sessionId || undefined,
-        session_token: sessionToken || undefined,
-      });
+      let response: Response;
+      
+      // If file is attached, use FormData upload endpoint
+      if (fileToSend) {
+        const formData = new FormData();
+        formData.append('file', fileToSend);
+        formData.append('message', text);
+        formData.append('session_id', sessionId || '');
+        formData.append('session_token', sessionToken || '');
+        
+        response = await fetch('/api/chat/upload', {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // Normal text message
+        response = await api.stream('/chat/stream', {
+          message: text,
+          session_id: sessionId || undefined,
+          session_token: sessionToken || undefined,
+        });
+      }
 
       // Jika session invalid / 403, otomatis buat session baru dan retry
       if (!response.ok && (response.status === 403 || response.status === 401)) {
@@ -288,11 +315,23 @@ function App() {
         localStorage.setItem('lexa_session_id', newSessionId);
         localStorage.setItem('lexa_session_token', newSessionToken);
 
-        response = await api.stream('/chat/stream', {
-          message: text,
-          session_id: newSessionId,
-          session_token: newSessionToken,
-        });
+        if (fileToSend) {
+          const formData = new FormData();
+          formData.append('file', fileToSend);
+          formData.append('message', text);
+          formData.append('session_id', newSessionId);
+          formData.append('session_token', newSessionToken);
+          response = await fetch('/api/chat/upload', {
+            method: 'POST',
+            body: formData,
+          });
+        } else {
+          response = await api.stream('/chat/stream', {
+            message: text,
+            session_id: newSessionId,
+            session_token: newSessionToken,
+          });
+        }
       }
 
       if (!response.ok) throw new Error(`API Error: ${response.status}`);
@@ -517,8 +556,9 @@ function App() {
             className={
               isSmallScreen
                 ? 'w-screen h-screen max-w-full max-h-full bg-white rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
-                : 'w-[380px] h-[640px] min-w-[320px] min-h-[400px] max-w-[90vw] max-h-[calc(100vh-100px)] resize overflow-hidden bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/50 flex flex-col pointer-events-auto'
+                : `${isExpanded ? 'w-[520px] h-[750px]' : 'w-[380px] h-[640px]'} min-w-[320px] min-h-[400px] max-w-[90vw] max-h-[calc(100vh-100px)] resize overflow-hidden bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/50 flex flex-col pointer-events-auto`
             }
+            layout
           >
             {/* Header */}
             <ChatHeader
@@ -528,6 +568,9 @@ function App() {
               botAvatar={lexaBotHead}
               onRequestHandoff={handleRequestHandoff}
               isHandoffRequested={isHandoffRequested}
+              isExpanded={isExpanded}
+              onToggleExpanded={() => setIsExpanded(prev => !prev)}
+              isSmallScreen={isSmallScreen}
             />
 
             {/* Messages */}
@@ -559,8 +602,10 @@ function App() {
               input={input}
               setInput={setInput}
               onSend={() => handleSend()}
-              disabled={!input.trim() || isStreaming || isWaitingForResponse}
+              disabled={(!input.trim() && !selectedFile) || isStreaming || isWaitingForResponse}
               inputRef={inputRef}
+              selectedFile={selectedFile}
+              onFileSelect={setSelectedFile}
             />
           </motion.div>
         )}
