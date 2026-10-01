@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
-import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download, PhoneCall, CheckCircle2, Trash2 } from 'lucide-react';
+import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download, PhoneCall, CheckCircle2, Trash2, FileText, ZoomIn } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api from '../lib/apiClient';
@@ -66,6 +66,8 @@ const Conversations = () => {
   const [handoffToast, setHandoffToast] = useState('');
   const [replyError, setReplyError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImageName, setPreviewImageName] = useState<string | null>(null);
 
   const selectedSessionRef = useRef<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -668,6 +670,53 @@ const Conversations = () => {
                               {msg.content}
                             </ReactMarkdown>
                           )}
+
+                          {/* Attached File/Image Display */}
+                          {msg.file && (
+                            <div className="mt-2.5 pt-2 border-t border-white/20 dark:border-slate-700/60">
+                              {msg.file.type.startsWith('image/') ? (
+                                <div className="space-y-1.5">
+                                  <div 
+                                    className="relative group rounded-xl overflow-hidden border border-white/20 dark:border-slate-700 cursor-pointer bg-slate-950/20 max-w-[280px]"
+                                    onClick={() => {
+                                      setPreviewImage(msg.file?.url || '');
+                                      setPreviewImageName(msg.file?.name || 'Lampiran Gambar');
+                                    }}
+                                  >
+                                    <img 
+                                      src={msg.file.url} 
+                                      alt={msg.file.name} 
+                                      className="max-h-52 w-auto object-cover group-hover:scale-105 transition-transform" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white">
+                                      <ZoomIn className="w-4 h-4" />
+                                      <span className="text-[11px] font-semibold">Perbesar</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] opacity-80 max-w-[280px]">
+                                    <span className="truncate">{msg.file.name}</span>
+                                    {msg.file.size && <span>{Math.round(msg.file.size / 1024)} KB</span>}
+                                  </div>
+                                </div>
+                              ) : (
+                                <a
+                                  href={msg.file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors text-inherit"
+                                >
+                                  <FileText className="w-4 h-4 shrink-0 text-blue-400" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-semibold text-[11px] truncate max-w-[180px]">{msg.file.name}</p>
+                                    <p className="text-[9px] opacity-75">
+                                      {msg.file.type.toUpperCase().split('/').pop()} • {msg.file.size ? `${Math.round(msg.file.size / 1024)} KB` : 'Dokumen'}
+                                    </p>
+                                  </div>
+                                  <Download className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -759,8 +808,43 @@ const Conversations = () => {
             </div>
           )}
         </div>
-
       </div>
+
+      {/* Image Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex items-center justify-between pb-3 text-white">
+              <span className="text-xs font-medium truncate max-w-md">{previewImageName}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImage}
+                  download={previewImageName || 'download.jpg'}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Unduh Gambar"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Tutup"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <img 
+              src={previewImage} 
+              alt={previewImageName || 'Preview'} 
+              className="max-h-[80vh] max-w-full rounded-2xl shadow-2xl object-contain border border-white/10" 
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -563,7 +563,7 @@ function App() {
             className={
               isSmallScreen
                 ? 'w-screen h-screen max-w-full max-h-full bg-white rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
-                : `${isExpanded ? 'w-[520px] h-[750px]' : 'w-[380px] h-[640px]'} min-w-[320px] min-h-[400px] max-w-[90vw] max-h-[calc(100vh-100px)] resize overflow-hidden bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/50 flex flex-col pointer-events-auto`
+                : `${isExpanded ? 'w-[680px] h-[820px]' : 'w-[390px] h-[620px]'} min-w-[320px] min-h-[420px] max-w-[94vw] max-h-[calc(100vh-60px)] overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-[28px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border border-slate-200/80 dark:border-slate-800 flex flex-col pointer-events-auto transition-all duration-300`
             }
             layout
           >

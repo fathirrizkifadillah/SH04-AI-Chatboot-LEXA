@@ -52,31 +52,40 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
 
   return (
-    <aside className={`${isCollapsed ? 'w-[72px]' : 'w-64'} bg-[#0B1529] dark:bg-[#0B1529] text-white flex flex-col h-screen fixed left-0 top-0 shadow-xl transition-all duration-300 z-50`}>
-      {/* Logo + Toggle */}
-      <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-        {!isCollapsed && (
-          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src="/lexa_logo.jpeg" alt="LEXA" className="h-10 w-auto object-contain rounded-xl" />
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">LEXA</h1>
-              <p className="text-[11px] text-[#0D7AFF] font-medium tracking-widest uppercase">AI Platform</p>
+    <aside className={`${isCollapsed ? 'w-[74px]' : 'w-64'} bg-[#080E21] border-r border-[#152238] text-white flex flex-col h-screen fixed left-0 top-0 shadow-2xl transition-all duration-300 z-50 select-none`}>
+      {/* Brand Header */}
+      <div className={`p-4 pb-3 flex items-center ${isCollapsed ? 'justify-center flex-col gap-2' : 'justify-between'} border-b border-[#152238]`}>
+        {!isCollapsed ? (
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="p-1 bg-white rounded-xl shadow-md border border-white/20 shrink-0">
+              <img src="/lexa_logo.jpeg" alt="LEXA" className="h-8 w-auto object-contain" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl font-bold tracking-tight text-white group-hover:text-[#0066FF] transition-colors">LEXA</span>
+              </div>
+              <p className="text-[10px] text-[#0066FF] font-bold tracking-[0.25em] uppercase leading-none">
+                AI Platform
+              </p>
             </div>
           </Link>
-        )}
-        {isCollapsed && (
-          <img src="/lexa_logo.jpeg" alt="LEXA" className="h-8 w-8 object-contain rounded-lg" />
+        ) : (
+          <Link to="/" className="p-1 bg-white rounded-xl shadow-md border border-white/20 inline-block">
+            <img src="/lexa_logo.jpeg" alt="LEXA" className="h-7 w-7 object-contain" />
+          </Link>
         )}
         <button
           onClick={onToggle}
-          className={`p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors ${isCollapsed ? 'mt-2' : ''}`}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          title={isCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
         </button>
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 px-3 space-y-1 overflow-y-auto scrollbar-hidden mt-4">
+      <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto scrollbar-hidden py-4">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -84,50 +93,53 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
               key={item.name}
               to={item.path}
               title={isCollapsed ? item.name : undefined}
-              className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
                 isCollapsed ? 'justify-center' : ''
               } ${
                 isActive
-                  ? 'bg-[#0D7AFF] text-white font-medium shadow-lg shadow-[#0D7AFF]/30'
-                  : 'text-[#C0C9D5] hover:bg-[#1B3B6F]/40 hover:text-white'
+                  ? 'bg-[#0066FF] text-white font-semibold shadow-lg shadow-[#0066FF]/35'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'
               }`}
             >
-              <span className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-[#C0C9D5]'}`}>{item.icon}</span>
-              {!isCollapsed && <span className="text-sm">{item.name}</span>}
+              <span className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`}>{item.icon}</span>
+              {!isCollapsed && <span className="text-[13px] tracking-wide">{item.name}</span>}
             </Link>
           );
         })}
-        <button
-          onClick={handleLogout}
-          title={isCollapsed ? 'Logout' : undefined}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/20 hover:text-red-400 mt-4 ${isCollapsed ? 'justify-center' : ''}`}
-        >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!isCollapsed && <span className="text-sm">Logout</span>}
-        </button>
+        
+        <div className="pt-2 border-t border-[#152238] mt-2">
+          <button
+            onClick={handleLogout}
+            title={isCollapsed ? 'Keluar' : undefined}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 ${isCollapsed ? 'justify-center' : ''}`}
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            {!isCollapsed && <span className="text-[13px]">Logout</span>}
+          </button>
+        </div>
       </nav>
 
-      {/* Bottom Card */}
+      {/* Bottom Bot Card matching Image 1 */}
       {!isCollapsed && (
-        <div className="p-4 mt-auto">
-          <div className="bg-white/5 rounded-2xl p-4 relative overflow-hidden group border border-white/10 shadow-lg">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#0D7AFF]/30 to-[#1B3B6F]/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative z-10 flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center">
-                <img src="/lexa_bot.png" alt="Lexa Bot" className="w-full h-full object-contain drop-shadow-xl" />
-              </div>
-              <h3 className="font-semibold text-sm">LEXA CS Bot</h3>
-              <p className="text-[11px] text-slate-300/80 leading-tight">Smarter Answers, Better Experiences</p>
-              <Link
-                to="/widget"
-                className="mt-2 w-full py-2 bg-white/10 hover:bg-white/20 text-xs font-medium rounded-lg transition-colors border border-white/10 block text-center"
-              >
-                Panduan Integrasi
-              </Link>
+        <div className="p-3.5 mt-auto border-t border-[#152238] bg-[#060B1A]/60">
+          <div className="flex items-center gap-3 mb-2.5">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/10 p-1 flex items-center justify-center shrink-0">
+              <img src="/lexa_bot.png" alt="LEXA Bot" className="w-full h-full object-contain" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-bold text-xs text-white tracking-wide">LEXA AI</h3>
+              <p className="text-[10px] text-slate-400 leading-tight truncate">Smarter Answers, Better Experiences</p>
             </div>
           </div>
-          <p className="text-[10px] text-slate-500 text-center mt-4">
-            © 2026 LEXA Technology<br/>All rights reserved.
+          <Link
+            to="/widget"
+            className="w-full py-1.5 px-3 bg-white/[0.06] hover:bg-white/[0.12] text-[11px] font-medium text-slate-300 hover:text-white rounded-lg transition-colors border border-white/10 flex items-center justify-center gap-1.5 text-center"
+          >
+            <Code className="w-3.5 h-3.5 text-[#0066FF]" />
+            <span>Documentation</span>
+          </Link>
+          <p className="text-[9px] text-slate-500 text-center mt-2.5 tracking-tight">
+            © 2026 LEXA Technology • All rights reserved.
           </p>
         </div>
       )}

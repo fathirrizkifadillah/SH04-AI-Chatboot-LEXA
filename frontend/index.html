@@ -3,21 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Lexa Widget (React)</title>
+    <title>LEXA AI Assistant</title>
   </head>
-  <body class="bg-slate-900 min-h-screen relative overflow-hidden font-sans">
+  <body class="bg-[#080E21] min-h-screen relative overflow-hidden font-sans text-slate-100 antialiased selection:bg-[#0066FF] selection:text-white">
     
-    <!-- Decorative background to showcase widget -->
-    <div class="absolute inset-0 z-0">
-       <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
-       <div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl"></div>
+    <!-- Subtle Ambient Glow -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+       <div class="absolute -top-40 -left-40 w-[600px] h-[600px] bg-[#0066FF]/10 rounded-full blur-[140px]"></div>
+       <div class="absolute -bottom-40 -right-40 w-[600px] h-[600px] bg-[#1B3B6F]/20 rounded-full blur-[160px]"></div>
+       <div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
     </div>
     
-    <div class="relative z-10 p-12 text-center text-white/80">
-        <h1 class="text-4xl font-bold mb-4 text-white">Lexa Chat Widget</h1>
-        <p class="text-lg">Asisten Virtual LEXA - Siap membantu Anda 24/7</p>
-        <p class="mt-8 text-sm opacity-50">Silakan klik ikon robot di sudut kanan bawah layar.</p>
+    <!-- Premium Brand Showcase Header -->
+    <div class="relative z-10 min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-3xl mx-auto">
+        <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md mb-6 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-[#0066FF] animate-pulse"></span>
+            <span class="text-xs font-semibold tracking-wider text-slate-300 uppercase">LEXA Software House</span>
+            <span class="text-xs text-slate-500">•</span>
+            <span class="text-xs text-slate-400">Leading eXcellence Automation</span>
+        </div>
+
+        <div class="flex items-center justify-center mb-8">
+            <img src="/lexa_logo.jpeg" alt="LEXA" class="h-16 sm:h-20 w-auto object-contain rounded-2xl shadow-2xl border border-white/10 p-2 bg-white" />
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-4">
+            Next-Gen AI Customer Experience
+        </h1>
+        <p class="text-base sm:text-lg text-slate-300 max-w-xl mx-auto font-normal leading-relaxed">
+            Asisten cerdas berbasis Retrieval-Augmented Generation & Human Escalation. Siap membantu kebutuhan informasi, layanan, dan automasi bisnis Anda.
+        </p>
+        
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400">
+            <span class="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">Real-time RAG Search</span>
+            <span class="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">Multimodal File Support</span>
+            <span class="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">Human CS Escalation</span>
+        </div>
+
+        <div class="mt-10 inline-flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-900/60 border border-slate-800 px-4 py-2 rounded-xl">
+            <span>💡</span>
+            <span>Buka widget chat di sudut kanan bawah untuk memulai konsultasi.</span>
+        </div>
     </div>
 
     <!-- React App Mount Point -->

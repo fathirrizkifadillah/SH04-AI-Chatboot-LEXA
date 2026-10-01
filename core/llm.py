@@ -224,13 +224,16 @@ class LexaChatbot:
         self._trim_history()
         return reply
 
-    async def send_message_stream(self, message: str):
+    async def send_message_stream(self, message: str, file_metadata: dict = None):
         """
         Mengirim pesan ke Groq API dan menghasilkan (yield) jawaban per kata/token
         secara streaming (real-time). Cocok untuk antarmuka chat yang interaktif.
         """
         self._load_history()
-        self.history.append({"role": "user", "content": message})
+        user_msg = {"role": "user", "content": message}
+        if file_metadata:
+            user_msg["file"] = file_metadata
+        self.history.append(user_msg)
         self._save_history()
         messages_to_send = self._prepare_messages(message)
         

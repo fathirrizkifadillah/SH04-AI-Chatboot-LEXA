@@ -1,8 +1,8 @@
-import { RefObject } from 'react';
+import { RefObject, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ThumbsUp, ThumbsDown, FileText, FileType } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, FileText, FileType, ZoomIn, X, Download } from 'lucide-react';
 import type { Message } from '../types/api';
 
 export interface ChatMessage extends Message {
@@ -30,6 +30,9 @@ export const ChatMessageList = ({
   botAvatar,
   messagesEndRef,
 }: ChatMessageListProps) => {
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImageName, setPreviewImageName] = useState<string | null>(null);
+
   return (
     <div className="flex-1 overflow-y-auto scrollbar-hidden p-5 space-y-6 bg-slate-50/50 scroll-smooth relative">
       <AnimatePresence>
@@ -54,7 +57,7 @@ export const ChatMessageList = ({
                 <div
                   className={`px-4 py-3 text-[14px] leading-[1.6] shadow-sm break-words whitespace-pre-wrap ${
                     isUser
-                      ? 'bg-[#0D7AFF] text-white rounded-2xl rounded-tr-sm'
+                      ? 'bg-[#0066FF] text-white rounded-2xl rounded-tr-sm'
                       : isAdmin
                         ? 'bg-amber-100 text-amber-900 border border-amber-200 rounded-2xl rounded-tl-sm markdown-body'
                         : 'bg-white text-slate-700 border border-slate-200/60 rounded-2xl rounded-tl-sm markdown-body'
@@ -71,7 +74,23 @@ export const ChatMessageList = ({
                 {msg.file && (
                   <div className="mt-1.5">
                     {msg.file.type.startsWith('image/') && msg.file.url ? (
-                      <img src={msg.file.url} alt={msg.file.name} className="max-w-[200px] rounded-lg border border-slate-200" />
+                      <div 
+                        className="relative group rounded-xl overflow-hidden border border-slate-200 cursor-pointer shadow-sm max-w-[220px]"
+                        onClick={() => {
+                          setPreviewImage(msg.file?.url || '');
+                          setPreviewImageName(msg.file?.name || 'Gambar');
+                        }}
+                      >
+                        <img 
+                          src={msg.file.url} 
+                          alt={msg.file.name} 
+                          className="max-h-48 w-auto object-cover group-hover:scale-105 transition-transform" 
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white">
+                          <ZoomIn size={16} />
+                          <span className="text-[11px] font-semibold">Perbesar</span>
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg px-3 py-2 inline-flex">
                         {msg.file.type === 'application/pdf' ? (
@@ -186,6 +205,42 @@ export const ChatMessageList = ({
       </AnimatePresence>
 
       <div ref={messagesEndRef} />
+
+      {/* Image Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-3xl max-h-[85vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex items-center justify-between pb-2 text-white">
+              <span className="text-xs font-medium truncate max-w-xs">{previewImageName}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImage}
+                  download={previewImageName || 'image.jpg'}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Unduh"
+                >
+                  <Download size={15} />
+                </a>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Tutup"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+            <img 
+              src={previewImage} 
+              alt={previewImageName || 'Preview'} 
+              className="max-h-[75vh] max-w-full rounded-2xl shadow-2xl object-contain border border-white/10" 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

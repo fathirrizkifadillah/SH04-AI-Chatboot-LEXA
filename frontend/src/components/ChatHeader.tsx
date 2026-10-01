@@ -28,14 +28,21 @@ export const ChatHeader = ({
       <div className="absolute top-1.5 left-1/2 -translate-x-1/2 text-white/40 hidden sm:block">
         <GripHorizontal size={24} />
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 mt-1 pointer-events-none min-w-0">
+      <div className="flex items-center gap-2.5 sm:gap-3 mt-1 pointer-events-none min-w-0">
         <div className="relative shrink-0">
-          <img src={botAvatar} alt="Lexa Avatar" className="w-9 h-9 sm:w-11 sm:h-11 object-contain drop-shadow-sm" />
-          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 border-2 border-white rounded-full"></div>
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 p-1 flex items-center justify-center border border-white/20">
+            <img src={botAvatar} alt="LEXA" className="w-full h-full object-contain" />
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-[#0A1F44] rounded-full"></div>
         </div>
         <div className="min-w-0">
-          <h2 className="text-[13px] sm:text-[15px] font-bold text-white leading-tight truncate">Lexa Chat Widget</h2>
-          <p className="text-[10px] sm:text-xs text-emerald-400 font-medium mt-0.5">Online</p>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-[13px] sm:text-[14px] font-bold text-white leading-tight truncate">LEXA AI Assistant</h2>
+          </div>
+          <p className="text-[10px] sm:text-xs text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Online</span>
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-1 sm:gap-1.5 mt-1 z-20 shrink-0">
@@ -56,8 +63,13 @@ export const ChatHeader = ({
         {!isSmallScreen && (
           <button
             onClick={onToggleExpanded}
-            className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
-            title={isExpanded ? 'Perkecil' : 'Perbesar'}
+            className={`p-1.5 rounded-lg transition-all shrink-0 ${
+              isExpanded 
+                ? 'bg-[#0066FF] text-white shadow-md' 
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+            title={isExpanded ? 'Kembalikan ke ukuran standar' : 'Perbesar jendela chat (Leluasa)'}
+            aria-label={isExpanded ? 'Minimize chat' : 'Maximize chat'}
           >
             {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>

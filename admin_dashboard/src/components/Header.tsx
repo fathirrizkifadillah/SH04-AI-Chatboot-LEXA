@@ -200,29 +200,33 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          title="Toggle Sidebar"
+          aria-label="Toggle navigation menu"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#0D7AFF]"></span>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-tight">
-            LEXA Console
+        <div className="flex items-center gap-2.5">
+          <div className="p-0.5 bg-white rounded-lg shadow-xs border border-slate-200 dark:border-slate-700 shrink-0">
+            <img src="/lexa_logo.jpeg" alt="LEXA" className="h-5 w-auto object-contain" />
+          </div>
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            Dashboard
           </h2>
         </div>
       </div>
 
-      {/* Global Search Bar */}
-      <div className="flex-1 max-w-md mx-6">
+      {/* Global Search Bar matching Image 1 */}
+      <div className="flex-1 max-w-lg mx-6 hidden sm:block">
         <button
           onClick={() => setShowSearchModal(true)}
-          className="w-full flex items-center justify-between bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs rounded-xl py-2 px-3 hover:border-[#0D7AFF] transition-all text-slate-500 dark:text-slate-400 shadow-none cursor-pointer"
+          className="w-full flex items-center justify-between bg-slate-100/80 dark:bg-[#0D182E] border border-slate-200 dark:border-slate-700/80 text-xs rounded-xl py-2 px-3.5 hover:border-[#0066FF] transition-all text-slate-500 dark:text-slate-400 shadow-none cursor-pointer"
         >
-          <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
-            <span>Cari menu, halaman, aksi...</span>
+          <div className="flex items-center gap-2.5">
+            <Search className="w-4 h-4 text-slate-400" />
+            <span className="text-xs">Search anything...</span>
           </div>
-          <span className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">
+          <span className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 shadow-xs">
             ⌘K
           </span>
         </button>

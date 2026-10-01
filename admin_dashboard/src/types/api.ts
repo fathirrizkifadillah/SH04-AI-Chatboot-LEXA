@@ -137,6 +137,13 @@ export interface Message {
   role: 'user' | 'assistant' | 'admin' | 'system';
   content: string;
   timestamp?: number;
+  file?: {
+    name: string;
+    type: string;
+    url?: string;
+    path?: string;
+    size?: number;
+  };
 }
 
 // Unanswered

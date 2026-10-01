@@ -93,8 +93,20 @@ async def upload_file(
 
     # --- Build context string for LLM ---
     if content_type.startswith("image/"):
-        # Describe image attachment without full base64 (use placeholder for LLM context)
-        extra_context = f"[User melampirkan gambar '{file.filename}' (format: {content_type}). File telah disimpan untuk referensi.]"
+        img_info = ""
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(file_data))
+            w, h = img.size
+            fmt = img.format or content_type.split("/")[-1].upper()
+            img_info = f" (resolusi: {w}x{h} px, format: {fmt}, ukuran: {round(len(file_data)/1024, 1)} KB)"
+        except Exception as e:
+            logger.warning(f"Failed to inspect image with PIL: {e}")
+        
+        extra_context = (
+            f"[Pengguna mengunggah lampiran gambar: '{file.filename}'{img_info}. File tersimpan aman di server dan dapat dilihat oleh Admin CS. "
+            f"Tolong akui penerimaan gambar ini dengan ramah, dan bantu jawab pertanyaan atau instruksi pengguna.]"
+        )
     elif content_type == "application/pdf":
         extracted = _extract_pdf_text(file_data)
         extra_context = f"[User melampirkan PDF '{file.filename}'. Isi dokumen:\n{extracted}]"
@@ -138,12 +150,13 @@ async def upload_file(
             if is_handoff:
                 async with get_session_lock(session_id):
                     _save_handoff_message(session_id, combined_message, file_metadata=file_metadata)
-                await manager.broadcast_to_session({"type": "handoff_user_msg", "content": combined_message}, session_id)
+                await manager.broadcast_to_session({"type": "handoff_user_msg", "content": combined_message, "file": file_metadata}, session_id)
                 await manager.broadcast_to_admins({
                     "type": "new_message",
                     "session_id": session_id,
                     "content": combined_message,
                     "role": "user",
+                    "file": file_metadata,
                     "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
                 })
 
@@ -151,7 +164,7 @@ async def upload_file(
                 return
 
             async with get_session_lock(session_id):
-                async for chunk in bot.send_message_stream(combined_message):
+                async for chunk in bot.send_message_stream(combined_message, file_metadata=file_metadata):
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 
@@ -169,6 +182,8 @@ async def upload_file(
                 "type": "new_message",
                 "session_id": session_id,
                 "content": combined_message,
+                "role": "user",
+                "file": file_metadata,
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
             })
 
