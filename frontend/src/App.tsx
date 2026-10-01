@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import lexaBotHead from './assets/lexa_bot_transparent.png';
 import api from './lib/apiClient';
 import type { WidgetConfig, SSEEvent } from './types/api';
@@ -59,6 +59,7 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
 
   // Initialize & fetch config
   useEffect(() => {
@@ -567,13 +568,15 @@ function App() {
           <motion.div
             ref={panelRef}
             drag={!isSmallScreen}
-            dragConstraints={{ left: -800, right: 0, top: -800, bottom: 0 }}
-            dragElastic={0.1}
+            dragControls={dragControls}
+            dragListener={false}
             dragMomentum={false}
-            initial={{ opacity: 0, y: 50, scale: 0.9, originX: 1, originY: 1 }}
+            dragElastic={0}
+            dragConstraints={{ left: -1000, right: 0, top: -850, bottom: 0 }}
+            initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            exit={{ opacity: 0, y: 20, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             style={
               isSmallScreen
                 ? { position: 'absolute', inset: 0, width: '100vw', height: '100vh' }
@@ -582,9 +585,8 @@ function App() {
             className={
               isSmallScreen
                 ? 'w-screen h-screen max-w-full max-h-full bg-[#080E21] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
-                : `${isExpanded ? 'w-[680px] h-[820px]' : 'w-[400px] h-[640px]'} min-w-[320px] min-h-[440px] max-w-[94vw] max-h-[calc(100vh-50px)] overflow-hidden bg-[#0A1224]/95 backdrop-blur-2xl rounded-[26px] shadow-[0_32px_72px_-16px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto transition-all duration-300`
+                : `${isExpanded ? 'w-[680px] h-[820px]' : 'w-[400px] h-[640px]'} min-w-[320px] min-h-[440px] max-w-[94vw] max-h-[calc(100vh-50px)] overflow-hidden bg-[#0A1224] rounded-[26px] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto select-auto`
             }
-            layout
           >
             {/* Header */}
             <ChatHeader
@@ -597,6 +599,7 @@ function App() {
               isExpanded={isExpanded}
               onToggleExpanded={() => setIsExpanded(prev => !prev)}
               isSmallScreen={isSmallScreen}
+              onDragStart={(e) => dragControls.start(e)}
             />
 
             {/* Messages */}

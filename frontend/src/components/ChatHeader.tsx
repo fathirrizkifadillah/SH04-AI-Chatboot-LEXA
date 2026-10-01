@@ -10,6 +10,7 @@ interface ChatHeaderProps {
   isExpanded: boolean;
   onToggleExpanded: () => void;
   isSmallScreen: boolean;
+  onDragStart?: (e: React.PointerEvent) => void;
 }
 
 export const ChatHeader = ({
@@ -22,9 +23,22 @@ export const ChatHeader = ({
   isExpanded,
   onToggleExpanded,
   isSmallScreen,
+  onDragStart,
 }: ChatHeaderProps) => {
   return (
-    <div className="cursor-grab active:cursor-grabbing flex items-center justify-between px-4 sm:px-5 py-3.5 bg-[#0D182E]/90 border-b border-white/[0.08] backdrop-blur-xl shrink-0 z-10 relative">
+    <div
+      onPointerDown={(e) => {
+        if (!isSmallScreen && onDragStart) {
+          // Hanya drag jika bukan tombol yang diklik
+          if (!(e.target as HTMLElement).closest('button, a, input, textarea')) {
+            onDragStart(e);
+          }
+        }
+      }}
+      className={`flex items-center justify-between px-4 sm:px-5 py-3.5 bg-[#0D182E] border-b border-white/[0.08] shrink-0 z-10 relative select-none ${
+        isSmallScreen ? '' : 'cursor-grab active:cursor-grabbing'
+      }`}
+    >
       {/* Left: Identity & Status */}
       <div className="flex items-center gap-3 pointer-events-none min-w-0">
         <div className="relative shrink-0">
