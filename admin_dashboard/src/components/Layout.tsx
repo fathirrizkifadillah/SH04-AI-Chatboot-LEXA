@@ -21,7 +21,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B1529] transition-colors">
       <Sidebar
         setAuthToken={setAuthToken}
         isCollapsed={sidebarCollapsed}

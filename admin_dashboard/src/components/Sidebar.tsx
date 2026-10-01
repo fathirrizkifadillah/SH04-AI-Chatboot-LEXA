@@ -52,22 +52,22 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
 
   return (
-    <aside className={`${isCollapsed ? 'w-[72px]' : 'w-64'} bg-slate-900 dark:bg-slate-950 text-white flex flex-col h-screen fixed left-0 top-0 shadow-2xl transition-all duration-300 z-50`}>
+    <aside className={`${isCollapsed ? 'w-[72px]' : 'w-64'} bg-[#0B1529] dark:bg-[#0B1529] text-white flex flex-col h-screen fixed left-0 top-0 shadow-xl transition-all duration-300 z-50`}>
       {/* Logo + Toggle */}
       <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
         {!isCollapsed && (
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="bg-white p-2 rounded-xl flex items-center justify-center shadow-md">
               <img src="/favicon.svg" alt="Lexa Logo" className="w-8 h-8 object-contain" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">LEXA</h1>
-              <p className="text-[10px] text-blue-300 font-medium tracking-widest uppercase">AI Platform</p>
+              <h1 className="text-2xl font-bold tracking-tight text-white">LEXA</h1>
+              <p className="text-[11px] text-[#0D7AFF] font-medium tracking-widest uppercase">AI Platform</p>
             </div>
           </Link>
         )}
         {isCollapsed && (
-          <div className="bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="bg-white p-2 rounded-xl flex items-center justify-center shadow-md">
             <img src="/favicon.svg" alt="Lexa Logo" className="w-8 h-8 object-contain" />
           </div>
         )}
@@ -92,11 +92,11 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
                 isCollapsed ? 'justify-center' : ''
               } ${
                 isActive
-                  ? 'bg-blue-600 text-white font-medium shadow-lg shadow-blue-600/20'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  ? 'bg-[#0D7AFF] text-white font-medium shadow-lg shadow-[#0D7AFF]/30'
+                  : 'text-[#C0C9D5] hover:bg-[#1B3B6F]/40 hover:text-white'
               }`}
             >
-              <span className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`}>{item.icon}</span>
+              <span className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-[#C0C9D5]'}`}>{item.icon}</span>
               {!isCollapsed && <span className="text-sm">{item.name}</span>}
             </Link>
           );
@@ -104,7 +104,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
         <button
           onClick={handleLogout}
           title={isCollapsed ? 'Logout' : undefined}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/10 hover:text-red-400 mt-4 ${isCollapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 text-red-400 hover:bg-red-500/20 hover:text-red-400 mt-4 ${isCollapsed ? 'justify-center' : ''}`}
         >
           <LogOut className="w-5 h-5 shrink-0" />
           {!isCollapsed && <span className="text-sm">Logout</span>}
@@ -115,7 +115,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
       {!isCollapsed && (
         <div className="p-4 mt-auto">
           <div className="bg-white/5 rounded-2xl p-4 relative overflow-hidden group border border-white/10 shadow-lg">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 to-purple-600/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0D7AFF]/30 to-[#1B3B6F]/30 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative z-10 flex flex-col items-center text-center gap-2">
               <div className="w-14 h-14 rounded-full flex items-center justify-center">
                 <img src="/lexa_bot.png" alt="Lexa Bot" className="w-full h-full object-contain drop-shadow-xl" />

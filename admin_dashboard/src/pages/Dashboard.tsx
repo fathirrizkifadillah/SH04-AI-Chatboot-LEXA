@@ -75,8 +75,8 @@ const Dashboard = () => {
       trend: 'Sinkronisasi Real-time', 
       trendUp: true, 
       icon: MessageSquare, 
-      color: 'text-blue-600 dark:text-blue-400', 
-      bg: 'bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/50' 
+      color: 'text-[#0D7AFF]', 
+      bg: 'bg-[#0D7AFF]/5 border border-[#0D7AFF]/20' 
     },
     { 
       title: 'Unanswered Queries', 
@@ -102,8 +102,8 @@ const Dashboard = () => {
       trend: feedbackStats ? `${feedbackStats.thumbs_up} Positif / ${feedbackStats.thumbs_down} Negatif` : 'Belum ada data', 
       trendUp: true, 
       icon: ThumbsUp, 
-      color: 'text-indigo-600 dark:text-indigo-400', 
-      bg: 'bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-900/50' 
+      color: 'text-[#1B3B6F]', 
+      bg: 'bg-[#1B3B6F]/5 border border-[#1B3B6F]/20' 
     },
     { 
       title: 'Resolution Rate', 
@@ -111,24 +111,24 @@ const Dashboard = () => {
       trend: 'Penyelesaian oleh AI', 
       trendUp: true, 
       icon: Activity, 
-      color: 'text-sky-600 dark:text-sky-400', 
-      bg: 'bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-900/50' 
+      color: 'text-[#0D7AFF]', 
+      bg: 'bg-[#0D7AFF]/5 border border-[#0D7AFF]/20' 
     },
   ];
   
   return (
     <div className="space-y-6 pb-12">
       {/* Hero Banner - Always High Contrast Dark Slate in both Light and Dark mode */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#0f172a] text-white shadow-md border border-slate-800">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 right-1/3 w-60 h-60 bg-indigo-600/10 rounded-full blur-3xl translate-y-1/2"></div>
+      <div className="relative overflow-hidden rounded-2xl bg-[#0A1F44] text-white shadow-md border border-[#1B3B6F]">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#0D7AFF]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 right-1/3 w-60 h-60 bg-[#1B3B6F]/10 rounded-full blur-3xl translate-y-1/2"></div>
         
         <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-medium text-slate-200">
               <span>Konsol Operasional LEXA</span>
-              <span className="w-1 h-1 rounded-full bg-blue-400"></span>
-              <span className="text-blue-300 font-semibold">{currentUser?.name || 'Administrator'}</span>
+              <span className="w-1 h-1 rounded-full bg-[#0D7AFF]"></span>
+              <span className="text-[#0D7AFF] font-semibold">{currentUser?.name || 'Administrator'}</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white leading-tight">
               Customer Support Intelligence Platform
@@ -139,7 +139,7 @@ const Dashboard = () => {
             <div className="flex flex-wrap gap-2.5 pt-2">
               <button
                 onClick={() => navigate('/kb')}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                className="px-4 py-2 bg-[#0D7AFF] hover:bg-[#0B6FE8] text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" /> Kelola Knowledge Base
               </button>
@@ -229,10 +229,10 @@ const Dashboard = () => {
                 <Line 
                   type="monotone" 
                   dataKey="percakapan" 
-                  stroke="#2563eb" 
+                  stroke="#0D7AFF" 
                   strokeWidth={2.5}
-                  dot={{ r: 3.5, fill: '#2563eb', strokeWidth: 1.5, stroke: '#fff' }}
-                  activeDot={{ r: 5, fill: '#1d4ed8', strokeWidth: 0 }}
+                  dot={{ r: 3.5, fill: '#0D7AFF', strokeWidth: 1.5, stroke: '#fff' }}
+                  activeDot={{ r: 5, fill: '#0B6FE8', strokeWidth: 0 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -245,7 +245,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-1.5">
               <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Unanswered Queries</h3>
               <span title="Pertanyaan pelanggan yang tidak ditemukan referensi dokumennya di basis pengetahuan. Bot tidak mengarang jawaban (anti-halusinasi). Tim dapat menambahkan topik ini ke Knowledge Base.">
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500 cursor-pointer" />
+                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-[#0D7AFF] cursor-pointer" />
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug">
@@ -270,7 +270,7 @@ const Dashboard = () => {
                 </div>
                 <button
                   onClick={() => navigate('/kb')}
-                  className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500 text-blue-600 dark:text-blue-400 text-[11px] font-medium rounded-lg transition-colors shrink-0 flex items-center gap-1 shadow-sm"
+                  className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#0D7AFF] text-[#0D7AFF] text-[11px] font-medium rounded-lg transition-colors shrink-0 flex items-center gap-1 shadow-sm"
                   title="Tambah dokumen ke Knowledge Base"
                 >
                   <Plus className="w-3 h-3" /> Tambah ke KB
@@ -282,7 +282,7 @@ const Dashboard = () => {
           {/* Wired Active Button */}
           <button 
             onClick={() => navigate('/conversations')}
-            className="w-full mt-4 py-2.5 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/40 dark:hover:bg-slate-700/80 text-xs font-semibold text-blue-600 dark:text-blue-400 rounded-xl transition-colors border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            className="w-full mt-4 py-2.5 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700/40 dark:hover:bg-slate-700/80 text-xs font-semibold text-[#0D7AFF] rounded-xl transition-colors border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
           >
             <span>Lihat Semua Aktivitas Percakapan</span>
             <ArrowRight className="w-3.5 h-3.5" />

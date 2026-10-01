@@ -54,7 +54,7 @@ export const ChatMessageList = ({
                 <div
                   className={`px-4 py-3 text-[14px] leading-[1.6] shadow-sm break-words whitespace-pre-wrap ${
                     isUser
-                      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+                      ? 'bg-[#0D7AFF] text-white rounded-2xl rounded-tr-sm'
                       : isAdmin
                         ? 'bg-amber-100 text-amber-900 border border-amber-200 rounded-2xl rounded-tl-sm markdown-body'
                         : 'bg-white text-slate-700 border border-slate-200/60 rounded-2xl rounded-tl-sm markdown-body'
@@ -75,7 +75,7 @@ export const ChatMessageList = ({
                   <div className="flex gap-1 px-1 mt-0.5">
                     <button
                       onClick={() => onFeedback(idx, 'thumbs_up')}
-                      className="p-1 text-slate-300 hover:text-green-500 transition-colors rounded"
+                      className="p-1 text-slate-300 hover:text-[#0D7AFF] transition-colors rounded"
                       title="Jawaban membantu"
                     >
                       <ThumbsUp size={13} />
@@ -92,7 +92,7 @@ export const ChatMessageList = ({
                 {feedbackStatus && (
                   <div className="flex items-center gap-1 px-1 mt-0.5">
                     {feedbackStatus === 'thumbs_up' ? (
-                      <ThumbsUp size={12} className="text-green-500" />
+                      <ThumbsUp size={12} className="text-[#0D7AFF]" />
                     ) : (
                       <ThumbsDown size={12} className="text-red-500" />
                     )}
@@ -132,17 +132,17 @@ export const ChatMessageList = ({
                   <motion.div
                     animate={{ y: [0, -4, 0] }}
                     transition={{ repeat: Infinity, duration: 0.6, delay: 0 }}
-                    className="w-1.5 h-1.5 bg-blue-400 rounded-full"
+                    className="w-1.5 h-1.5 bg-[#0D7AFF] rounded-full"
                   />
                   <motion.div
                     animate={{ y: [0, -4, 0] }}
                     transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                    className="w-1.5 h-1.5 bg-blue-400 rounded-full"
+                    className="w-1.5 h-1.5 bg-[#0D7AFF] rounded-full"
                   />
                   <motion.div
                     animate={{ y: [0, -4, 0] }}
                     transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
-                    className="w-1.5 h-1.5 bg-blue-400 rounded-full"
+                    className="w-1.5 h-1.5 bg-[#0D7AFF] rounded-full"
                   />
                 </div>
               </div>

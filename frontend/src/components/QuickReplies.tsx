@@ -16,7 +16,7 @@ export const QuickReplies = ({ replies, onSelect }: QuickRepliesProps) => {
         <button
           key={i}
           onClick={() => onSelect(text)}
-          className="px-3.5 sm:px-4 py-2 bg-white/80 backdrop-blur-sm border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white text-[12px] sm:text-[13px] font-medium rounded-full shadow-sm transition-all active:scale-95 text-left"
+          className="px-3.5 sm:px-4 py-2 bg-white/80 backdrop-blur-sm border border-[#0D7AFF]/30 text-[#0D7AFF] hover:bg-[#0D7AFF] hover:text-white text-[12px] sm:text-[13px] font-medium rounded-full shadow-sm transition-all active:scale-95 text-left"
         >
           {text}
         </button>

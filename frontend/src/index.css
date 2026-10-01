@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-navy-primary: #0A1F44;
+  --color-navy-dark: #0B1529;
+  --color-navy-medium: #1B3B6F;
+  --color-brand-blue: #0D7AFF;
+  --color-brand-blue-hover: #0B6FE8;
+  --color-silver: #C0C9D5;
+  --color-bg-light: #F5F7FA;
+}
+
 @layer base {
   body {
     @apply antialiased text-slate-800 bg-transparent;
@@ -13,7 +23,8 @@
   @apply mb-2 last:mb-0;
 }
 .markdown-body strong {
-  @apply font-bold text-slate-900;
+  @apply font-bold;
+  color: #0A1F44;
 }
 .markdown-body ul {
   @apply list-disc list-inside mb-2 last:mb-0;
@@ -22,10 +33,12 @@
   @apply list-decimal list-inside mb-2 last:mb-0;
 }
 .markdown-body a {
-  @apply text-blue-600 hover:underline;
+  color: #0D7AFF;
+  @apply hover:underline;
 }
 .markdown-body code {
-  @apply bg-slate-100 px-1 py-0.5 rounded text-sm text-pink-600;
+  background-color: #F5F7FA;
+  @apply px-1 py-0.5 rounded text-sm text-pink-600;
 }
 
 /* Hidden scrollbar but keep scroll */

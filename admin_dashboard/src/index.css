@@ -2,9 +2,19 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  --color-navy-primary: #0A1F44;
+  --color-navy-dark: #0B1529;
+  --color-navy-medium: #1B3B6F;
+  --color-brand-blue: #0D7AFF;
+  --color-brand-blue-hover: #0B6FE8;
+  --color-silver: #C0C9D5;
+  --color-bg-light: #F5F7FA;
+}
+
 @layer base {
   body {
-    @apply bg-[#f8fafc] text-slate-800 antialiased dark:bg-[#0b0f19] dark:text-slate-100;
+    @apply bg-[#F5F7FA] text-slate-800 antialiased dark:bg-[#0B1529] dark:text-slate-100;
   }
 }
 
@@ -13,10 +23,19 @@
     @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
   }
   .glass-dark {
-    @apply bg-[#0f172a]/80 backdrop-blur-lg border border-white/10 shadow-lg;
+    @apply bg-[#152238]/80 backdrop-blur-lg border border-white/10 shadow-lg;
   }
   .card-hover {
     @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+  .shadow-lexa-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  .shadow-lexa-md {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  .shadow-lexa-lg {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   }
 }
 

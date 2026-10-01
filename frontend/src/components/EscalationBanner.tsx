@@ -54,7 +54,7 @@ export const EscalationBanner = ({
             className={`px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               escalationShown
                 ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-[#0D7AFF] hover:bg-[#0B6FE8] text-white'
             }`}
           >
             <Headphones className="w-3.5 h-3.5" />
