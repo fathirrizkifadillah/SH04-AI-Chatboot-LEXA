@@ -1,51 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-navy-primary: #0A1F44;
-  --color-navy-dark: #0B1529;
-  --color-navy-medium: #1B3B6F;
-  --color-brand-blue: #0D7AFF;
-  --color-brand-blue-hover: #0B6FE8;
-  --color-silver: #C0C9D5;
-  --color-bg-light: #F5F7FA;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-bg-base: #060B18;
+  --color-surface-bezel: rgba(255, 255, 255, 0.06);
+  --color-surface-card: #0D162B;
+  --color-accent: #2563EB;
 }
 
 @layer base {
+  * {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
   body {
-    @apply antialiased text-slate-800 bg-transparent;
+    font-family: var(--font-sans);
+    @apply antialiased text-slate-200 bg-[#060B18];
+  }
+  code, pre {
+    font-family: var(--font-mono);
   }
 }
 
-/* Markdown Styling */
-.markdown-body p {
-  @apply mb-2 last:mb-0;
-}
-.markdown-body strong {
-  @apply font-bold;
-  color: #0A1F44;
-}
-.markdown-body ul {
-  @apply list-disc list-inside mb-2 last:mb-0;
-}
-.markdown-body ol {
-  @apply list-decimal list-inside mb-2 last:mb-0;
-}
-.markdown-body a {
-  color: #0D7AFF;
-  @apply hover:underline;
-}
-.markdown-body code {
-  background-color: #F5F7FA;
-  @apply px-1 py-0.5 rounded text-sm text-pink-600;
+/* Precision Double-Bezel Architecture */
+.double-bezel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 24px 48px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* Hidden scrollbar but keep scroll */
+.double-bezel-inner {
+  background: #0B1428;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Markdown Styling for High-End AI Responses */
+.markdown-body {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #E2E8F0;
+}
+
+.markdown-body p {
+  margin-bottom: 0.65rem;
+}
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.65rem;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.65rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body a {
+  color: #60A5FA;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.3);
+  transition: all 0.2s ease;
+}
+.markdown-body a:hover {
+  color: #93C5FD;
+  border-bottom-color: #93C5FD;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono);
+  background-color: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 12px;
+  color: #93C5FD;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.markdown-body pre {
+  background-color: #060B18;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  color: #E2E8F0;
+  font-size: 12px;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 12px;
+}
+
+.markdown-body th, .markdown-body td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.markdown-body th {
+  background-color: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  color: #F8FAFC;
+}
+
+/* Hidden scrollbar with smooth momentum */
 .scrollbar-hidden {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+/* Custom subtle scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
 }

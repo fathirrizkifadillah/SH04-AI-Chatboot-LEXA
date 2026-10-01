@@ -8,15 +8,16 @@ interface QuickRepliesProps {
 export const QuickReplies = ({ replies, onSelect }: QuickRepliesProps) => {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="px-3 sm:px-5 pb-4 pt-1 flex flex-wrap gap-2 bg-slate-50/50 shrink-0"
+      transition={{ duration: 0.2 }}
+      className="px-4 sm:px-5 pb-3 pt-1 flex flex-wrap gap-2 bg-[#080E20]/95 shrink-0"
     >
       {replies.map((text, i) => (
         <button
           key={i}
           onClick={() => onSelect(text)}
-          className="px-3.5 sm:px-4 py-2 bg-white/80 backdrop-blur-sm border border-[#0D7AFF]/30 text-[#0D7AFF] hover:bg-[#0D7AFF] hover:text-white text-[12px] sm:text-[13px] font-medium rounded-full shadow-sm transition-all active:scale-95 text-left"
+          className="px-3 py-1.5 bg-white/[0.04] hover:bg-blue-600/20 border border-white/[0.08] hover:border-blue-500/40 text-slate-300 hover:text-white text-xs font-medium rounded-full shadow-sm transition-all duration-200 active:scale-[0.96] text-left cursor-pointer"
         >
           {text}
         </button>

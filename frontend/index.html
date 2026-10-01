@@ -1,55 +1,272 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>LEXA AI Assistant</title>
+    <title>LEXA • Enterprise Conversational Intelligence</title>
+    <meta name="description" content="Platform conversational AI berbasis RAG terkalibrasi dan eskalasi CS manusia real-time oleh LEXA Software House." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#080E21] min-h-screen relative overflow-hidden font-sans text-slate-100 antialiased selection:bg-[#0066FF] selection:text-white">
+  <body class="bg-[#060B18] min-h-screen text-slate-100 antialiased selection:bg-[#2563EB] selection:text-white relative">
     
-    <!-- Subtle Ambient Glow -->
-    <div class="fixed inset-0 pointer-events-none overflow-hidden">
-       <div class="absolute -top-40 -left-40 w-[600px] h-[600px] bg-[#0066FF]/10 rounded-full blur-[140px]"></div>
-       <div class="absolute -bottom-40 -right-40 w-[600px] h-[600px] bg-[#1B3B6F]/20 rounded-full blur-[160px]"></div>
-       <div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25"></div>
-    </div>
-    
-    <!-- Premium Brand Showcase Header -->
-    <div class="relative z-10 min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-3xl mx-auto">
-        <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-md mb-6 shadow-sm">
-            <span class="w-2 h-2 rounded-full bg-[#0066FF] animate-pulse"></span>
-            <span class="text-xs font-semibold tracking-wider text-slate-300 uppercase">LEXA Software House</span>
-            <span class="text-xs text-slate-500">•</span>
-            <span class="text-xs text-slate-400">Leading eXcellence Automation</span>
-        </div>
-
-        <div class="flex items-center justify-center mb-8">
-            <img src="/lexa_logo.jpeg" alt="LEXA" class="h-16 sm:h-20 w-auto object-contain rounded-2xl shadow-2xl border border-white/10 p-2 bg-white" />
-        </div>
-
-        <h1 class="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-4">
-            Next-Gen AI Customer Experience
-        </h1>
-        <p class="text-base sm:text-lg text-slate-300 max-w-xl mx-auto font-normal leading-relaxed">
-            Asisten cerdas berbasis Retrieval-Augmented Generation & Human Escalation. Siap membantu kebutuhan informasi, layanan, dan automasi bisnis Anda.
-        </p>
-        
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400">
-            <span class="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">Real-time RAG Search</span>
-            <span class="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">Multimodal File Support</span>
-            <span class="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">Human CS Escalation</span>
-        </div>
-
-        <div class="mt-10 inline-flex items-center gap-2 text-xs font-medium text-slate-400 bg-slate-900/60 border border-slate-800 px-4 py-2 rounded-xl">
-            <span>💡</span>
-            <span>Buka widget chat di sudut kanan bawah untuk memulai konsultasi.</span>
-        </div>
+    <!-- Subtle architectural background structure -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+      <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-80"></div>
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[340px] bg-[#1E3A8A]/15 blur-[120px] rounded-full"></div>
     </div>
 
-    <!-- React App Mount Point -->
-    <div id="root"></div>
+    <div class="relative z-10 flex flex-col min-h-screen">
+      <!-- Precision Top Navigation Bar -->
+      <header class="border-b border-white/[0.08] backdrop-blur-xl bg-[#060B18]/80 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white p-1.5 shadow-sm flex items-center justify-center border border-white/20">
+              <img src="/lexa_logo.jpeg" alt="LEXA" class="w-full h-full object-contain" />
+            </div>
+            <div class="flex flex-col">
+              <span class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                LEXA
+                <span class="text-[10px] font-semibold tracking-wider text-blue-400 bg-blue-500/10 px-1.5 py-0.2 rounded border border-blue-500/20">SOFTWARE HOUSE</span>
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono">Leading eXcellence Automation</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] text-[11px] font-mono text-slate-300">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>RAG ENGINE v2.4</span>
+              <span class="text-slate-600">/</span>
+              <span class="text-emerald-400">OPERATIONAL</span>
+            </div>
+
+            <a 
+              href="http://localhost:5173" 
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white px-3.5 py-1.5 rounded-lg border border-white/10 hover:bg-white/[0.05] transition-all"
+            >
+              <span>Admin Console</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+
+            <button 
+              onclick="window.dispatchEvent(new CustomEvent('open-lexa-chat'))"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white text-xs font-semibold shadow-[0_0_20px_-3px_rgba(37,99,235,0.4)] transition-all cursor-pointer"
+            >
+              <span>Buka Chat</span>
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Showcase -->
+      <main class="flex-1 max-w-7xl mx-auto px-6 py-12 md:py-16 w-full">
+        <!-- Asymmetric Hero Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center mb-20">
+          <!-- Left Column: Copy & Value Proposition -->
+          <div class="lg:col-span-7 flex flex-col items-start text-left">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-mono tracking-wider uppercase mb-5">
+              <span>LEXA DIALOG ARCHITECTURE</span>
+            </div>
+
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.08] mb-6">
+              Dialog Otomatis Cerdas dengan Grounding Faktual.
+            </h1>
+
+            <p class="text-base sm:text-lg text-slate-300 max-w-[58ch] font-normal leading-relaxed mb-8">
+              Platform percakapan cerdas bertenaga Retrieval-Augmented Generation yang secara instan menjawab inquiry bisnis dan mulus beralih ke staf CS manusia saat dibutuhkan.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-4 mb-10">
+              <button 
+                onclick="window.dispatchEvent(new CustomEvent('open-lexa-chat'))"
+                class="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-all shadow-[0_4px_24px_rgba(37,99,235,0.4)] flex items-center gap-3 group active:scale-[0.98] cursor-pointer"
+              >
+                <span>Mulai Konsultasi Lexa</span>
+                <span class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center transition-transform group-hover:translate-x-0.5">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
+              </button>
+
+              <a 
+                href="#capabilities" 
+                class="px-5 py-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white text-sm font-medium transition-all"
+              >
+                Eksplorasi Kapabilitas
+              </a>
+            </div>
+
+            <!-- Precision Metric Strip -->
+            <div class="grid grid-cols-3 gap-6 pt-6 border-t border-white/[0.08] w-full max-w-lg">
+              <div>
+                <p class="text-xl sm:text-2xl font-bold font-mono text-white">&lt; 850<span class="text-xs font-sans text-blue-400 font-semibold">ms</span></p>
+                <p class="text-[11px] text-slate-400 font-medium mt-0.5">RAG Query Latency</p>
+              </div>
+              <div>
+                <p class="text-xl sm:text-2xl font-bold font-mono text-white">0<span class="text-xs font-sans text-emerald-400 font-semibold">-Drop</span></p>
+                <p class="text-[11px] text-slate-400 font-medium mt-0.5">WebSocket Sync</p>
+              </div>
+              <div>
+                <p class="text-xl sm:text-2xl font-bold font-mono text-white">100<span class="text-xs font-sans text-amber-400 font-semibold">%</span></p>
+                <p class="text-[11px] text-slate-400 font-medium mt-0.5">Human Fallback</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Machined Double-Bezel Architecture Preview -->
+          <div class="lg:col-span-5 w-full">
+            <div class="p-2 rounded-[2rem] bg-white/[0.03] border border-white/[0.08] shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+              <div class="bg-[#0B1428] rounded-[calc(2rem-0.5rem)] border border-white/[0.06] p-5 shadow-inner">
+                <!-- Window Header -->
+                <div class="flex items-center justify-between pb-4 border-b border-white/[0.06] mb-4">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+                    <span class="text-xs font-mono text-slate-400 ml-2">lexa-runtime-pipeline.log</span>
+                  </div>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">LIVE</span>
+                </div>
+
+                <!-- Event Pipeline Trace -->
+                <div class="space-y-3 font-mono text-xs">
+                  <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-start gap-2.5">
+                    <span class="text-blue-400 text-[10px] mt-0.5 font-bold">[INGEST]</span>
+                    <div class="min-w-0">
+                      <p class="text-slate-200 text-xs">Client Query Received</p>
+                      <p class="text-[10px] text-slate-500 truncate">session_token: crypto.hmac_sha256</p>
+                    </div>
+                  </div>
+
+                  <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-start gap-2.5">
+                    <span class="text-purple-400 text-[10px] mt-0.5 font-bold">[RAG]</span>
+                    <div class="min-w-0">
+                      <p class="text-slate-200 text-xs">Vector Similarity Search</p>
+                      <p class="text-[10px] text-slate-500">K-NN cosine: 0.942 on knowledge_base</p>
+                    </div>
+                  </div>
+
+                  <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-start gap-2.5">
+                    <span class="text-emerald-400 text-[10px] mt-0.5 font-bold">[GUARD]</span>
+                    <div class="min-w-0">
+                      <p class="text-slate-200 text-xs">Intent & Hallucination Filter</p>
+                      <p class="text-[10px] text-slate-500">Factual grounding score: 98.7%</p>
+                    </div>
+                  </div>
+
+                  <div class="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 flex items-start gap-2.5">
+                    <span class="text-amber-400 text-[10px] mt-0.5 font-bold">[ESCALATE]</span>
+                    <div class="min-w-0">
+                      <p class="text-amber-200 text-xs">Human Specialist Bridge</p>
+                      <p class="text-[10px] text-amber-300/70">WebSocket broadcast to Admin Console</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Test Trigger in Box -->
+                <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                  <span class="text-[11px] text-slate-400 font-sans">Coba langsung di widget:</span>
+                  <button 
+                    onclick="window.dispatchEvent(new CustomEvent('open-lexa-chat'))"
+                    class="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 font-sans cursor-pointer"
+                  >
+                    <span>Luncurkan Widget</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bento Grid: Capabilities -->
+        <section id="capabilities" class="py-12 border-t border-white/[0.08]">
+          <div class="mb-10 text-left">
+            <span class="text-xs font-mono tracking-widest uppercase text-blue-400">ENGINE CAPABILITIES</span>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight mt-1.5">
+              Fondasi Arsitektur untuk Skalabilitas Bisnis
+            </h2>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Bento 1: Hybrid RAG -->
+            <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] hover:border-white/20 transition-all flex flex-col justify-between">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <h3 class="text-base font-bold text-white mb-2">Hybrid Vector & Lexical RAG</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Menghubungkan LLM dengan database pengetahuan terindeks secara semantik, meminimalkan halusinasi dan memastikan jawaban relevan sesuai data bisnis Anda.
+                </p>
+              </div>
+              <span class="mt-6 text-[11px] font-mono text-slate-500">VECTOR EMBEDDING + RERANK</span>
+            </div>
+
+            <!-- Bento 2: Human Escalation -->
+            <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] hover:border-white/20 transition-all flex flex-col justify-between">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h3 class="text-base font-bold text-white mb-2">Real-Time Human Handover</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Protokol WebSocket dua arah memungkinkan staf CS manusia mengambil alih percakapan secara mulus tanpa kehilangan riwayat chat atau mengganggu user.
+                </p>
+              </div>
+              <span class="mt-6 text-[11px] font-mono text-slate-500">WEBSOCKET FULL-DUPLEX</span>
+            </div>
+
+            <!-- Bento 3: Multimodal Ingestion -->
+            <div class="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] hover:border-white/20 transition-all flex flex-col justify-between">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 class="text-base font-bold text-white mb-2">Multimodal Document Processing</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Mendukung analisis lampiran visual, dokumen PDF, DOCX, dan teks biasa untuk konsultasi mendalam langsung di dalam jendela chat.
+                </p>
+              </div>
+              <span class="mt-6 text-[11px] font-mono text-slate-500">PDF • DOCX • OCR • IMAGES</span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Minimalist Clean Footer -->
+      <footer class="border-t border-white/[0.08] py-8 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© 2026 LEXA Software House • Leading eXcellence Automation</p>
+          <div class="flex items-center gap-6">
+            <span class="hover:text-slate-300 transition-colors">Privacy Policy</span>
+            <span class="hover:text-slate-300 transition-colors">Documentation</span>
+            <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 transition-colors">Console Portal</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- React App Mount Point for Floating Widget -->
+    <div id="lexa-widget-root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

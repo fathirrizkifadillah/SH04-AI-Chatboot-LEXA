@@ -1,4 +1,4 @@
-import { Minus, RotateCcw, GripHorizontal, Headphones, Maximize2, Minimize2 } from 'lucide-react';
+import { Minus, RotateCcw, Headphones, Maximize2, Minimize2 } from 'lucide-react';
 
 interface ChatHeaderProps {
   isRefreshing: boolean;
@@ -24,69 +24,79 @@ export const ChatHeader = ({
   isSmallScreen,
 }: ChatHeaderProps) => {
   return (
-    <div className="cursor-grab active:cursor-grabbing flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 bg-[#0A1F44] border-b border-[#1B3B6F]/30 shrink-0 z-10 relative gap-2">
-      <div className="absolute top-1.5 left-1/2 -translate-x-1/2 text-white/40 hidden sm:block">
-        <GripHorizontal size={24} />
-      </div>
-      <div className="flex items-center gap-2.5 sm:gap-3 mt-1 pointer-events-none min-w-0">
+    <div className="cursor-grab active:cursor-grabbing flex items-center justify-between px-4 sm:px-5 py-3.5 bg-[#0D182E]/90 border-b border-white/[0.08] backdrop-blur-xl shrink-0 z-10 relative">
+      {/* Left: Identity & Status */}
+      <div className="flex items-center gap-3 pointer-events-none min-w-0">
         <div className="relative shrink-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 p-1 flex items-center justify-center border border-white/20">
-            <img src={botAvatar} alt="LEXA" className="w-full h-full object-contain" />
+          <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 p-1 flex items-center justify-center shadow-inner">
+            <img src={botAvatar} alt="LEXA" className="w-full h-full object-contain filter drop-shadow-sm" />
           </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-[#0A1F44] rounded-full"></div>
+          <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0D182E] shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-[13px] sm:text-[14px] font-bold text-white leading-tight truncate">LEXA AI Assistant</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-[13px] sm:text-[14px] font-bold text-white tracking-tight leading-none truncate">
+              LEXA AI
+            </h2>
+            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold tracking-wider">
+              {isHandoffRequested ? 'CS HUMAN' : 'RAG ACTIVE'}
+            </span>
           </div>
-          <p className="text-[10px] sm:text-xs text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Online</span>
+          <p className="text-[10px] text-slate-400 font-medium mt-1 flex items-center gap-1.5 leading-none">
+            <span className={`w-1.5 h-1.5 rounded-full ${isHandoffRequested ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></span>
+            <span>{isHandoffRequested ? 'Staf CS Siap Terhubung' : 'Terhubung • Siap Membantu'}</span>
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-1 sm:gap-1.5 mt-1 z-20 shrink-0">
+
+      {/* Right: Action Controls */}
+      <div className="flex items-center gap-1.5 z-20 shrink-0">
         {onRequestHandoff && (
           <button
             onClick={onRequestHandoff}
-            className={`px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold rounded-lg flex items-center gap-1 transition-all whitespace-nowrap ${
+            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap active:scale-[0.95] ${
               isHandoffRequested
-                ? 'bg-amber-100 text-amber-700 border border-amber-200 cursor-default'
-                : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                : 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/10 hover:text-white'
             }`}
-            title={isHandoffRequested ? "Menunggu CS Manusia" : "Bicara Langsung dengan Admin CS"}
+            title={isHandoffRequested ? 'Menunggu respons CS' : 'Minta bantuan staf CS manusia'}
           >
-            <Headphones size={13} className={isHandoffRequested ? 'animate-pulse' : ''} />
-            <span className="hidden xs:inline sm:inline">{isHandoffRequested ? 'Menunggu CS' : 'Hubungi CS'}</span>
+            <Headphones size={13} className={isHandoffRequested ? 'animate-pulse text-amber-300' : 'text-slate-400'} />
+            <span className="hidden xs:inline">{isHandoffRequested ? 'Menunggu CS' : 'Hubungi CS'}</span>
           </button>
         )}
+
         {!isSmallScreen && (
           <button
             onClick={onToggleExpanded}
-            className={`p-1.5 rounded-lg transition-all shrink-0 ${
+            className={`p-1.5 rounded-lg transition-all border cursor-pointer active:scale-[0.95] ${
               isExpanded 
-                ? 'bg-[#0066FF] text-white shadow-md' 
-                : 'text-white/70 hover:text-white hover:bg-white/10'
+                ? 'bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-inner' 
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.06] border-transparent'
             }`}
-            title={isExpanded ? 'Kembalikan ke ukuran standar' : 'Perbesar jendela chat (Leluasa)'}
+            title={isExpanded ? 'Kecilkan jendela' : 'Perbesar jendela'}
             aria-label={isExpanded ? 'Minimize chat' : 'Maximize chat'}
           >
-            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
         )}
+
         <button
           onClick={onReset}
-          className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors shrink-0"
-          title="Refresh/Reset"
+          className="p-1.5 text-slate-400 hover:text-white hover:bg-white/[0.06] rounded-lg transition-all border border-transparent cursor-pointer active:scale-[0.95]"
+          title="Reset percakapan baru"
+          aria-label="Reset chat"
         >
-          <RotateCcw size={16} className={isRefreshing ? 'animate-spin text-[#0D7AFF]' : ''} />
+          <RotateCcw size={15} className={isRefreshing ? 'animate-spin text-blue-400' : ''} />
         </button>
+
         <button
           onClick={onClose}
-          className="p-1.5 text-white/60 hover:text-white hover:bg-red-500/20 rounded-lg transition-colors shrink-0"
-          title="Tutup"
+          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all border border-transparent cursor-pointer active:scale-[0.95]"
+          title="Tutup dialog chat"
+          aria-label="Tutup"
         >
-          <Minus size={16} />
+          <Minus size={15} />
         </button>
       </div>
     </div>

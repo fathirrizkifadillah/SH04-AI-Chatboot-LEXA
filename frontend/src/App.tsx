@@ -83,6 +83,13 @@ function App() {
       .catch((err) => console.error('Failed to load widget config:', err));
   }, []);
 
+  // Listen to open-lexa-chat event from parent page or buttons
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('open-lexa-chat', handleOpen);
+    return () => window.removeEventListener('open-lexa-chat', handleOpen);
+  }, []);
+
   // Save session & messages
   useEffect(() => {
     localStorage.setItem('lexa_session_id', sessionId);
@@ -533,13 +540,25 @@ function App() {
         animate={{ scale: isOpen ? 0 : 1, y: isOpen ? 50 : 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 20 }}
       >
-        <button
-          onClick={() => setIsOpen(true)}
-          className="w-[64px] h-[64px] bg-transparent text-white flex items-center justify-center transition-colors"
-          aria-label="Buka chat Lexa"
-        >
-          <img src={lexaBotHead} alt="Lexa" className="w-[48px] h-[48px] object-contain drop-shadow-md" />
-        </button>
+        <div className="p-1 rounded-full bg-white/[0.08] border border-white/15 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.7)] backdrop-blur-xl group">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="px-4 py-2.5 rounded-full bg-[#0D182E] hover:bg-[#132342] border border-blue-400/30 text-white flex items-center gap-3 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] active:scale-[0.96] cursor-pointer"
+            aria-label="Buka dialog chat Lexa"
+          >
+            <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
+              <img src={lexaBotHead} alt="Lexa" className="w-full h-full object-contain filter drop-shadow" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0D182E]"></span>
+            </div>
+            <div className="flex flex-col text-left pr-1">
+              <span className="text-xs font-bold tracking-tight text-white flex items-center gap-1.5 leading-none">
+                Tanya LEXA
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono mt-0.5">Online AI</span>
+            </div>
+          </button>
+        </div>
       </motion.div>
 
       {/* Chat Panel */}
@@ -562,8 +581,8 @@ function App() {
             }
             className={
               isSmallScreen
-                ? 'w-screen h-screen max-w-full max-h-full bg-white rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
-                : `${isExpanded ? 'w-[680px] h-[820px]' : 'w-[390px] h-[620px]'} min-w-[320px] min-h-[420px] max-w-[94vw] max-h-[calc(100vh-60px)] overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-[28px] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.45)] border border-slate-200/80 dark:border-slate-800 flex flex-col pointer-events-auto transition-all duration-300`
+                ? 'w-screen h-screen max-w-full max-h-full bg-[#080E21] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
+                : `${isExpanded ? 'w-[680px] h-[820px]' : 'w-[400px] h-[640px]'} min-w-[320px] min-h-[440px] max-w-[94vw] max-h-[calc(100vh-50px)] overflow-hidden bg-[#0A1224]/95 backdrop-blur-2xl rounded-[26px] shadow-[0_32px_72px_-16px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto transition-all duration-300`
             }
             layout
           >
