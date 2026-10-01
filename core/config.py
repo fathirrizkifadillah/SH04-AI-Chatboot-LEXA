@@ -1,6 +1,9 @@
 import os
+import logging
 from typing import Callable
 from dotenv import load_dotenv
+
+logger = logging.getLogger("lexa")
 
 # Memuat variabel lingkungan dari file .env
 load_dotenv()

@@ -17,8 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse, FileResponse
 
-from core.database import get_session_by_id, get_session_history
-from core.llm import LLMClient
+from core.database import get_session_history, SessionLocal, ChatSession
 from routers.chat import get_or_create_session, get_session_lock, manager, _get_or_create_session_token, _save_handoff_message
 import core.state as state
 
@@ -68,12 +67,8 @@ async def upload_file(
     session_id: str = Form(...),
     session_token: str = Form(...),
 ):
-    # --- Validate session ---
-    session = get_session_by_id(session_id)
-    if session is None:
-        raise HTTPException(status_code=403, detail="Session not found")
-    if session.get("session_token") != session_token:
-        raise HTTPException(status_code=403, detail="Invalid session token")
+    # --- Validate or initialize session token ---
+    active_session_token = _get_or_create_session_token(session_id, session_token)
 
     # --- Validate file ---
     content_type = file.content_type or ""
