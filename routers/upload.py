@@ -86,38 +86,30 @@ async def upload_file(
     with open(file_path, "wb") as f:
         f.write(file_data)
 
-    # --- Build context string for LLM ---
+    # --- Build context string and vision data for LLM ---
+    image_data_url = None
     if content_type.startswith("image/"):
-        img_info = ""
-        try:
-            from PIL import Image
-            img = Image.open(io.BytesIO(file_data))
-            w, h = img.size
-            fmt = img.format or content_type.split("/")[-1].upper()
-            img_info = f" (resolusi: {w}x{h} px, format: {fmt}, ukuran: {round(len(file_data)/1024, 1)} KB)"
-        except Exception as e:
-            logger.warning(f"Failed to inspect image with PIL: {e}")
-        
-        extra_context = (
-            f"[Pengguna mengunggah lampiran gambar: '{file.filename}'{img_info}. File tersimpan aman di server dan dapat dilihat oleh Admin CS. "
-            f"Tolong akui penerimaan gambar ini dengan ramah, dan bantu jawab pertanyaan atau instruksi pengguna.]"
-        )
+        image_data_url = _image_to_base64(file_data, content_type)
+        user_caption = message.strip() if message.strip() else "Tolong amati dan jelaskan apa yang Anda lihat dalam gambar ini secara ramah, detail, dan informatif."
+        combined_message = user_caption
     elif content_type == "application/pdf":
         extracted = _extract_pdf_text(file_data)
         extra_context = f"[User melampirkan PDF '{file.filename}'. Isi dokumen:\n{extracted}]"
+        combined_message = f"{extra_context}\n\n{message}".strip() if message else extra_context
     elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         extracted = _extract_docx_text(file_data)
         extra_context = f"[User melampirkan dokumen Word '{file.filename}'. Isi dokumen:\n{extracted}]"
+        combined_message = f"{extra_context}\n\n{message}".strip() if message else extra_context
     elif content_type == "text/plain":
         try:
             text_content = file_data.decode("utf-8", errors="replace")[:4000]
         except Exception:
             text_content = "[Gagal membaca file teks]"
         extra_context = f"[User melampirkan file teks '{file.filename}'. Isi:\n{text_content}]"
+        combined_message = f"{extra_context}\n\n{message}".strip() if message else extra_context
     else:
         extra_context = f"[User melampirkan file: {file.filename}]"
-
-    combined_message = f"{extra_context}\n\n{message}".strip() if message else extra_context
+        combined_message = f"{extra_context}\n\n{message}".strip() if message else extra_context
 
     # Prepare file metadata for persistence
     file_metadata = {
@@ -159,7 +151,11 @@ async def upload_file(
                 return
 
             async with get_session_lock(session_id):
-                async for chunk in bot.send_message_stream(combined_message, file_metadata=file_metadata):
+                async for chunk in bot.send_message_stream(
+                    combined_message, 
+                    file_metadata=file_metadata, 
+                    image_data_url=image_data_url
+                ):
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 

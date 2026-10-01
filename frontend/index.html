@@ -44,18 +44,6 @@
               <span class="text-emerald-400">OPERATIONAL</span>
             </div>
 
-            <a 
-              href="http://localhost:5173" 
-              target="_blank"
-              rel="noopener noreferrer"
-              class="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white px-3.5 py-1.5 rounded-lg border border-white/10 hover:bg-white/[0.05] transition-all"
-            >
-              <span>Admin Console</span>
-              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-
             <button 
               onclick="window.dispatchEvent(new CustomEvent('open-lexa-chat'))"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white text-xs font-semibold shadow-[0_0_20px_-3px_rgba(37,99,235,0.4)] transition-all cursor-pointer"
@@ -257,9 +245,8 @@
         <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 LEXA Software House • Leading eXcellence Automation</p>
           <div class="flex items-center gap-6">
-            <span class="hover:text-slate-300 transition-colors">Privacy Policy</span>
-            <span class="hover:text-slate-300 transition-colors">Documentation</span>
-            <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 transition-colors">Console Portal</a>
+            <span class="hover:text-slate-300 transition-colors cursor-pointer">Privacy Policy</span>
+            <span class="hover:text-slate-300 transition-colors cursor-pointer">Documentation</span>
           </div>
         </div>
       </footer>

@@ -16,6 +16,7 @@ class LexaChatbot:
         session_id=None,
         system_instruction=None,
         model="openai/gpt-oss-120b",
+        vision_model="qwen/qwen3.8-27b",
         rag_pipeline=None,
         max_history_turns=10,
     ):
@@ -30,6 +31,7 @@ class LexaChatbot:
         # Inisialisasi client Groq (async)
         self.client = AsyncGroq(api_key=self.api_key)
         self.model = model
+        self.vision_model = vision_model
         self.rag_pipeline = rag_pipeline
         self.max_history_turns = max_history_turns
         self.last_references = []
@@ -95,16 +97,17 @@ class LexaChatbot:
         finally:
             db.close()
 
-    def _prepare_messages(self, message: str) -> list:
+    def _prepare_messages(self, message: str, image_data_url: str = None) -> list:
         """
         Melakukan pencarian RAG (jika diaktifkan) dan menyisipkan konteks dokumen
         ke dalam system prompt sementara untuk pemanggilan model.
+        Mendukung multimodal vision jika image_data_url disertakan.
         """
         self.last_references = []
         context_str = ""
 
-        # Lakukan pencarian RAG jika pipeline tersedia
-        if self.rag_pipeline:
+        # Lakukan pencarian RAG jika pipeline tersedia (hanya jika query teks relevan)
+        if self.rag_pipeline and not image_data_url:
             from core.config import Config
             results = self.rag_pipeline.search(message, top_k=Config.RAG_TOP_K, threshold=Config.RAG_THRESHOLD)
             self.last_references = results
@@ -175,10 +178,21 @@ class LexaChatbot:
                 "role": "system",
                 "content": (self.system_instruction or "Anda adalah asisten AI.") + context_str
             })
+
+        # Inject multimodal vision image_url to the current user message turn
+        if image_data_url:
+            for i in range(len(messages_to_send) - 1, -1, -1):
+                if messages_to_send[i]["role"] == "user":
+                    user_text = messages_to_send[i]["content"]
+                    messages_to_send[i]["content"] = [
+                        {"type": "text", "text": str(user_text)},
+                        {"type": "image_url", "image_url": {"url": image_data_url}}
+                    ]
+                    break
             
         return messages_to_send
 
-    async def send_message(self, message: str) -> str:
+    async def send_message(self, message: str, image_data_url: str = None) -> str:
         """
         Mengirim pesan ke Groq API dan menyimpan percakapan ke dalam riwayat.
         Mengembalikan jawaban model dalam bentuk string utuh.
@@ -186,7 +200,8 @@ class LexaChatbot:
         self._load_history()
         self.history.append({"role": "user", "content": message})
         self._save_history()
-        messages_to_send = self._prepare_messages(message)
+        messages_to_send = self._prepare_messages(message, image_data_url=image_data_url)
+        model_to_use = self.vision_model if image_data_url else self.model
         
         max_retries = 3
         backoff_delay = 0.5
@@ -197,7 +212,7 @@ class LexaChatbot:
             try:
                 chat_completion = await self.client.chat.completions.create(
                     messages=messages_to_send,
-                    model=self.model,
+                    model=model_to_use,
                 )
                 break
             except Exception as e:
@@ -224,10 +239,10 @@ class LexaChatbot:
         self._trim_history()
         return reply
 
-    async def send_message_stream(self, message: str, file_metadata: dict = None):
+    async def send_message_stream(self, message: str, file_metadata: dict = None, image_data_url: str = None):
         """
         Mengirim pesan ke Groq API dan menghasilkan (yield) jawaban per kata/token
-        secara streaming (real-time). Cocok untuk antarmuka chat yang interaktif.
+        secara streaming (real-time). Mendukung vision multimodal jika image_data_url dikirimkan.
         """
         self._load_history()
         user_msg = {"role": "user", "content": message}
@@ -235,7 +250,8 @@ class LexaChatbot:
             user_msg["file"] = file_metadata
         self.history.append(user_msg)
         self._save_history()
-        messages_to_send = self._prepare_messages(message)
+        messages_to_send = self._prepare_messages(message, image_data_url=image_data_url)
+        model_to_use = self.vision_model if image_data_url else self.model
         
         max_retries = 3
         backoff_delay = 0.5
@@ -245,7 +261,7 @@ class LexaChatbot:
             try:
                 stream = await self.client.chat.completions.create(
                     messages=messages_to_send,
-                    model=self.model,
+                    model=model_to_use,
                     stream=True,
                 )
                 break
