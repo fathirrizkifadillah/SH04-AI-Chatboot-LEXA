@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  MessageSquare, Users, BookOpen, Activity, Plus, FileText, 
-  HelpCircle, Cpu, UploadCloud, 
-  Share2, BarChart3, Settings
+  MessageSquare, BookOpen, Activity, Plus, 
+  ArrowUpRight, UploadCloud, 
+  Share2, BarChart3, Settings, ShieldCheck,
+  ArrowRight, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import api from '../lib/apiClient';
@@ -26,42 +27,46 @@ const defaultChartData: ChartDataPoint[] = (() => {
   return result;
 })();
 
-const recentActivities = [
+const operationalLogs = [
   {
     id: 1,
-    title: 'Knowledge Base diperbarui',
-    author: 'Admin LEXA',
-    time: '10 menit lalu',
+    title: 'Knowledge Base Vector Index updated',
+    desc: '42 chunks embedded into vector memory cluster',
+    actor: 'System Ingestion',
+    time: '8m ago',
     icon: BookOpen,
-    bg: 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
-    statusDot: 'bg-emerald-500',
+    badge: 'Vector Sync',
+    badgeColor: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
   },
   {
     id: 2,
-    title: 'Dokumen baru diindeks ke Vector Store',
-    author: 'Editor Team',
-    time: '1 jam lalu',
-    icon: FileText,
-    bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-    statusDot: 'bg-emerald-500',
+    title: 'Customer Handoff Escalation resolved',
+    desc: 'Session #8921 transferred & concluded by CS Agent',
+    actor: 'Agent Desk',
+    time: '34m ago',
+    icon: MessageSquare,
+    badge: 'Handoff',
+    badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
   },
   {
     id: 3,
-    title: 'Integrasi WhatsApp webhook aktif',
-    author: 'Admin LEXA',
-    time: '3 jam lalu',
+    title: 'WhatsApp Webhook Handshake verified',
+    desc: 'Outbound webhook response 200 OK • 18ms latency',
+    actor: 'Gateway',
+    time: '2h ago',
     icon: Share2,
-    bg: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300',
-    statusDot: 'bg-emerald-500',
+    badge: 'Integration',
+    badgeColor: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
   },
   {
     id: 4,
-    title: 'Conversations mencapai 12K sesi sukses',
-    author: 'System Auto',
-    time: '5 jam lalu',
-    icon: MessageSquare,
-    bg: 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',
-    statusDot: 'bg-blue-500',
+    title: 'Automated Telemetry Health Check passed',
+    desc: 'Core LLM pipeline, RAG retriever & DB clusters healthy',
+    actor: 'Monitor',
+    time: '4h ago',
+    icon: ShieldCheck,
+    badge: 'System SLA',
+    badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
   },
 ];
 
@@ -74,6 +79,8 @@ const Dashboard = () => {
   });
   const [chartData, setChartData] = useState<ChartDataPoint[]>(defaultChartData);
   const [, setFeedbackStats] = useState<FeedbackStats | null>(null);
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const currentUser = (() => {
     try {
@@ -83,8 +90,9 @@ const Dashboard = () => {
       return null;
     }
   })();
-  
-  useEffect(() => {
+
+  const fetchStats = () => {
+    setIsRefreshing(true);
     api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>('/api/admin/stats')
       .then(data => {
         if (data.kpi) {
@@ -99,204 +107,305 @@ const Dashboard = () => {
           setChartData(data.chart);
         }
       })
-      .catch(() => {});
-      
+      .catch(() => {})
+      .finally(() => {
+        setTimeout(() => setIsRefreshing(false), 400);
+      });
+
     api.authGet<FeedbackStats>('/api/admin/feedback/stats')
       .then(data => setFeedbackStats(data))
       .catch(() => {});
+  };
+  
+  useEffect(() => {
+    fetchStats();
   }, []);
 
-  const kpis = [
-    {
-      title: 'Total Conversations',
-      value: stats.total_conversations.toLocaleString(),
-      growth: '+18.4%',
-      subtext: 'vs last month',
-      icon: MessageSquare,
-      iconColor: 'text-violet-500',
-      iconBg: 'bg-violet-50 dark:bg-violet-950/30',
-    },
-    {
-      title: 'Unanswered Queries',
-      value: stats.unanswered_queries.toString(),
-      growth: stats.unanswered_queries === 0 ? '0 issues' : 'Perlu respon',
-      subtext: 'Pending review',
-      icon: HelpCircle,
-      iconColor: 'text-amber-500',
-      iconBg: 'bg-amber-50 dark:bg-amber-950/30',
-    },
-    {
-      title: 'Knowledge Base',
-      value: '1,247',
-      growth: '+23.1%',
-      subtext: 'Documents',
-      icon: BookOpen,
-      iconColor: 'text-blue-500',
-      iconBg: 'bg-blue-50 dark:bg-blue-950/30',
-    },
-    {
-      title: 'Total Users',
-      value: stats.active_users.toLocaleString(),
-      growth: '+9.2%',
-      subtext: 'Active users',
-      icon: Users,
-      iconColor: 'text-orange-500',
-      iconBg: 'bg-orange-50 dark:bg-orange-950/30',
-    },
-    {
-      title: 'System Uptime',
-      value: '99.9%',
-      growth: '↑',
-      subtext: 'All systems operational',
-      icon: Activity,
-      iconColor: 'text-purple-500',
-      iconBg: 'bg-purple-50 dark:bg-purple-950/30',
-    },
-  ];
-
   return (
-    <div className="space-y-6 pb-12 antialiased">
-      {/* 1. Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#091E42] text-white shadow-xl border border-white/10">
-        {/* Subtle radial tech gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#091E42] via-[#0D2A5C] to-[#0A1A3A] opacity-95"></div>
-        <div className="absolute -top-24 right-1/4 w-96 h-96 bg-[#0066FF]/20 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-0 right-10 w-80 h-80 bg-[#00D2FF]/10 rounded-full blur-[120px] pointer-events-none"></div>
-
-        <div className="relative z-10 p-6 md:p-8 flex flex-col lg:flex-row justify-between items-center gap-6">
-          <div className="max-w-2xl space-y-3">
-            <p className="text-xs sm:text-sm font-medium text-slate-300 flex items-center gap-1.5">
-              <span>Welcome back, {currentUser?.name || 'Admin LEXA'}!</span>
-              <span>👋</span>
-            </p>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight">
-              Manage. Integrate. Automate.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-blue-200">
-                Build Intelligent Experiences with LEXA AI.
-              </span>
-            </h1>
-            <p className="text-slate-300/90 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-              Satu platform AI untuk semua kebutuhan layanan dan informasi Anda.
-            </p>
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                onClick={() => navigate('/kb')}
-                className="px-4 py-2.5 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/30 flex items-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Kelola Knowledge Base</span>
-              </button>
-              <button
-                onClick={() => navigate('/widget')}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-xl transition-colors border border-white/20 flex items-center gap-2 cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4 text-blue-300" />
-                <span>Lihat Dokumentasi</span>
-              </button>
+    <div className="space-y-6 pb-12 antialiased max-w-[1440px] mx-auto">
+      
+      {/* 1. Executive Operations Header Bar (Linear / Vercel Tier) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800/90 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              Operations Hub
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <div className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Cluster ID-CGK-1</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">99.98% SLA</span>
             </div>
           </div>
-          
-          {/* Glowing AI Emblem */}
-          <div className="relative shrink-0 flex items-center justify-center p-4">
-            <div className="relative w-44 h-44 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-2xl animate-pulse"></div>
-              <div className="relative w-36 h-36 rounded-3xl bg-gradient-to-br from-[#0066FF] via-[#0A2558] to-[#04122C] p-[2px] shadow-2xl">
-                <div className="w-full h-full rounded-[22px] bg-[#071738] flex flex-col items-center justify-center relative overflow-hidden border border-blue-400/30">
-                  <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:12px_12px] opacity-30"></div>
-                  <Cpu className="w-8 h-8 text-[#38BDF8] mb-1 drop-shadow-[0_0_12px_rgba(56,189,248,0.8)]" />
-                  <span className="text-3xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-200">
-                    AI
-                  </span>
-                  <div className="absolute bottom-2 px-2 py-0.5 rounded-full bg-blue-500/20 text-[9px] font-mono font-semibold text-blue-300 border border-blue-400/20">
-                    CORE 2.0
-                  </div>
+          <div className="mt-1 flex items-baseline gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Console Overview
+            </h1>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Welcome back, <span className="font-semibold text-slate-700 dark:text-slate-200">{currentUser?.name || 'Admin'}</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Operational Controls & Actions */}
+        <div className="flex items-center gap-2.5">
+          {/* Time Filter Pill */}
+          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+            {(['24h', '7d', '30d'] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                  timeRange === range
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                {range.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={fetchStats}
+            disabled={isRefreshing}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
+            title="Refresh telemetry"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#0066FF]' : ''}`} />
+          </button>
+
+          {/* Primary Action Button (Nested Island Architecture) */}
+          <button
+            onClick={() => navigate('/kb')}
+            className="group relative inline-flex items-center gap-2.5 pl-4 pr-1.5 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] active:scale-[0.98] text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/25 cursor-pointer"
+          >
+            <span>Ingest Document</span>
+            <span className="w-6 h-6 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center transition-colors">
+              <Plus className="w-3.5 h-3.5 text-white" />
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Asymmetric Executive Bento Grid (Double-Bezel Architecture) */}
+      <div className="grid grid-cols-12 gap-4">
+        
+        {/* Bento Card 1: Throughput Hero (Col 5) */}
+        <div className="col-span-12 lg:col-span-5 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                  Autonomous Throughput
+                </span>
+                <div className="p-1.5 rounded-lg bg-blue-500/10 text-[#0066FF] border border-blue-500/20">
+                  <MessageSquare className="w-4 h-4" />
                 </div>
+              </div>
+              
+              <div className="mt-3 flex items-baseline gap-3">
+                <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
+                  {stats.total_conversations.toLocaleString()}
+                </span>
+                <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  +18.4%
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Total chat inquiries processed across all deployment channels
+              </p>
+            </div>
+
+            {/* Split Progress Meter: AI vs Escalation */}
+            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="flex items-center justify-between text-[11px] mb-2 font-mono">
+                <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#0066FF]"></span>
+                  94.2% AI Auto-Resolved
+                </span>
+                <span className="text-slate-400 dark:text-slate-500">
+                  5.8% Escalated
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                <div className="h-full bg-[#0066FF] rounded-l-full" style={{ width: '94.2%' }}></div>
+                <div className="h-full bg-amber-500 rounded-r-full" style={{ width: '5.8%' }}></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 2. Top Metric Cards Row (5 Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-        {kpis.map((kpi, idx) => {
-          const Icon = kpi.icon;
-          return (
-            <div 
-              key={idx} 
-              className="bg-white dark:bg-[#0D182E] rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-colors flex flex-col justify-between"
+        {/* Bento Card 2: AI Resolution Precision (Col 2.5) */}
+        <div className="col-span-12 sm:col-span-6 lg:col-span-2 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                Resolution Rate
+              </span>
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+            </div>
+            
+            <div className="my-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
+                98.4%
+              </span>
+              <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                <span>Optimal response</span>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-slate-400 font-mono pt-3 border-t border-slate-100 dark:border-slate-800/80">
+              Avg latency: ~480ms
+            </div>
+          </div>
+        </div>
+
+        {/* Bento Card 3: Vector Knowledge Corpus (Col 2) */}
+        <div className="col-span-12 sm:col-span-6 lg:col-span-2 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                Vector Corpus
+              </span>
+              <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-500 border border-violet-500/20">
+                <BookOpen className="w-4 h-4" />
+              </div>
+            </div>
+            
+            <div className="my-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
+                1,247
+              </span>
+              <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Indexed documents
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate('/kb')}
+              className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/80 cursor-pointer"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
-                  {kpi.title}
+              <span>Manage Store</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Bento Card 4: Action Required Queue (Col 3) */}
+        <div className="col-span-12 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                Action Queue
+              </span>
+              <div className={`p-1.5 rounded-lg ${
+                stats.unanswered_queries > 0 
+                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                  : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+              }`}>
+                {stats.unanswered_queries > 0 ? <AlertTriangle className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+              </div>
+            </div>
+            
+            <div className="my-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
+                  {stats.unanswered_queries}
                 </span>
-                <div className={`p-2 rounded-xl ${kpi.iconBg}`}>
-                  <Icon className={`w-4 h-4 ${kpi.iconColor}`} />
-                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
+                  stats.unanswered_queries > 0
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                }`}>
+                  {stats.unanswered_queries > 0 ? 'Pending Agent Review' : 'Zero Escalations'}
+                </span>
               </div>
-              <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                  {kpi.value}
-                </h3>
-                <div className="mt-1 flex items-center gap-1.5 text-[11px]">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                    {kpi.growth}
-                  </span>
-                  <span className="text-slate-400 dark:text-slate-500 truncate">
-                    {kpi.subtext}
-                  </span>
-                </div>
-              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Sessions flagged for manual review or supervisor verification
+              </p>
             </div>
-          );
-        })}
+
+            <button
+              onClick={() => navigate('/conversations')}
+              className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center justify-between cursor-pointer border border-slate-200 dark:border-slate-700/80"
+            >
+              <span>View Escalation Desk</span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      {/* 3. Lower 3-Column Section: Chart | Aktivitas Terbaru | Aksi Cepat */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
-        {/* Col 1: Statistik Percakapan (6 cols for wider visualization) */}
-        <div className="lg:col-span-6 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between min-h-[380px]">
-          <div className="flex justify-between items-center mb-4">
+      {/* 3. Main Operational Telemetry: High-Fidelity Waveform Area */}
+      <div className="p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        <div className="rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 md:p-6 border border-slate-200/40 dark:border-white/5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                Statistik Percakapan
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Tren volume obrolan masuk mingguan</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
+                  Inquiry Volume & Telemetry Waveform
+                </h3>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Real-time throughput metrics recorded across streaming inference endpoints
+              </p>
             </div>
-            <select 
-              className="text-xs font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
-              defaultValue="month"
-            >
-              <option value="month">This Month ⌄</option>
-              <option value="week">This Week ⌄</option>
-              <option value="year">This Year ⌄</option>
-            </select>
+
+            <div className="flex items-center gap-3 font-mono text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-[#0066FF]"></span>
+                <span>Inferences</span>
+              </div>
+              <div className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-[11px]">
+                Peak: <span className="font-semibold text-slate-800 dark:text-slate-200">1,680 / day</span>
+              </div>
+            </div>
           </div>
 
-          <div className="w-full h-[280px] relative">
-            <ResponsiveContainer width="100%" height={280}>
+          <div className="w-full h-[290px] relative">
+            <ResponsiveContainer width="100%" height={290}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
                 <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0066FF" stopOpacity={0.35}/>
+                  <linearGradient id="lexaTelemetryGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0066FF" stopOpacity={0.4}/>
                     <stop offset="95%" stopColor="#0066FF" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.15} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={5} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dx={-4} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" strokeOpacity={0.12} />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'monospace' }} 
+                  dy={8} 
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'monospace' }} 
+                  dx={-4} 
+                  allowDecimals={false} 
+                />
                 <Tooltip 
                   contentStyle={{ 
-                    borderRadius: '10px', 
-                    border: '1px solid #1E293B', 
-                    backgroundColor: '#0A1226',
+                    borderRadius: '12px', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    backgroundColor: '#070D1A',
                     color: '#F8FAFC',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                    boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
                     fontSize: '11px',
-                    padding: '8px 12px'
+                    fontFamily: 'monospace',
+                    padding: '10px 14px'
                   }}
-                  cursor={{ stroke: '#0066FF', strokeWidth: 1.5, strokeDasharray: '3 3' }}
+                  cursor={{ stroke: '#0066FF', strokeWidth: 1.5, strokeDasharray: '4 4' }}
                 />
                 <Area 
                   type="monotone" 
@@ -304,7 +413,7 @@ const Dashboard = () => {
                   stroke="#0066FF" 
                   strokeWidth={2.5}
                   fillOpacity={1}
-                  fill="url(#chartGradient)"
+                  fill="url(#lexaTelemetryGradient)"
                   dot={{ r: 3, fill: '#0066FF', strokeWidth: 2, stroke: '#FFFFFF' }}
                   activeDot={{ r: 5, fill: '#0052CC', strokeWidth: 0 }}
                 />
@@ -312,93 +421,193 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
 
-        {/* Col 2: Aktivitas Terbaru (3 cols) */}
-        <div className="lg:col-span-3 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col min-h-[380px]">
-          <div className="flex items-center justify-between mb-3.5">
-            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-              Aktivitas Terbaru
-            </h3>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          </div>
-
-          <div className="space-y-3 flex-1 overflow-y-auto">
-            {recentActivities.map((act) => {
-              const Icon = act.icon;
-              return (
-                <div 
-                  key={act.id} 
-                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                >
-                  <div className={`w-8 h-8 rounded-lg ${act.bg} flex items-center justify-center shrink-0`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                      {act.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-slate-400">{act.author}</span>
-                      <span className="text-[10px] text-slate-400">•</span>
-                      <span className="text-[10px] text-slate-400">{act.time}</span>
-                    </div>
-                  </div>
-                  <span className={`w-2 h-2 rounded-full ${act.statusDot} shrink-0`}></span>
+      {/* 4. Lower Operational Split: Audit Trail (7 cols) & Quick Dispatch (5 cols) */}
+      <div className="grid grid-cols-12 gap-5">
+        
+        {/* Real-Time Operational Audit Trail */}
+        <div className="col-span-12 lg:col-span-7 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+            <div>
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                    Live Operational Audit Trail
+                  </h3>
+                  <span className="text-slate-400 text-xs font-mono">• Telemetry Stream</span>
                 </div>
-              );
-            })}
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              </div>
+
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60 mt-2">
+                {operationalLogs.map((log) => {
+                  const Icon = log.icon;
+                  return (
+                    <div key={log.id} className="py-3 flex items-start gap-3 group">
+                      <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 shrink-0 mt-0.5 group-hover:text-[#0066FF] transition-colors">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {log.title}
+                          </p>
+                          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                            {log.time}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                          {log.desc}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-md border ${log.badgeColor}`}>
+                            {log.badge}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            by {log.actor}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 text-center">
+              <span className="text-[11px] font-mono text-slate-400">
+                Continuous event streaming connected via Secure WebSocket (WSS)
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Col 3: Aksi Cepat (3 cols) */}
-        <div className="lg:col-span-3 bg-white dark:bg-[#0D182E] rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between min-h-[380px]">
-          <div className="mb-3.5">
-            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-              Aksi Cepat
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Pintasan manajemen sistem</p>
-          </div>
+        {/* Quick Operations Dispatch (Island Button Architecture) */}
+        <div className="col-span-12 lg:col-span-5 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+            <div>
+              <div className="pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Operations Dispatch
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Direct hardware access & cluster management shortcuts
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <button
-              onClick={() => navigate('/kb')}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
-            >
-              <UploadCloud className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-              <span>Upload Dokumen KB</span>
-            </button>
-            <button
-              onClick={() => navigate('/conversations')}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
-            >
-              <MessageSquare className="w-4 h-4 text-[#0066FF] group-hover:scale-110 transition-transform" />
-              <span>Live Chat Handoff</span>
-            </button>
-            <button
-              onClick={() => navigate('/widget')}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
-            >
-              <Share2 className="w-4 h-4 text-violet-500 group-hover:scale-110 transition-transform" />
-              <span>Kelola Integrasi</span>
-            </button>
-            <button
-              onClick={() => navigate('/analytics')}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
-            >
-              <BarChart3 className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
-              <span>Lihat Analytics</span>
-            </button>
-            <button
-              onClick={() => navigate('/settings')}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold transition-all hover:border-[#0066FF] text-left group cursor-pointer"
-            >
-              <Settings className="w-4 h-4 text-slate-400 group-hover:rotate-45 transition-transform" />
-              <span>Pengaturan Sistem</span>
-            </button>
+              <div className="space-y-2.5 mt-3.5">
+                {/* Action 1 */}
+                <button
+                  onClick={() => navigate('/kb')}
+                  className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-[#0066FF] flex items-center justify-center shrink-0">
+                      <UploadCloud className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Knowledge Corpus Sync
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Upload PDF, DOCX, or URL sources into Vector Store
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-[#0066FF] group-hover:translate-x-0.5 transition-all">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+
+                {/* Action 2 */}
+                <button
+                  onClick={() => navigate('/conversations')}
+                  className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Live Escalation Desk
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Take over active sessions or review flagged messages
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+
+                {/* Action 3 */}
+                <button
+                  onClick={() => navigate('/widget')}
+                  className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
+                      <Share2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Integration & Widget Embed
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Deploy web widget snippets & WhatsApp gateways
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+
+                {/* Action 4 */}
+                <button
+                  onClick={() => navigate('/analytics')}
+                  className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Analytics & CSAT Telemetry
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Inspect user satisfaction scores & query breakdown
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+              <span className="text-[11px] font-mono text-slate-400">
+                LEXA Software House Console
+              </span>
+              <button
+                onClick={() => navigate('/settings')}
+                className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>Settings</span>
+              </button>
+            </div>
           </div>
         </div>
 
       </div>
+
     </div>
   );
 };

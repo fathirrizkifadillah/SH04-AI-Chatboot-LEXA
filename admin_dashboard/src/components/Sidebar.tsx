@@ -64,8 +64,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
               <div className="flex items-center gap-1.5">
                 <span className="text-xl font-bold tracking-tight text-white group-hover:text-[#0066FF] transition-colors">LEXA</span>
               </div>
-              <p className="text-[10px] text-[#0066FF] font-bold tracking-[0.25em] uppercase leading-none">
-                AI Platform
+              <p className="text-[10px] text-[#0066FF] font-bold tracking-[0.2em] uppercase leading-none">
+                Software House
               </p>
             </div>
           </Link>
@@ -119,16 +119,16 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
         </div>
       </nav>
 
-      {/* Bottom Bot Card matching Image 1 */}
+      {/* Bottom Brand Card */}
       {!isCollapsed && (
-        <div className="p-3.5 mt-auto border-t border-[#152238] bg-[#060B1A]/60">
+        <div className="p-3.5 mt-auto border-t border-[#152238] bg-[#060B1A]/80">
           <div className="flex items-center gap-3 mb-2.5">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/10 p-1 flex items-center justify-center shrink-0">
-              <img src="/lexa_bot.png" alt="LEXA Bot" className="w-full h-full object-contain" />
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 p-1 flex items-center justify-center shrink-0">
+              <img src="/lexa_logo.jpeg" alt="LEXA" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-xs text-white tracking-wide">LEXA AI</h3>
-              <p className="text-[10px] text-slate-400 leading-tight truncate">Smarter Answers, Better Experiences</p>
+              <h3 className="font-bold text-xs text-white tracking-wide">LEXA Ops</h3>
+              <p className="text-[9.5px] text-slate-400 leading-tight truncate">Leading • eXcellence • Automation</p>
             </div>
           </div>
           <Link
@@ -136,10 +136,10 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
             className="w-full py-1.5 px-3 bg-white/[0.06] hover:bg-white/[0.12] text-[11px] font-medium text-slate-300 hover:text-white rounded-lg transition-colors border border-white/10 flex items-center justify-center gap-1.5 text-center"
           >
             <Code className="w-3.5 h-3.5 text-[#0066FF]" />
-            <span>Documentation</span>
+            <span>Developer Hub</span>
           </Link>
-          <p className="text-[9px] text-slate-500 text-center mt-2.5 tracking-tight">
-            © 2026 LEXA Technology • All rights reserved.
+          <p className="text-[9px] text-slate-500 text-center mt-2.5 tracking-tight font-mono">
+            © 2026 LEXA Software House
           </p>
         </div>
       )}
