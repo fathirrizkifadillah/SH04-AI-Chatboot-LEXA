@@ -52,6 +52,7 @@ function App() {
   const [escalationShown, setEscalationShown] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isHandoffRequested, setIsHandoffRequested] = useState(false);
+  const [activeAdminName, setActiveAdminName] = useState<string>('');
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'thumbs_up' | 'thumbs_down'>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -61,19 +62,25 @@ function App() {
   const panelRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
 
-  // Initialize & fetch config
+  // Initialize & fetch config (Pastikan welcome_message dinamis dari pengaturan backend tampil di user)
   useEffect(() => {
     api
       .get<WidgetConfig>('/config')
       .then((data: WidgetConfig) => {
         setConfig(data);
         setMessages((prev) => {
-          if (prev.length === 0) {
+          const isStaleOrClosedMsg =
+            prev.length <= 1 &&
+            (!prev[0] ||
+              (prev[0].role === 'bot' &&
+                (prev[0].content.includes('telah ditutup') || !prev[0].content.trim())));
+
+          if (prev.length === 0 || isStaleOrClosedMsg) {
             return [
               {
                 id: Date.now(),
                 role: 'bot',
-                content: data.welcome_message,
+                content: data.welcome_message || 'Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu?',
                 timestamp: Date.now(),
               },
             ];
@@ -140,18 +147,22 @@ function App() {
           setIsAdminTyping(false);
           if (adminTypingTimeoutRef.current) clearTimeout(adminTypingTimeoutRef.current);
           if (data.type === 'admin_reply' && data.content) {
+            const senderName = (data as any).sender_name || 'Staf CS';
+            setActiveAdminName(senderName);
             setMessages((prev) => [
               ...prev,
               {
                 id: Date.now(),
                 role: 'admin',
                 content: data.content,
+                sender_name: senderName,
+                sender_role: (data as any).sender_role || 'CS Agent',
                 timestamp: Date.now(),
               },
             ]);
           }
           api
-            .get<{ history: Array<{ role: string; content: string; timestamp?: number }> }>(
+            .get<{ history: Array<{ role: string; content: string; timestamp?: number; sender_name?: string; sender_role?: string }> }>(
               `/api/chat/poll?session_id=${sessionId}&t=${Date.now()}`,
               { headers: { 'X-Lexa-Session': sessionToken } }
             )
@@ -161,6 +172,8 @@ function App() {
                   id: m.timestamp || Date.now() + i,
                   role: m.role === 'assistant' ? 'bot' : m.role,
                   content: m.content,
+                  sender_name: m.sender_name,
+                  sender_role: m.sender_role,
                   timestamp: m.timestamp || Date.now(),
                 })) as ChatMessage[];
                 setMessages((prev) => {
@@ -180,6 +193,7 @@ function App() {
           setIsHandoffRequested(data.is_handoff);
         } else if (data.type === 'handoff_ended') {
           setIsHandoffRequested(false);
+          setActiveAdminName('');
           setMessages((prev) => [
             ...prev,
             {
@@ -191,6 +205,7 @@ function App() {
           ]);
         } else if (data.type === 'session_deleted') {
           setIsHandoffRequested(false);
+          setActiveAdminName('');
           const newId = crypto.randomUUID();
           const newToken = crypto.randomUUID();
           setSessionId(newId);
@@ -200,7 +215,7 @@ function App() {
           const resetMsg: ChatMessage = {
             id: Date.now(),
             role: 'bot',
-            content: 'Percakapan telah ditutup oleh staf admin. Silakan ketik pesan baru jika ada hal lain yang ingin Anda tanyakan.',
+            content: config?.welcome_message || 'Halo! Percakapan baru telah dimulai. Ada yang bisa kami bantu?',
             timestamp: Date.now(),
           };
           setMessages([resetMsg]);
@@ -541,11 +556,14 @@ function App() {
         animate={{ scale: isOpen ? 0 : 1, y: isOpen ? 30 : 0 }}
         transition={{ type: 'spring', stiffness: 280, damping: 22 }}
       >
-        <button
+        <motion.button
           onClick={() => setIsOpen(true)}
+          whileHover={{ scale: 1.08, rotate: [0, -6, 6, 0] }}
+          whileTap={{ scale: 0.90, rotate: 12 }}
           style={{ width: '58px', height: '58px', minWidth: '58px', minHeight: '58px', maxWidth: '58px', maxHeight: '58px' }}
-          className="w-[58px] h-[58px] rounded-full bg-[#0D182E] hover:bg-[#152545] border border-blue-400/35 text-white flex items-center justify-center shadow-[0_12px_32px_-6px_rgba(0,0,0,0.75)] hover:shadow-[0_16px_36px_-6px_rgba(37,99,235,0.4)] transition-all duration-200 active:scale-[0.92] relative group cursor-pointer p-0 overflow-hidden"
+          className="w-[58px] h-[58px] rounded-full bg-[#0D182E] hover:bg-[#152545] border border-blue-400/35 text-white flex items-center justify-center shadow-[0_12px_32px_-6px_rgba(0,0,0,0.75)] hover:shadow-[0_16px_36px_-6px_rgba(37,99,235,0.4)] transition-colors duration-200 relative group cursor-pointer p-0 overflow-hidden"
           aria-label="Buka dialog chat Lexa"
+          title="Buka percakapan LEXA AI"
         >
           <img
             src={lexaBotHead}
@@ -553,10 +571,10 @@ function App() {
             width={38}
             height={38}
             style={{ width: '38px', height: '38px', maxWidth: '38px', maxHeight: '38px', objectFit: 'contain' }}
-            className="filter drop-shadow-sm select-none transition-transform group-hover:scale-105"
+            className="filter drop-shadow-sm select-none transition-transform duration-200 group-hover:scale-110"
           />
           <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#0D182E] shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
-        </button>
+        </motion.button>
       </motion.div>
 
       {/* Chat Panel */}
@@ -586,6 +604,7 @@ function App() {
                     maxWidth: 'calc(100vw - 32px)',
                     maxHeight: 'calc(100vh - 48px)',
                     zIndex: 99999,
+                    transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1), height 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                   }
             }
             className={
@@ -602,6 +621,8 @@ function App() {
               botAvatar={lexaBotHead}
               onRequestHandoff={handleRequestHandoff}
               isHandoffRequested={isHandoffRequested}
+              isHandoffActive={isHandoffRequested && Boolean(activeAdminName || messages.some(m => m.role === 'admin'))}
+              adminName={activeAdminName}
               isExpanded={isExpanded}
               onToggleExpanded={() => setIsExpanded(prev => !prev)}
               isSmallScreen={isSmallScreen}
@@ -616,6 +637,7 @@ function App() {
               isAdminTyping={isAdminTyping}
               feedbackGiven={feedbackGiven}
               onFeedback={handleFeedback}
+              onRequestHandoff={handleRequestHandoff}
               botAvatar={lexaBotHead}
               messagesEndRef={messagesEndRef}
             />

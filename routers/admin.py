@@ -70,6 +70,7 @@ async def get_widget_embed_code(
     api_url: Optional[str] = None,
     position: str = "bottom-right",
     color: str = "#2563eb",
+    theme: str = "dark",
     payload: dict = Depends(verify_jwt),
 ):
     base_url = api_url or str(request.base_url).rstrip("/")
@@ -78,7 +79,8 @@ async def get_widget_embed_code(
         f'<script src="{base_url}/widget/widget-loader.js"\n'
         f'        data-api-url="{base_url}"\n'
         f'        data-position="{position}"\n'
-        f'        data-color="{color}">\n'
+        f'        data-color="{color}"\n'
+        f'        data-theme="{theme}">\n'
         f'</script>'
     )
 
@@ -110,6 +112,7 @@ async def get_widget_embed_code(
             "api_url": base_url,
             "position": position,
             "color": color,
+            "theme": theme,
         },
     }
 
@@ -137,9 +140,9 @@ async def update_admin_settings(
 
 
 @router.get("/api/admin/stats")
-async def get_dashboard_statistics(payload: dict = Depends(verify_jwt)):
-    metrics = get_analytics_metrics()
-    chart_data = get_analytics_chart_data()
+async def get_dashboard_statistics(range: str = "7d", payload: dict = Depends(verify_jwt)):
+    metrics = get_analytics_metrics(range_type=range)
+    chart_data = get_analytics_chart_data(range_type=range)
     return {
         "kpi": {
             "total_conversations": metrics["total_conversations"],
@@ -388,8 +391,22 @@ async def admin_delete_user(request: Request, user_id: int, payload: dict = Depe
         user = db.query(AdminUser).filter(AdminUser.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
-        if user.email == os.getenv("ADMIN_EMAIL", "admin@lexatech.id"):
-            raise HTTPException(status_code=403, detail="Super Admin default tidak bisa dihapus")
+
+        # 1. Super Admin default (admin@lexatech.id) atau id 1 permanen dan tidak bisa dihapus
+        default_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id").strip().lower()
+        if user.email.lower() == default_email or user.id == 1:
+            raise HTTPException(status_code=403, detail="Super Admin utama bersifat permanen dan tidak dapat dihapus.")
+
+        # 2. Tidak boleh menghapus akun yang sedang login sendiri
+        current_user_email = str(payload.get("sub", "")).strip().lower()
+        if user.email.lower() == current_user_email:
+            raise HTTPException(status_code=403, detail="Anda tidak dapat menghapus akun Anda sendiri.")
+
+        # 3. Harus menyisakan minimal satu akun Super Admin
+        if user.role == "Super Admin":
+            super_count = db.query(AdminUser).filter(AdminUser.role == "Super Admin").count()
+            if super_count <= 1:
+                raise HTTPException(status_code=403, detail="Tidak dapat menghapus satu-satunya Super Admin yang tersisa.")
 
         db.delete(user)
         db.commit()
@@ -510,6 +527,8 @@ async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depe
     safe_content = _sanitize_content(req.content)
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now_ts = now_dt.timestamp() * 1000
+    admin_name = payload.get("name") or "Staf CS"
+    admin_role = payload.get("role") or "CS Agent"
     async with get_session_lock(req.session_id):
         db = SessionLocal()
         try:
@@ -517,7 +536,13 @@ async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depe
             if not s:
                 raise HTTPException(status_code=404, detail="Session tidak ditemukan")
             new_hist = list(s.history or [])
-            new_hist.append({"role": "admin", "content": safe_content, "timestamp": now_ts})
+            new_hist.append({
+                "role": "admin", 
+                "content": safe_content, 
+                "timestamp": now_ts,
+                "sender_name": admin_name,
+                "sender_role": admin_role
+            })
             s.history = new_hist
             s.updated_at = now_dt
             db.commit()
@@ -532,12 +557,20 @@ async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depe
         finally:
             db.close()
 
-    await manager.broadcast_to_session({"type": "admin_reply", "content": safe_content}, req.session_id)
+    await manager.broadcast_to_session({
+        "type": "admin_reply", 
+        "content": safe_content,
+        "sender_name": admin_name,
+        "sender_role": admin_role,
+        "timestamp": now_ts,
+    }, req.session_id)
     await manager.broadcast_to_admins({
         "type": "new_message",
         "session_id": req.session_id,
         "content": safe_content,
         "role": "admin",
+        "sender_name": admin_name,
+        "sender_role": admin_role,
         "timestamp": now_ts,
     })
     return {"status": "success"}
@@ -563,6 +596,25 @@ async def admin_delete_session(request: Request, session_id: str, payload: dict 
     })
 
     return {"status": "success", "message": "Percakapan berhasil dihapus"}
+
+
+@router.post("/api/admin/sessions/bulk-delete")
+@limiter.limit("20/minute")
+async def admin_bulk_delete_sessions(request: Request, req: dict, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
+    session_ids = req.get("session_ids", [])
+    if not session_ids or not isinstance(session_ids, list):
+        raise HTTPException(status_code=400, detail="Daftar session_ids wajib diisi")
+
+    deleted_count = 0
+    for sid in session_ids:
+        if sid in chat_sessions:
+            chat_sessions.pop(sid, None)
+        if delete_chat_session(sid):
+            deleted_count += 1
+            await manager.broadcast_to_session({"type": "session_deleted", "session_id": sid}, sid)
+            await manager.broadcast_to_admins({"type": "session_deleted", "session_id": sid})
+
+    return {"status": "success", "deleted_count": deleted_count}
 
 
 @router.get("/api/admin/feedback/stats")

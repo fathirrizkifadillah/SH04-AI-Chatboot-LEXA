@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
-import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download, PhoneCall, CheckCircle2, Trash2, FileText, ZoomIn } from 'lucide-react';
+import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download, PhoneCall, CheckCircle2, Trash2, FileText, ZoomIn, CheckSquare, Square, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api from '../lib/apiClient';
@@ -56,6 +56,7 @@ const playHandoffChime = () => {
 const Conversations = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
   const [sessionData, setSessionData] = useState<SessionHistory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [handoffNotifications, setHandoffNotifications] = useState<HandoffNotification[]>([]);
@@ -357,6 +358,105 @@ const Conversations = () => {
     }
   };
 
+  const getFilteredSessions = () => {
+    return sessions.filter((s) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        s.session_id.toLowerCase().includes(q) ||
+        (s.last_message && s.last_message.toLowerCase().includes(q))
+      );
+    });
+  };
+
+  const toggleSelectSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedSessionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) next.delete(sessionId);
+      else next.add(sessionId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const visible = getFilteredSessions();
+    if (selectedSessionIds.size === visible.length && visible.length > 0) {
+      setSelectedSessionIds(new Set());
+    } else {
+      setSelectedSessionIds(new Set(visible.map((s) => s.session_id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedSessionIds.size === 0 || isDeleting || !canReply) return;
+    if (!window.confirm(`Hapus permanen ${selectedSessionIds.size} percakapan yang dipilih?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await api.authPost('/api/admin/sessions/bulk-delete', { session_ids: Array.from(selectedSessionIds) });
+      setSessions((prev) => prev.filter((s) => !selectedSessionIds.has(s.session_id)));
+      if (selectedSession && selectedSessionIds.has(selectedSession)) {
+        setSelectedSession(null);
+        setSessionData(null);
+      }
+      setHandoffToast(`${selectedSessionIds.size} percakapan berhasil dihapus`);
+      setSelectedSessionIds(new Set());
+      setTimeout(() => setHandoffToast(''), 3000);
+    } catch (e) {
+      console.error(e);
+      setReplyError('Gagal menghapus percakapan terpilih.');
+      setTimeout(() => setReplyError(''), 4000);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleBulkExportCSV = async () => {
+    if (selectedSessionIds.size === 0) return;
+    try {
+      setHandoffToast('Menyiapkan file CSV batch...');
+      const histories = await Promise.all(
+        Array.from(selectedSessionIds).map(async (sid) => {
+          try {
+            const data = await api.authGet<{ session_id: string; history: Array<any> }>(`/api/admin/sessions/${sid}`);
+            return { session_id: sid, history: data.history || [] };
+          } catch {
+            return { session_id: sid, history: [] };
+          }
+        })
+      );
+
+      const csvRows = ['"Session ID","Timestamp","Role","Pengirim","Pesan","File"'];
+      for (const item of histories) {
+        for (const msg of item.history) {
+          const time = msg.timestamp ? new Date(msg.timestamp).toISOString() : '';
+          const role = msg.role || 'user';
+          const sender = msg.sender_name || (role === 'admin' ? 'Staf CS' : role === 'assistant' || role === 'bot' ? 'LEXA AI' : 'Customer');
+          const content = (msg.content || '').replace(/"/g, '""');
+          const file = msg.file ? msg.file.name : '';
+          csvRows.push(`"${item.session_id}","${time}","${role}","${sender}","${content}","${file}"`);
+        }
+      }
+
+      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lexa_conversations_batch_${selectedSessionIds.size}_${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setHandoffToast(`${selectedSessionIds.size} percakapan berhasil diexport`);
+      setTimeout(() => setHandoffToast(''), 3000);
+    } catch (e) {
+      console.error(e);
+      setReplyError('Gagal mendownload CSV.');
+      setTimeout(() => setReplyError(''), 4000);
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-130px)] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative transition-colors">
 
@@ -460,11 +560,25 @@ const Conversations = () => {
         {/* Left Pane: Sessions */}
         <div className="w-80 shrink-0 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/80 dark:bg-slate-900/50 min-h-0 transition-colors">
           <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide uppercase flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> 
-                Daftar Percakapan
-              </h2>
+            <div className="flex justify-between items-center mb-2.5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
+                  title={selectedSessionIds.size === getFilteredSessions().length && getFilteredSessions().length > 0 ? "Batalkan pilih semua" : "Pilih semua"}
+                >
+                  {selectedSessionIds.size === getFilteredSessions().length && getFilteredSessions().length > 0 ? (
+                    <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <Square className="w-4 h-4 text-slate-400" />
+                  )}
+                </button>
+                <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> 
+                  Percakapan ({sessions.length})
+                </h2>
+              </div>
               <button
                 onClick={async () => {
                   const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
@@ -482,12 +596,49 @@ const Conversations = () => {
                   } catch (e) { console.error(e); }
                 }}
                 title="Download semua percakapan (CSV)"
-                className="p-1 px-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md transition-colors text-[11px] flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+                className="p-1 px-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md transition-colors text-[11px] flex items-center gap-1 border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 <Download className="w-3 h-3" />
-                <span>CSV</span>
+                <span>Semua CSV</span>
               </button>
             </div>
+
+            {/* Bulk Actions Bar if items selected */}
+            {selectedSessionIds.size > 0 && (
+              <div className="mb-2.5 p-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 rounded-xl flex items-center justify-between gap-1 text-xs animate-in fade-in">
+                <span className="font-semibold text-blue-700 dark:text-blue-300 text-[11px] ml-1">
+                  {selectedSessionIds.size} dipilih
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleBulkExportCSV}
+                    className="px-2 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg text-[10.5px] font-medium flex items-center gap-1 shadow-xs cursor-pointer"
+                    title="Export CSV yang dipilih"
+                  >
+                    <Download className="w-3 h-3 text-blue-600" />
+                    <span>CSV</span>
+                  </button>
+                  {canReply && (
+                    <button
+                      onClick={handleBulkDelete}
+                      className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10.5px] font-medium flex items-center gap-1 shadow-xs cursor-pointer"
+                      title="Hapus percakapan yang dipilih"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Hapus ({selectedSessionIds.size})</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedSessionIds(new Set())}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded cursor-pointer"
+                    title="Batal pilih"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input 
@@ -506,20 +657,15 @@ const Conversations = () => {
             ) : sessions.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400">Belum ada percakapan.</div>
             ) : (
-              sessions
-                .filter(s => {
-                  if (!searchQuery.trim()) return true;
-                  const q = searchQuery.toLowerCase();
-                  return s.session_id.toLowerCase().includes(q) ||
-                         (s.last_message && s.last_message.toLowerCase().includes(q));
-                })
+              getFilteredSessions()
                 .map((s) => {
                   const isSelected = selectedSession === s.session_id;
+                  const isChecked = selectedSessionIds.has(s.session_id);
                   return (
-                    <button 
+                    <div 
                       key={s.session_id}
                       onClick={() => setSelectedSession(s.session_id)}
-                      className={`w-full text-left p-2.5 rounded-xl transition-all ${
+                      className={`group w-full text-left p-2.5 rounded-xl transition-all flex items-start gap-2 cursor-pointer ${
                         isSelected 
                           ? 'bg-blue-600 text-white shadow-sm' 
                           : s.is_human_handoff
@@ -527,29 +673,46 @@ const Conversations = () => {
                             : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="font-medium text-xs truncate pr-1 flex items-center gap-1.5">
-                          <User className={`w-3 h-3 ${isSelected ? 'text-blue-100' : 'text-slate-400'}`} />
-                          {s.session_id.substring(0, 8)}...
-                          {s.is_human_handoff && (
-                            <span className={`px-1.5 py-0.5 text-[9px] font-semibold rounded-md flex items-center gap-0.5 ${
-                              isSelected ? 'bg-amber-400 text-slate-900' : 'bg-amber-500 text-white'
-                            }`}>
-                              <Headphones className="w-2.5 h-2.5" /> BUTUH CS
-                            </span>
-                          )}
+                      <button
+                        type="button"
+                        onClick={(e) => toggleSelectSession(s.session_id, e)}
+                        className={`mt-0.5 shrink-0 transition-opacity cursor-pointer ${
+                          isChecked ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'
+                        }`}
+                        title={isChecked ? 'Batalkan pilihan' : 'Pilih sesi ini'}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`} />
+                        ) : (
+                          <Square className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-200' : 'text-slate-400'}`} />
+                        )}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <div className="font-medium text-xs truncate pr-1 flex items-center gap-1.5">
+                            <User className={`w-3 h-3 ${isSelected ? 'text-blue-100' : 'text-slate-400'}`} />
+                            {s.session_id.substring(0, 8)}...
+                            {s.is_human_handoff && (
+                              <span className={`px-1.5 py-0.5 text-[9px] font-semibold rounded-md flex items-center gap-0.5 ${
+                                isSelected ? 'bg-amber-400 text-slate-900' : 'bg-amber-500 text-white'
+                              }`}>
+                                <Headphones className="w-2.5 h-2.5" /> BUTUH CS
+                              </span>
+                            )}
+                          </div>
+                          <span className={`text-[10px] whitespace-nowrap flex items-center gap-0.5 ${
+                            isSelected ? 'text-blue-100' : 'text-slate-400'
+                          }`}>
+                            <Clock className="w-2.5 h-2.5" />
+                            {s.updated_at ? new Date(s.updated_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : ''}
+                          </span>
                         </div>
-                        <span className={`text-[10px] whitespace-nowrap flex items-center gap-0.5 ${
-                          isSelected ? 'text-blue-100' : 'text-slate-400'
-                        }`}>
-                          <Clock className="w-2.5 h-2.5" />
-                          {s.updated_at ? new Date(s.updated_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : ''}
-                        </span>
+                        <p className={`text-[11px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                          {s.last_message || "Memulai percakapan..."}
+                        </p>
                       </div>
-                      <p className={`text-[11px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {s.last_message || "Memulai percakapan..."}
-                      </p>
-                    </button>
+                    </div>
                   );
                 })
             )}

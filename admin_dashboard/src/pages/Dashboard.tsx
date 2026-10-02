@@ -91,15 +91,15 @@ const Dashboard = () => {
     }
   })();
 
-  const fetchStats = () => {
+  const fetchStats = (range: '24h' | '7d' | '30d' = timeRange) => {
     setIsRefreshing(true);
-    api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>('/api/admin/stats')
+    api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>(`/api/admin/stats?range=${range}`)
       .then(data => {
         if (data.kpi) {
           setStats(prev => ({
             ...prev,
-            total_conversations: data.kpi.total_conversations > 0 ? data.kpi.total_conversations : 12456,
-            active_users: data.kpi.active_users > 0 ? data.kpi.active_users : 156,
+            total_conversations: data.kpi.total_conversations,
+            active_users: data.kpi.active_users,
             unanswered_queries: data.kpi.unanswered_queries,
           }));
         }
@@ -109,16 +109,21 @@ const Dashboard = () => {
       })
       .catch(() => {})
       .finally(() => {
-        setTimeout(() => setIsRefreshing(false), 400);
+        setTimeout(() => setIsRefreshing(false), 300);
       });
 
     api.authGet<FeedbackStats>('/api/admin/feedback/stats')
       .then(data => setFeedbackStats(data))
       .catch(() => {});
   };
+
+  const handleTimeRangeChange = (range: '24h' | '7d' | '30d') => {
+    setTimeRange(range);
+    fetchStats(range);
+  };
   
   useEffect(() => {
-    fetchStats();
+    fetchStats(timeRange);
   }, []);
 
   return (
@@ -156,10 +161,10 @@ const Dashboard = () => {
             {(['24h', '7d', '30d'] as const).map((range) => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                onClick={() => handleTimeRangeChange(range)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
                   timeRange === range
-                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
                 }`}
               >

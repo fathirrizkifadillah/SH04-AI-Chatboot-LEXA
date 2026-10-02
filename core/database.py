@@ -82,17 +82,25 @@ class ChatFeedback(Base):
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-def get_analytics_metrics():
-    """Ambil metrics real dari database untuk dashboard."""
+def get_analytics_metrics(range_type: str = "7d"):
+    """Ambil metrics real dari database untuk dashboard berdasarkan time range."""
     db = SessionLocal()
     try:
-        total_conversations = db.query(ChatSession).count()
-        unanswered_queries = db.query(UnansweredQuery).count()
+        now = datetime.now(timezone.utc)
+        if range_type == "24h":
+            cutoff = now - timedelta(hours=24)
+        elif range_type == "30d":
+            cutoff = now - timedelta(days=30)
+        else:
+            cutoff = now - timedelta(days=7)
+
+        total_conversations = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).count()
+        unanswered_queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).count()
         
-        # Calculate average response time dari history yang sudah ada (dibatasi 200 sesi terbaru agar hemat memori)
+        # Calculate average response time dari history yang sudah ada
         sessions_with_timestamps = (
             db.query(ChatSession)
-            .filter(ChatSession.updated_at.isnot(None))
+            .filter(ChatSession.updated_at >= cutoff)
             .order_by(ChatSession.updated_at.desc())
             .limit(200)
             .all()
@@ -127,13 +135,13 @@ def get_analytics_metrics():
                     avg_response_time = f"{avg_seconds/3600:.1f} jam"
         
         # Count active users (sessions aktif dalam waktu 30 menit terakhir)
-        thirty_min_ago = datetime.now(timezone.utc) - timedelta(minutes=30)
+        thirty_min_ago = now - timedelta(minutes=30)
         active_users = db.query(ChatSession).filter(
             ChatSession.updated_at >= thirty_min_ago
         ).count()
         
         # Active users bulanan
-        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        thirty_days_ago = now - timedelta(days=30)
         monthly_active = db.query(ChatSession).filter(
             ChatSession.created_at >= thirty_days_ago
         ).count()
@@ -144,38 +152,90 @@ def get_analytics_metrics():
             "avg_response_time": avg_response_time,
             "active_users_30min": active_users,
             "monthly_active": monthly_active,
+            "range": range_type,
         }
     finally:
         db.close()
 
-def get_analytics_chart_data():
+def get_analytics_chart_data(range_type: str = "7d"):
+    """Ambil data chart tren aktivitas untuk rentang 24h, 7d, atau 30d."""
     db = SessionLocal()
     try:
-        today = datetime.now(timezone.utc).date()
-        seven_days_ago = today - timedelta(days=6)
-        cutoff = datetime.combine(seven_days_ago, datetime.min.time(), tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
 
-        days_data = {}
-        for i in range(6, -1, -1):
-            d = today - timedelta(days=i)
-            label = d.strftime("%d/%m")
-            days_data[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0}
+        if range_type == "24h":
+            slots = {}
+            for i in range(7, -1, -1):
+                slot_time = now - timedelta(hours=i * 3)
+                label = slot_time.strftime("%H:00")
+                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_time.timestamp()}
+            cutoff = now - timedelta(hours=24)
+            sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+            for s in sessions:
+                s_ts = s.created_at.replace(tzinfo=timezone.utc).timestamp() if s.created_at.tzinfo is None else s.created_at.timestamp()
+                best_slot = min(slots.keys(), key=lambda k: abs(slots[k]["timestamp"] - s_ts))
+                slots[best_slot]["chats"] += 1
+                slots[best_slot]["percakapan"] += 1
 
-        # Filter 7 hari terakhir lewat SQL, group by Python
-        sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
-        for s in sessions:
-            label = s.created_at.strftime("%d/%m")
-            if label in days_data:
-                days_data[label]["chats"] += 1
-                days_data[label]["percakapan"] += 1
+            queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
+            for q in queries:
+                q_ts = q.created_at.replace(tzinfo=timezone.utc).timestamp() if q.created_at.tzinfo is None else q.created_at.timestamp()
+                best_slot = min(slots.keys(), key=lambda k: abs(slots[k]["timestamp"] - q_ts))
+                slots[best_slot]["unresolved"] += 1
 
-        queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
-        for q in queries:
-            label = q.created_at.strftime("%d/%m")
-            if label in days_data:
-                days_data[label]["unresolved"] += 1
+            for s in slots.values():
+                s.pop("timestamp", None)
+            return list(slots.values())
 
-        return list(days_data.values())
+        elif range_type == "30d":
+            days_data = {}
+            for i in range(29, -1, -3):
+                d = now - timedelta(days=i)
+                label = d.strftime("%d/%m")
+                days_data[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "date": d.date()}
+            cutoff = now - timedelta(days=30)
+            sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+            for s in sessions:
+                s_date = s.created_at.date()
+                best_label = min(days_data.keys(), key=lambda k: abs((days_data[k]["date"] - s_date).days))
+                days_data[best_label]["chats"] += 1
+                days_data[best_label]["percakapan"] += 1
+
+            queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
+            for q in queries:
+                q_date = q.created_at.date()
+                best_label = min(days_data.keys(), key=lambda k: abs((days_data[k]["date"] - q_date).days))
+                days_data[best_label]["unresolved"] += 1
+
+            for d in days_data.values():
+                d.pop("date", None)
+            return list(days_data.values())
+
+        else:  # default 7d
+            today = now.date()
+            seven_days_ago = today - timedelta(days=6)
+            cutoff = datetime.combine(seven_days_ago, datetime.min.time(), tzinfo=timezone.utc)
+
+            days_data = {}
+            for i in range(6, -1, -1):
+                d = today - timedelta(days=i)
+                label = d.strftime("%d/%m")
+                days_data[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0}
+
+            sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+            for s in sessions:
+                label = s.created_at.strftime("%d/%m")
+                if label in days_data:
+                    days_data[label]["chats"] += 1
+                    days_data[label]["percakapan"] += 1
+
+            queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
+            for q in queries:
+                label = q.created_at.strftime("%d/%m")
+                if label in days_data:
+                    days_data[label]["unresolved"] += 1
+
+            return list(days_data.values())
     finally:
         db.close()
 

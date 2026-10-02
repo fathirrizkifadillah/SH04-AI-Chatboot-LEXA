@@ -16,6 +16,7 @@ interface ChatMessageListProps {
   isAdminTyping: boolean;
   feedbackGiven: Record<number, 'thumbs_up' | 'thumbs_down'>;
   onFeedback: (idx: number, rating: 'thumbs_up' | 'thumbs_down') => void;
+  onRequestHandoff?: () => void;
   botAvatar: string;
   messagesEndRef: RefObject<HTMLDivElement | null>;
 }
@@ -27,6 +28,7 @@ export const ChatMessageList = ({
   isAdminTyping,
   feedbackGiven,
   onFeedback,
+  onRequestHandoff,
   botAvatar,
   messagesEndRef,
 }: ChatMessageListProps) => {
@@ -74,7 +76,7 @@ export const ChatMessageList = ({
                     {isAdmin ? (
                       <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                        Staf CS Manusia
+                        Staf CS: {msg.sender_name || 'Admin Support'}
                       </span>
                     ) : (
                       <span className="text-[10px] font-semibold text-blue-400 flex items-center gap-1">
@@ -156,40 +158,54 @@ export const ChatMessageList = ({
                 )}
 
                 {/* Footer Metadata & Feedback */}
-                <div className="flex items-center gap-2 px-1 text-[10px] text-slate-400 font-mono">
-                  <span>
-                    {new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(msg.timestamp)}
-                  </span>
+                <div className="flex flex-col gap-1 px-1">
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                    <span>
+                      {new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(msg.timestamp)}
+                    </span>
+                  </div>
 
+                  {/* Pertanyaan Feedback Interaktif (Jelas & Konkret) */}
                   {isBot && !isStreaming && idx === messages.length - 1 && !feedbackStatus && (
-                    <div className="flex items-center gap-1 ml-2">
-                      <button
-                        onClick={() => onFeedback(idx, 'thumbs_up')}
-                        className="p-1 text-slate-400 hover:text-blue-400 hover:bg-white/[0.05] transition-all rounded active:scale-[0.9]"
-                        title="Jawaban relevan & membantu"
-                        aria-label="Thumbs up"
-                      >
-                        <ThumbsUp size={12} />
-                      </button>
-                      <button
-                        onClick={() => onFeedback(idx, 'thumbs_down')}
-                        className="p-1 text-slate-400 hover:text-red-400 hover:bg-white/[0.05] transition-all rounded active:scale-[0.9]"
-                        title="Jawaban kurang relevan"
-                        aria-label="Thumbs down"
-                      >
-                        <ThumbsDown size={12} />
-                      </button>
+                    <div className="flex flex-wrap items-center gap-2 mt-1 py-1 px-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                      <span className="text-[11px] text-slate-300">Apakah jawaban ini membantu?</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => onFeedback(idx, 'thumbs_up')}
+                          className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Pertanyaan sudah terjawab"
+                        >
+                          <ThumbsUp size={11} />
+                          <span>Ya, Terjawab</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            onFeedback(idx, 'thumbs_down');
+                            if (onRequestHandoff) onRequestHandoff();
+                          }}
+                          className="px-2 py-0.5 rounded-lg text-[10.5px] font-medium bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Belum terjawab, butuh staf CS"
+                        >
+                          <ThumbsDown size={11} />
+                          <span>Belum • Hubungi CS</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
                   {feedbackStatus && (
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400 ml-2">
+                    <div className="flex items-center gap-1.5 text-[10.5px] text-slate-400 mt-0.5">
                       {feedbackStatus === 'thumbs_up' ? (
-                        <ThumbsUp size={11} className="text-blue-400" />
+                        <>
+                          <ThumbsUp size={11} className="text-emerald-400" />
+                          <span className="text-emerald-300">Terima kasih! Senang bisa membantu Anda.</span>
+                        </>
                       ) : (
-                        <ThumbsDown size={11} className="text-red-400" />
+                        <>
+                          <ThumbsDown size={11} className="text-amber-400" />
+                          <span className="text-amber-300">Tercatat. Tim CS siap membantu Anda jika diperlukan.</span>
+                        </>
                       )}
-                      <span>Terima kasih atas feedback!</span>
                     </div>
                   )}
                 </div>

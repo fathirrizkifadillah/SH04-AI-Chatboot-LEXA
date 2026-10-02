@@ -176,7 +176,7 @@ const Users = () => {
                     {user.last_active || 'Sekarang'}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button 
                         onClick={() => {
                           setSelectedUserForPwd(user);
@@ -184,18 +184,36 @@ const Users = () => {
                           setPwdUserError('');
                           setPwdUserSuccess('');
                         }} 
-                        className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        className="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                         title="Ganti Password User"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
                       </button>
-                      <button 
-                        onClick={() => handleDelete(user.id)} 
-                        className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                        title="Hapus user"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+
+                      {user.email === 'admin@lexatech.id' || user.id === 1 ? (
+                        <span 
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60"
+                          title="Super Admin utama bersifat permanen dan tidak dapat dihapus."
+                        >
+                          <Lock className="w-3 h-3" />
+                          <span>Permanen</span>
+                        </span>
+                      ) : currentUser?.email === user.email ? (
+                        <span 
+                          className="p-1.5 text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                          title="Anda tidak dapat menghapus akun Anda sendiri"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </span>
+                      ) : (
+                        <button 
+                          onClick={() => handleDelete(user.id)} 
+                          className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                          title="Hapus user"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

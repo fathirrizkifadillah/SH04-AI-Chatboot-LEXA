@@ -55,5 +55,7 @@ export interface Message {
   content: string;
   timestamp: number;
   id: number;
+  sender_name?: string;
+  sender_role?: string;
   file?: { name: string; type: string; url?: string };
 }

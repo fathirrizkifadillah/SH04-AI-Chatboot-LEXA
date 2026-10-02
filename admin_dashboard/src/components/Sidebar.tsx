@@ -1,6 +1,6 @@
+import { useState, type ReactNode } from 'react';
 import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight, Code } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import type { ReactNode } from 'react';
 import api from '../lib/apiClient';
 
 interface SidebarProps {
@@ -19,6 +19,7 @@ interface NavItem {
 const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const userStr = sessionStorage.getItem('lexa_admin_user');
   let userRole = 'CS Agent';
@@ -109,9 +110,9 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
         
         <div className="pt-2 border-t border-[#152238] mt-2">
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             title={isCollapsed ? 'Keluar' : undefined}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 ${isCollapsed ? 'justify-center' : ''}`}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="w-5 h-5 shrink-0" />
             {!isCollapsed && <span className="text-[13px]">Logout</span>}
@@ -141,6 +142,42 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
           <p className="text-[9px] text-slate-500 text-center mt-2.5 tracking-tight font-mono">
             © 2026 LEXA Software House
           </p>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#152238] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto border border-red-200 dark:border-red-900/50">
+              <LogOut className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Konfirmasi Keluar</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Apakah Anda yakin ingin keluar dari Admin Console LEXA? Sesi aktif Anda akan ditutup.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  handleLogout();
+                }}
+                className="flex-1 py-2 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-lg shadow-red-600/30 transition-colors cursor-pointer"
+              >
+                Ya, Keluar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </aside>

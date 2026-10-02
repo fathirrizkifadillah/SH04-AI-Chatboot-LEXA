@@ -107,7 +107,7 @@ export const ChatInput = ({ input, setInput, onSend, disabled, inputRef, selecte
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ketik pertanyaan atau perintah Anda..."
-          className="flex-1 max-h-[120px] min-h-[44px] bg-[#060D1E] border border-white/10 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 rounded-2xl px-4 py-3 text-[14px] text-white placeholder-slate-500 outline-none resize-none transition-all shadow-inner leading-relaxed"
+          className="flex-1 max-h-[120px] min-h-[44px] bg-[#060D1E] border border-white/10 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 rounded-2xl px-4 py-3 text-[14px] text-white placeholder-slate-500 outline-none resize-none custom-scrollbar overflow-y-auto transition-all shadow-inner leading-relaxed"
           rows={1}
         />
 
