@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Code, Copy, Check, Globe, Palette, ExternalLink, Info, Moon, Sun, Monitor } from 'lucide-react';
+import { Code, Copy, Check, Globe, Palette, ExternalLink, Info } from 'lucide-react';
 import api from '../lib/apiClient';
 
 interface EmbedCodeResponse {
@@ -22,9 +22,9 @@ const positions = [
 ];
 
 const themes = [
-  { value: 'dark', label: 'Dark Mode', icon: Moon },
-  { value: 'light', label: 'Light Mode', icon: Sun },
-  { value: 'auto', label: 'Auto (System)', icon: Monitor },
+  { value: 'dark', label: 'Dark Mode' },
+  { value: 'light', label: 'Light Mode' },
+  { value: 'auto', label: 'Auto (System)' },
 ];
 
 interface CopyButtonProps {
