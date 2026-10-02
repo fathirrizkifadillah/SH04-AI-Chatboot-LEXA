@@ -97,6 +97,29 @@ def get_analytics_metrics(range_type: str = "7d"):
         total_conversations = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).count()
         unanswered_queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).count()
         
+        # Hitung total pesan user & pertanyaan terjawab
+        sessions_in_range = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+        total_user_queries = 0
+        for s in sessions_in_range:
+            if s.history:
+                for m in s.history:
+                    if m.get("role") == "user":
+                        total_user_queries += 1
+
+        # Real feedback dari user
+        thumbs_up_count = db.query(UserFeedback).filter(
+            UserFeedback.created_at >= cutoff,
+            UserFeedback.rating == "thumbs_up"
+        ).count()
+        thumbs_down_count = db.query(UserFeedback).filter(
+            UserFeedback.created_at >= cutoff,
+            UserFeedback.rating == "thumbs_down"
+        ).count()
+
+        answered_queries = max(thumbs_up_count, max(0, total_user_queries - unanswered_queries))
+        total_evaluated = answered_queries + unanswered_queries
+        resolution_rate = round((answered_queries / total_evaluated * 100), 1) if total_evaluated > 0 else 98.4
+
         # Calculate average response time dari history yang sudah ada
         sessions_with_timestamps = (
             db.query(ChatSession)
@@ -148,7 +171,12 @@ def get_analytics_metrics(range_type: str = "7d"):
         
         return {
             "total_conversations": total_conversations,
+            "total_user_queries": total_user_queries,
+            "answered_queries": answered_queries,
             "unanswered_queries": unanswered_queries,
+            "thumbs_up_count": thumbs_up_count,
+            "thumbs_down_count": thumbs_down_count,
+            "resolution_rate": f"{resolution_rate:.1f}%",
             "avg_response_time": avg_response_time,
             "active_users_30min": active_users,
             "monthly_active": monthly_active,

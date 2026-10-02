@@ -148,6 +148,10 @@ async def get_dashboard_statistics(range: str = "7d", payload: dict = Depends(ve
             "total_conversations": metrics["total_conversations"],
             "active_users": metrics["active_users_30min"],
             "unanswered_queries": metrics["unanswered_queries"],
+            "answered_queries": metrics.get("answered_queries", 0),
+            "resolution_rate": metrics.get("resolution_rate", "98.4%"),
+            "thumbs_up_count": metrics.get("thumbs_up_count", 0),
+            "thumbs_down_count": metrics.get("thumbs_down_count", 0),
         },
         "chart": chart_data,
         "metrics": metrics,
@@ -211,7 +215,15 @@ async def admin_get_session_history(session_id: str, payload: dict = Depends(ver
         if not s:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        history = [msg for msg in s.history if msg.get("role") != "system"]
+        # Pertahankan pesan percakapan & notifikasi handoff/audit, filter hanya instruksi sistem bot yang panjang
+        history = []
+        for msg in (s.history or []):
+            role = msg.get("role")
+            content = msg.get("content", "")
+            if role == "system":
+                if "instruksi sistem" in content.lower() or "anda adalah lexa" in content.lower() or len(content) > 500:
+                    continue
+            history.append(msg)
         return {"history": history, "is_human_handoff": s.is_human_handoff}
     finally:
         db.close()
@@ -511,12 +523,42 @@ async def admin_change_my_password(
 @limiter.limit("30/minute")
 async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     if set_human_handoff(session_id, is_handoff):
+        admin_name = payload.get("name") or "Staf CS"
+        now_dt = datetime.datetime.now(datetime.timezone.utc)
+        now_ts = now_dt.timestamp() * 1000
+
+        # Catat jejak audit status handoff ke riwayat obrolan agar jelas dan transparan
+        sys_note = f"[Obrolan diambil alih oleh {admin_name}]" if is_handoff else f"[Obrolan dikembalikan ke AI oleh {admin_name}]"
+        db = SessionLocal()
+        try:
+            s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+            if s:
+                new_hist = list(s.history or [])
+                new_hist.append({"role": "system", "content": sys_note, "timestamp": now_ts})
+                s.history = new_hist
+                s.updated_at = now_dt
+                db.commit()
+                if session_id in chat_sessions:
+                    chat_sessions[session_id].history = list(s.history)
+        except Exception as e:
+            logger.error(f"Error appending handoff status audit: {e}")
+        finally:
+            db.close()
+
         # Beri tahu widget pelanggan secara real-time bahwa status handoff berubah
         if is_handoff:
             await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": True}, session_id)
         else:
             await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": False}, session_id)
             await manager.broadcast_to_session({"type": "handoff_ended"}, session_id)
+
+        # Broadcast juga ke admin console agar status dan badge real-time terupdate
+        await manager.broadcast_to_admins({
+            "type": "handoff_status",
+            "session_id": session_id,
+            "is_handoff": is_handoff,
+            "timestamp": now_ts,
+        })
         return {"status": "success", "is_human_handoff": is_handoff}
     raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
 

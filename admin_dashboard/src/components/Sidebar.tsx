@@ -7,6 +7,7 @@ interface SidebarProps {
   setAuthToken: (token: string | null) => void;
   isCollapsed: boolean;
   onToggle: () => void;
+  pendingHandoffCount?: number;
 }
 
 interface NavItem {
@@ -16,7 +17,7 @@ interface NavItem {
   roles?: string[];
 }
 
-const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
+const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0 }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -94,7 +95,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
               key={item.name}
               to={item.path}
               title={isCollapsed ? item.name : undefined}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
+              className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
                 isCollapsed ? 'justify-center' : ''
               } ${
                 isActive
@@ -104,6 +105,15 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle }: SidebarProps) => {
             >
               <span className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`}>{item.icon}</span>
               {!isCollapsed && <span className="text-[13px] tracking-wide">{item.name}</span>}
+              {item.name === 'Conversations' && pendingHandoffCount > 0 && (
+                isCollapsed ? (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse ring-2 ring-[#080E21]" />
+                ) : (
+                  <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white animate-pulse shadow-md shadow-red-500/40">
+                    {pendingHandoffCount}
+                  </span>
+                )
+              )}
             </Link>
           );
         })}

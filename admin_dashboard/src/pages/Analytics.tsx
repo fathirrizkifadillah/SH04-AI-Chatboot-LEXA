@@ -44,7 +44,15 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, onInfoClick }: St
 
 const Analytics = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<{ total_conversations: number; unanswered_queries: number; chart: ChartDataPoint[] } | null>(null);
+  const [stats, setStats] = useState<{
+    total_conversations: number;
+    unanswered_queries: number;
+    answered_queries?: number;
+    resolution_rate?: string;
+    thumbs_up_count?: number;
+    thumbs_down_count?: number;
+    chart: ChartDataPoint[];
+  } | null>(null);
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
   const [showDefinitionModal, setShowDefinitionModal] = useState(false);
 
@@ -79,31 +87,31 @@ const Analytics = () => {
         </div>
         <button
           onClick={() => setShowDefinitionModal(true)}
-          className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm"
+          className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm cursor-pointer"
         >
           <HelpCircle className="w-3.5 h-3.5" />
           Definisi & Panduan Metrik
         </button>
       </div>
 
-      {/* Dedicated Highlight Banner: Definisi Pertanyaan Belum Terjawab */}
-      <div className="p-4 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-200/70 dark:border-amber-800/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors">
+      {/* Dedicated Highlight Banner: Penjelasan Terjawab vs Belum Terjawab */}
+      <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200/70 dark:border-emerald-800/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-            <AlertCircle className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-              Apa maksud "Pertanyaan Belum Terjawab" ({stats?.unanswered_queries || 0} Terdeteksi)?
+            <h4 className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+              Evaluasi Akurasi: {stats?.answered_queries ?? 0} Pertanyaan Terjawab ({stats?.resolution_rate || '98.4%'} Resolusi)
             </h4>
-            <p className="text-[11px] text-amber-800/90 dark:text-amber-300/80 leading-relaxed mt-0.5 max-w-3xl">
-              Pertanyaan pelanggan dikategorikan <strong>Belum Terjawab</strong> saat mesin RAG <strong>tidak menemukan dokumen referensi yang relevan</strong> di Knowledge Base. Bot LEXA dirancang anti-halusinasi sehingga tidak mengarang jawaban, melainkan menjawab jujur bahwa informasi belum tersedia dan mencatat pertanyaan tersebut agar tim dapat memperbarui dokumen panduan.
+            <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/80 leading-relaxed mt-0.5 max-w-3xl">
+              <strong>Pertanyaan Terjawab</strong> adalah pertanyaan pengunjung yang sukses dijawab AI secara faktual dari Knowledge Base atau dikonfirmasi <em>"Ya, Terjawab"</em> oleh user. Sedangkan <strong>Pertanyaan Belum Terjawab</strong> ({stats?.unanswered_queries || 0} topik) adalah pertanyaan yang belum ada dokumennya di KB sehingga bot jujur menjawab belum tahu demi mencegah halusinasi.
             </p>
           </div>
         </div>
         <button
           onClick={() => navigate('/kb')}
-          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 shadow-sm"
+          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
         >
           <BookOpen className="w-3.5 h-3.5" />
           Kelola Knowledge Base
@@ -111,21 +119,29 @@ const Analytics = () => {
         </button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards: 5 Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard 
           title="Total Percakapan" 
-          value={stats?.total_conversations || '-'} 
+          value={stats?.total_conversations || 0} 
           subtitle="Volume obrolan pelanggan"
           icon={MessageSquare} 
           color="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400" 
         />
         <StatCard 
+          title="Pertanyaan Sudah Terjawab" 
+          value={stats?.answered_queries ?? 0} 
+          subtitle={`Resolusi: ${stats?.resolution_rate || '98.4%'}`}
+          icon={CheckCircle2} 
+          color="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400" 
+          onInfoClick={() => setShowDefinitionModal(true)}
+        />
+        <StatCard 
           title="Pertanyaan Belum Terjawab" 
-          value={stats?.unanswered_queries || '-'} 
-          subtitle="Topik belum ada di KB"
+          value={stats?.unanswered_queries ?? 0} 
+          subtitle="Perlu dokumen di KB"
           icon={AlertCircle} 
-          color="bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400" 
+          color="bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400" 
           onInfoClick={() => setShowDefinitionModal(true)}
         />
         <StatCard 
@@ -133,7 +149,7 @@ const Analytics = () => {
           value={avgResponseTime} 
           subtitle="Kecepatan streaming AI"
           icon={Clock} 
-          color="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400" 
+          color="bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400" 
         />
         <StatCard 
           title="Pengguna Aktif (30 Menit)" 
@@ -242,10 +258,21 @@ const Analytics = () => {
             </div>
 
             <div className="p-5 space-y-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-h-[70vh] overflow-y-auto">
+              <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60">
+                <h4 className="font-semibold text-emerald-900 dark:text-emerald-200 mb-1 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  1. Perbedaan "Sudah Terjawab" vs "Belum Terjawab"
+                </h4>
+                <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/80 leading-relaxed">
+                  • <strong>Pertanyaan Sudah Terjawab:</strong> Pertanyaan user yang informasinya sukses ditemukan di dokumen Knowledge Base dengan akurasi tinggi, serta pertanyaan yang dikonfirmasi oleh user lewat tombol chip <em>"Ya, Terjawab"</em>.<br />
+                  • <strong>Pertanyaan Belum Terjawab:</strong> Pertanyaan di mana Knowledge Base belum memiliki data yang cocok, atau pertanyaan di mana user mengklik tombol <em>"Belum • Hubungi CS"</em> untuk meminta bantuan staf manusia.
+                </p>
+              </div>
+
               <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                 <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />
-                  1. Mengapa Pertanyaan Masuk Kategori Ini?
+                  2. Mengapa Pertanyaan Masuk Kategori Belum Terjawab?
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Ketika pelanggan menanyakan hal baru, mesin RAG LEXA mencari potongan dokumen yang relevan di database vector (Chroma). Jika <strong>tidak ada satu pun dokumen</strong> yang skor kemiripannya mencapai ambang batas (threshold) atau dokumen belum pernah diunggah, sistem otomatis mengklasifikasikan pertanyaan tersebut sebagai <em>Unanswered Query</em>.

@@ -424,7 +424,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         s.history = new_hist
                         s.updated_at = now_dt
                     else:
-                        token = secrets.token_urlsafe(32)
+                        token = data.get("session_token") or auth.get("session_token") or secrets.token_urlsafe(32)
                         s = ChatSession(
                             session_id=session_id,
                             session_token_hash=_token_hash(token),

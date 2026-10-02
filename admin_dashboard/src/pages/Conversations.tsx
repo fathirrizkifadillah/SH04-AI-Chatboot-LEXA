@@ -170,6 +170,11 @@ const Conversations = () => {
             if (data.session_id && data.session_id === selectedSessionRef.current) {
               loadSessionHistory(data.session_id);
             }
+          } else if (data.type === 'handoff_status') {
+            fetchSessions();
+            if (data.session_id && data.session_id === selectedSessionRef.current) {
+              loadSessionHistory(data.session_id);
+            }
           } else if (data.type === 'session_deleted') {
             setSessions(prev => prev.filter(s => s.session_id !== data.session_id));
             if (selectedSessionRef.current === data.session_id) {
@@ -239,6 +244,8 @@ const Conversations = () => {
         } else if (data.type === 'handoff_status') {
           const nextState = Boolean(data.is_handoff);
           setSessionData(prev => prev ? { ...prev, is_human_handoff: nextState } : null);
+          loadSessionHistory(selectedSession);
+          fetchSessions();
         } else if (data.type === 'session_deleted') {
           setSessions(prev => prev.filter(s => s.session_id !== selectedSession));
           setSelectedSession(null);

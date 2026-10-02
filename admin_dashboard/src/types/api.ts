@@ -95,6 +95,10 @@ export interface KPIStats {
   total_conversations: number;
   active_users: number;
   unanswered_queries: number;
+  answered_queries?: number;
+  resolution_rate?: string;
+  thumbs_up_count?: number;
+  thumbs_down_count?: number;
 }
 
 export interface ChartDataPoint {
