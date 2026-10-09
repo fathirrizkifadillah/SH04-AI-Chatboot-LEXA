@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+from datetime import datetime, timezone
 from groq import AsyncGroq
 from core.database import SessionLocal, ChatSession, UnansweredQuery
 from core.settings import SettingsManager

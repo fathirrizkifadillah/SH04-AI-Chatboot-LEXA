@@ -107,13 +107,13 @@ def get_analytics_metrics(range_type: str = "7d"):
                         total_user_queries += 1
 
         # Real feedback dari user
-        thumbs_up_count = db.query(UserFeedback).filter(
-            UserFeedback.created_at >= cutoff,
-            UserFeedback.rating == "thumbs_up"
+        thumbs_up_count = db.query(ChatFeedback).filter(
+            ChatFeedback.created_at >= cutoff,
+            ChatFeedback.rating == "thumbs_up"
         ).count()
-        thumbs_down_count = db.query(UserFeedback).filter(
-            UserFeedback.created_at >= cutoff,
-            UserFeedback.rating == "thumbs_down"
+        thumbs_down_count = db.query(ChatFeedback).filter(
+            ChatFeedback.created_at >= cutoff,
+            ChatFeedback.rating == "thumbs_down"
         ).count()
 
         answered_queries = max(thumbs_up_count, max(0, total_user_queries - unanswered_queries))
