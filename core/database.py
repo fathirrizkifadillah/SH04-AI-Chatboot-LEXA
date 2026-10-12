@@ -311,8 +311,8 @@ def get_session_history(session_id: str):
             "session_id": s.session_id,
             "history": s.history,
             "is_human_handoff": s.is_human_handoff,
-            "created_at": s.created_at.isoformat(),
-            "updated_at": s.updated_at.isoformat()
+            "created_at": s.created_at.isoformat() if s.created_at else "",
+            "updated_at": s.updated_at.isoformat() if s.updated_at else ""
         }
     finally:
         db.close()

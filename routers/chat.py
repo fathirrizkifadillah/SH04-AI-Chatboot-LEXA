@@ -275,6 +275,17 @@ async def chat_stream(request: Request, req: ChatRequest):
                 yield f"data: {json.dumps({'type': 'done', 'references': []})}\n\n"
                 return
 
+            # Beri tahu admin & session bahwa pesan user telah dikirim
+            user_ts = datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
+            await manager.broadcast_to_admins({
+                "type": "new_message",
+                "session_id": session_id,
+                "content": req.message,
+                "role": "user",
+                "timestamp": user_ts,
+            })
+            await manager.broadcast_to_session({"type": "typing", "role": "bot"}, session_id)
+
             async with get_session_lock(session_id):
                 async for chunk in bot.send_message_stream(req.message):
                     full_response += chunk
@@ -290,12 +301,16 @@ async def chat_stream(request: Request, req: ChatRequest):
             ]
             yield f"data: {json.dumps({'type': 'done', 'references': refs})}\n\n"
 
+            # Beri tahu admin & session bahwa balasan AI telah selesai
+            bot_ts = datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
             await manager.broadcast_to_admins({
                 "type": "new_message",
                 "session_id": session_id,
-                "content": req.message,
-                "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
+                "content": full_response,
+                "role": "assistant",
+                "timestamp": bot_ts,
             })
+            await manager.broadcast_to_session({"type": "done", "references": refs}, session_id)
 
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"

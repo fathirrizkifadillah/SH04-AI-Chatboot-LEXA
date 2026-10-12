@@ -103,7 +103,9 @@ const Conversations = () => {
         const sorted = [...data.items].sort((a, b) => {
           if (a.is_human_handoff && !b.is_human_handoff) return -1;
           if (!a.is_human_handoff && b.is_human_handoff) return 1;
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+          const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+          const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+          return timeB - timeA;
         });
         setSessions(sorted);
         setIsLoading(false);
@@ -131,7 +133,8 @@ const Conversations = () => {
       if (!isMounted) return;
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsHost = window.location.host;
-      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/admin`);
+      const token = sessionStorage.getItem('lexa_admin_token') || '';
+      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/admin${token ? `?token=${encodeURIComponent(token)}` : ''}`);
 
       ws.onmessage = (event) => {
         try {
@@ -268,14 +271,14 @@ const Conversations = () => {
   }, [selectedSession]);
 
   useEffect(() => {
-    if (!selectedSession || !sessionData?.is_human_handoff) return;
+    if (!selectedSession) return;
 
     const interval = setInterval(() => {
       loadSessionHistory(selectedSession);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [selectedSession, sessionData?.is_human_handoff]);
+  }, [selectedSession]);
 
   const handleToggleHandoff = () => {
     if (!sessionData || !selectedSession || !canReply) return;

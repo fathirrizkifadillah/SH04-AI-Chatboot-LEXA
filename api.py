@@ -224,6 +224,8 @@ async def admin_websocket(websocket: WebSocket):
     if not token:
         # Also check headers
         token = getattr(websocket, 'headers', {}).get('authorization', '')
+    if token and token.startswith("Bearer "):
+        token = token[7:]
     if not token:
         await websocket.close(code=4001, reason="Token required")
         return

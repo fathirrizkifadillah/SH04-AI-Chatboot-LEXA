@@ -201,7 +201,8 @@ class LexaChatbot:
         Mengembalikan jawaban model dalam bentuk string utuh.
         """
         self._load_history()
-        self.history.append({"role": "user", "content": message})
+        now_ts = datetime.now(timezone.utc).timestamp() * 1000
+        self.history.append({"role": "user", "content": message, "timestamp": now_ts})
         self._save_history()
         messages_to_send = self._prepare_messages(message, image_data_url=image_data_url)
         model_to_use = self.vision_model if image_data_url else self.model
@@ -237,7 +238,7 @@ class LexaChatbot:
             raise RuntimeError(f"Gagal memproses request ke Groq API: {last_error}")
 
         reply = chat_completion.choices[0].message.content
-        self.history.append({"role": "assistant", "content": reply})
+        self.history.append({"role": "assistant", "content": reply, "timestamp": datetime.now(timezone.utc).timestamp() * 1000})
         self._save_history()
         self._trim_history()
         return reply
@@ -248,7 +249,8 @@ class LexaChatbot:
         secara streaming (real-time). Mendukung vision multimodal jika image_data_url dikirimkan.
         """
         self._load_history()
-        user_msg = {"role": "user", "content": message}
+        now_ts = datetime.now(timezone.utc).timestamp() * 1000
+        user_msg = {"role": "user", "content": message, "timestamp": now_ts}
         if file_metadata:
             user_msg["file"] = file_metadata
         self.history.append(user_msg)
@@ -297,7 +299,7 @@ class LexaChatbot:
                 full_reply += content
                 yield content
                 
-            self.history.append({"role": "assistant", "content": full_reply})
+            self.history.append({"role": "assistant", "content": full_reply, "timestamp": datetime.now(timezone.utc).timestamp() * 1000})
             self._save_history()
             self._trim_history()
             

@@ -93,7 +93,8 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   }, [showSearchModal]);
 
   useEffect(() => {
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/admin`;
+    const token = sessionStorage.getItem('lexa_admin_token') || '';
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/admin${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     const ws = new WebSocket(wsUrl);
 
     ws.onmessage = (event) => {
