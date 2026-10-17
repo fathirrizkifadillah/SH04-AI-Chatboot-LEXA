@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
 import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users, KeyRound, Loader2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import api from '../lib/apiClient';
+import api, { getWebSocketUrl } from '../lib/apiClient';
 
 interface Notification {
   id: string;
@@ -94,7 +94,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
 
   useEffect(() => {
     const token = sessionStorage.getItem('lexa_admin_token') || '';
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/admin${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    const wsUrl = `${getWebSocketUrl('/ws/admin')}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     const ws = new WebSocket(wsUrl);
 
     ws.onmessage = (event) => {

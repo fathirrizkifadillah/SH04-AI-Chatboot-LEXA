@@ -3,6 +3,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON, Boolean, text
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.ext.mutable import MutableList
 from dotenv import load_dotenv
 
 logger = logging.getLogger("lexa")
@@ -36,7 +38,15 @@ if DATABASE_URL.startswith("sqlite"):
 else:
     connect_args = {"connect_timeout": 5}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args=connect_args)
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+        pool_recycle=300,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -47,7 +57,7 @@ class ChatSession(Base):
     
     session_id = Column(String, primary_key=True, index=True)
     session_token_hash = Column(String, nullable=True)
-    history = Column(JSON, default=list) # Menyimpan list of dicts [{"role": "...", "content": "..."}]
+    history = Column(MutableList.as_mutable(JSON), default=list) # Menyimpan list of dicts [{"role": "...", "content": "..."}]
     is_human_handoff = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -285,8 +295,9 @@ def get_all_sessions(limit: int = 50, offset: int = 0):
         for s in sessions:
             history = s.history or []
             last_msg = ""
-            if history:
-                last_msg = history[-1].get("content", "")
+            real_msgs = [m for m in history if isinstance(m, dict) and m.get("role") != "system"]
+            if real_msgs:
+                last_msg = real_msgs[-1].get("content", "")
                 if len(last_msg) > 50:
                     last_msg = last_msg[:50] + "..."
             

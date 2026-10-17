@@ -29,10 +29,10 @@ async def login(request: Request, req: LoginRequest):
         except Exception:
             is_valid = False
 
-        # Fallback password jika database di cloud belum tersinkronisasi
-        master_pwd = os.getenv("ADMIN_PASSWORD", "$$adminlexa&&").strip()
-        allowed_passwords = {master_pwd, "$$adminlexa&&", "$$admidlexa&&", "LexaAdmin2026!", "admin123"}
-        if not is_valid and req.password in allowed_passwords:
+        # Fallback sinkronisasi password untuk default admin jika diset via environment
+        admin_email = os.getenv("ADMIN_EMAIL", "admin@lexatech.id").strip()
+        env_admin_pwd = os.getenv("ADMIN_PASSWORD", "").strip()
+        if not is_valid and user.email == admin_email and env_admin_pwd and req.password == env_admin_pwd:
             is_valid = True
             salt = bcrypt.gensalt()
             user.password_hash = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')

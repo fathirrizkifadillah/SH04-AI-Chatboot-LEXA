@@ -1,4 +1,15 @@
-const API_URL: string = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+export const API_URL: string =
+  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') ||
+  window.__LEXA_CONFIG__?.apiUrl ||
+  window.location.origin;
+
+export const getWebSocketUrl = (path: string): string => {
+  const base = API_URL.startsWith('http') ? API_URL : `${window.location.protocol}//${window.location.host}`;
+  const url = new URL(base);
+  const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${protocol}//${url.host}${cleanPath}`;
+};
 
 declare global {
   interface Window {

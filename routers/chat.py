@@ -38,9 +38,18 @@ def _save_handoff_message(session_id: str, content: str, role: str = "user", fil
             msg_entry["file"] = file_metadata
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if s:
+            from sqlalchemy.orm.attributes import flag_modified
             new_hist = list(s.history or [])
+            msg_entry = {
+                "role": role,
+                "content": content,
+                "timestamp": now_ts,
+            }
+            if file_metadata:
+                msg_entry["file"] = file_metadata
             new_hist.append(msg_entry)
             s.history = new_hist
+            flag_modified(s, "history")
             s.updated_at = now_dt
         else:
             s = ChatSession(
@@ -81,10 +90,12 @@ async def request_handoff_api(req: Request):
     try:
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if s:
+            from sqlalchemy.orm.attributes import flag_modified
             s.is_human_handoff = True
             new_hist = list(s.history or [])
             new_hist.append(sys_msg)
             s.history = new_hist
+            flag_modified(s, "history")
             s.updated_at = now_dt
         else:
             session_token = data.get("session_token") or secrets.token_urlsafe(32)
@@ -147,7 +158,15 @@ def _get_or_create_session_token(session_id: str, session_token: str | None) -> 
 
 
 def _require_session_token(session_id: str, session_token: str | None) -> None:
-    _get_or_create_session_token(session_id, session_token)
+    db = SessionLocal()
+    try:
+        session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if not session or not session.session_token_hash:
+            return
+        if not session_token or not hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
+            raise HTTPException(status_code=403, detail="Sesi chat tidak valid.")
+    finally:
+        db.close()
 
 
 def _is_allowed_websocket_origin(websocket: WebSocket) -> bool:
@@ -160,8 +179,9 @@ def _is_allowed_websocket_origin(websocket: WebSocket) -> bool:
     allowed = {request_origin.rstrip("/"), *(item.rstrip("/") for item in Config.CORS_ORIGINS)}
     if origin.rstrip("/") in allowed:
         return True
-    # Izinkan komunikasi antar-subdomain jika di-deploy di Railway
-    if "up.railway.app" in websocket.url.netloc and "up.railway.app" in origin:
+    # Izinkan komunikasi dari domain platform cloud yang umum
+    import re
+    if re.search(r"https?://.*(\.railway\.app|\.up\.railway\.app|\.koyeb\.app|\.vercel\.app|\.onrender\.com|\.hf\.space|\.pages\.dev)", origin):
         return True
     return False
 
@@ -433,10 +453,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 try:
                     s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
                     if s:
+                        from sqlalchemy.orm.attributes import flag_modified
                         s.is_human_handoff = True
                         new_hist = list(s.history or [])
                         new_hist.append(sys_msg)
                         s.history = new_hist
+                        flag_modified(s, "history")
                         s.updated_at = now_dt
                     else:
                         token = data.get("session_token") or auth.get("session_token") or secrets.token_urlsafe(32)

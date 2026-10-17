@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot, Headphones, X, Download, PhoneCall, CheckCircle2, Trash2, FileText, ZoomIn, CheckSquare, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import api from '../lib/apiClient';
+import api, { API_URL, getWebSocketUrl } from '../lib/apiClient';
 import type { ChatSession, SessionHistory, Message, AdminReplyReq } from '../types/api';
 
 interface SSEEvent {
@@ -131,10 +131,8 @@ const Conversations = () => {
     
     const connectAdminWs = () => {
       if (!isMounted) return;
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = window.location.host;
       const token = sessionStorage.getItem('lexa_admin_token') || '';
-      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/admin${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+      ws = new WebSocket(`${getWebSocketUrl('/ws/admin')}${token ? `?token=${encodeURIComponent(token)}` : ''}`);
 
       ws.onmessage = (event) => {
         try {
@@ -224,9 +222,7 @@ const Conversations = () => {
     if (!selectedSession) return;
     loadSessionHistory(selectedSession);
     
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.host;
-    const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/chat/${selectedSession}`);
+    const ws = new WebSocket(getWebSocketUrl(`/ws/chat/${selectedSession}`));
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -591,7 +587,7 @@ const Conversations = () => {
               </div>
               <button
                 onClick={async () => {
-                  const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                  const apiUrl = API_URL;
                   try {
                     const res = await fetch(`${apiUrl}/api/admin/sessions/export-all?format=csv`, {
                       credentials: 'include',
@@ -756,7 +752,7 @@ const Conversations = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={async () => {
-                      const apiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+                      const apiUrl = API_URL;
                       try {
                         const res = await fetch(`${apiUrl}/api/admin/sessions/${selectedSession}/export?format=csv`, {
                           credentials: 'include',
@@ -805,60 +801,118 @@ const Conversations = () => {
               </div>
               
               {/* Chat Message Scroll Area */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-slate-50/50 dark:bg-slate-950/50">
+              <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-slate-100/70 dark:bg-slate-950/80">
                 {!sessionData ? (
                   <div className="h-full flex items-center justify-center text-slate-400 text-xs">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+                      <span>Memuat riwayat sesi...</span>
+                    </div>
                   </div>
                 ) : sessionData.history && sessionData.history.length > 0 ? (
                   sessionData.history.map((msg: Message, idx) => {
                     const isUser = msg.role === 'user';
                     const isAdmin = msg.role === 'admin';
                     const isSystem = msg.role === 'system';
+                    const fileUrl = msg.file?.url
+                      ? (msg.file.url.startsWith('http') ? msg.file.url : `${API_URL}${msg.file.url}`)
+                      : '';
 
                     if (isSystem) {
                       return (
                         <div key={idx} className="flex justify-center my-2">
-                          <span className="px-3 py-1 bg-amber-100 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[11px] font-medium rounded-full shadow-sm flex items-center gap-1.5">
-                            <Headphones className="w-3 h-3" /> {msg.content}
+                          <span className="px-3.5 py-1 bg-amber-500/10 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-300 text-[11px] font-medium rounded-full shadow-xs flex items-center gap-1.5">
+                            <Headphones className="w-3 h-3 text-amber-600 dark:text-amber-400" /> {msg.content}
                           </span>
                         </div>
                       );
                     }
 
+                    const timeStr = msg.timestamp
+                      ? new Date(msg.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                      : '';
+
                     return (
-                      <div key={idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-                        <span className="text-[10px] text-slate-400 mb-0.5 ml-1 font-medium">
-                          {isUser ? 'Pelanggan' : isAdmin ? 'Staf CS' : 'Lexa AI'}
-                        </span>
-                        <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
+                      <div key={idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-full`}>
+                        <div className="flex items-center gap-1.5 text-[10.5px] text-slate-400 mb-1 px-1 font-medium">
+                          {isUser ? (
+                            <>
+                              <span>Pelanggan</span>
+                              <User className="w-3 h-3 text-blue-500" />
+                              {timeStr && <span className="opacity-70 font-mono">• {timeStr}</span>}
+                            </>
+                          ) : isAdmin ? (
+                            <>
+                              <Headphones className="w-3 h-3 text-amber-500" />
+                              <span>Staf CS</span>
+                              {timeStr && <span className="opacity-70 font-mono">• {timeStr}</span>}
+                            </>
+                          ) : (
+                            <>
+                              <Bot className="w-3 h-3 text-blue-500" />
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">Lexa AI</span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-mono">Grounding RAG</span>
+                              {timeStr && <span className="opacity-70 font-mono">• {timeStr}</span>}
+                            </>
+                          )}
+                        </div>
+
+                        <div className={`max-w-[82%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-xs transition-shadow ${
                           isUser 
-                            ? 'bg-blue-600 text-white rounded-tr-sm' 
+                            ? 'bg-blue-600 text-white rounded-tr-xs' 
                             : isAdmin
-                              ? 'bg-amber-600 text-white rounded-tl-sm'
-                              : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-sm'
+                              ? 'bg-amber-600 text-white rounded-tl-xs'
+                              : 'bg-white dark:bg-slate-800/95 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-slate-700/80 rounded-tl-xs shadow-xs'
                         }`}>
-                          {isUser ? msg.content : (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.content}
-                            </ReactMarkdown>
+                          {isUser ? (
+                            <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                          ) : (
+                            <div className="break-words space-y-2">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                                  strong: ({ children }) => <strong className="font-semibold text-slate-900 dark:text-white">{children}</strong>,
+                                  ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                                  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                                  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                                  code: ({ children, className }) => (
+                                    <code className={`${className || ''} bg-slate-100 dark:bg-slate-700/70 text-slate-900 dark:text-slate-100 px-1.5 py-0.5 rounded text-[11px] font-mono border border-slate-200/60 dark:border-slate-600/60`}>
+                                      {children}
+                                    </code>
+                                  ),
+                                  pre: ({ children }) => (
+                                    <pre className="bg-slate-950 text-slate-100 p-3 rounded-xl overflow-x-auto my-2 text-[11px] font-mono border border-slate-800">
+                                      {children}
+                                    </pre>
+                                  ),
+                                  blockquote: ({ children }) => (
+                                    <blockquote className="border-l-2 border-blue-500 pl-3 italic text-slate-600 dark:text-slate-300 my-2">
+                                      {children}
+                                    </blockquote>
+                                  ),
+                                }}
+                              >
+                                {msg.content || ''}
+                              </ReactMarkdown>
+                            </div>
                           )}
 
                           {/* Attached File/Image Display */}
                           {msg.file && (
                             <div className="mt-2.5 pt-2 border-t border-white/20 dark:border-slate-700/60">
-                              {msg.file.type.startsWith('image/') ? (
+                              {msg.file.type && msg.file.type.startsWith('image/') ? (
                                 <div className="space-y-1.5">
                                   <div 
                                     className="relative group rounded-xl overflow-hidden border border-white/20 dark:border-slate-700 cursor-pointer bg-slate-950/20 max-w-[280px]"
                                     onClick={() => {
-                                      setPreviewImage(msg.file?.url || '');
+                                      setPreviewImage(fileUrl);
                                       setPreviewImageName(msg.file?.name || 'Lampiran Gambar');
                                     }}
                                   >
                                     <img 
-                                      src={msg.file.url} 
-                                      alt={msg.file.name} 
+                                      src={fileUrl} 
+                                      alt={msg.file.name || 'Image attachment'} 
                                       className="max-h-52 w-auto object-cover group-hover:scale-105 transition-transform" 
                                     />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white">
@@ -867,22 +921,22 @@ const Conversations = () => {
                                     </div>
                                   </div>
                                   <div className="flex items-center justify-between text-[10px] opacity-80 max-w-[280px]">
-                                    <span className="truncate">{msg.file.name}</span>
+                                    <span className="truncate">{msg.file.name || 'gambar'}</span>
                                     {msg.file.size && <span>{Math.round(msg.file.size / 1024)} KB</span>}
                                   </div>
                                 </div>
                               ) : (
                                 <a
-                                  href={msg.file.url}
+                                  href={fileUrl}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors text-inherit"
                                 >
                                   <FileText className="w-4 h-4 shrink-0 text-blue-400" />
                                   <div className="min-w-0 flex-1">
-                                    <p className="font-semibold text-[11px] truncate max-w-[180px]">{msg.file.name}</p>
+                                    <p className="font-semibold text-[11px] truncate max-w-[180px]">{msg.file.name || 'Dokumen'}</p>
                                     <p className="text-[9px] opacity-75">
-                                      {msg.file.type.toUpperCase().split('/').pop()} • {msg.file.size ? `${Math.round(msg.file.size / 1024)} KB` : 'Dokumen'}
+                                      {(msg.file.type || 'FILE').toUpperCase().split('/').pop()} • {msg.file.size ? `${Math.round(msg.file.size / 1024)} KB` : 'Dokumen'}
                                     </p>
                                   </div>
                                   <Download className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
@@ -895,9 +949,14 @@ const Conversations = () => {
                     );
                   })
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-                    <AlertCircle className="w-6 h-6 mb-2 text-slate-300 dark:text-slate-600" />
-                    <p>Tidak ada pesan dalam sesi ini.</p>
+                  <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-3 border border-slate-200 dark:border-slate-700">
+                      <MessageSquare className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Belum Ada Riwayat Pesan</h4>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 max-w-xs">
+                      Sesi ini belum memiliki percakapan yang tersimpan, atau pesan pelanggan masih diproses oleh server.
+                    </p>
                   </div>
                 )}
                 <div ref={messagesEndRef} />

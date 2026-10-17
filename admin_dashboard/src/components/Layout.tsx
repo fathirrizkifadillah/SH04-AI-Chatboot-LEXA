@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import api from '../lib/apiClient';
+import api, { getWebSocketUrl } from '../lib/apiClient';
 import type { ChatSession } from '../types/api';
 
 interface LayoutProps {
@@ -79,10 +79,8 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
 
     const connectGlobalWs = () => {
       if (!isMounted) return;
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = window.location.host;
       const token = sessionStorage.getItem('lexa_admin_token') || '';
-      ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/admin${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+      ws = new WebSocket(`${getWebSocketUrl('/ws/admin')}${token ? `?token=${encodeURIComponent(token)}` : ''}`);
 
       ws.onmessage = (event) => {
         try {

@@ -58,17 +58,19 @@ class LexaChatbot:
             db.close()
 
     def _save_history(self):
-        """Menyimpan riwayat chat saat ini ke database PostgreSQL."""
+        """Menyimpan riwayat chat saat ini ke database."""
+        from sqlalchemy.orm.attributes import flag_modified
         db = SessionLocal()
         try:
             session = db.query(ChatSession).filter(ChatSession.session_id == self.session_id).first()
             now_utc = datetime.now(timezone.utc)
             if not session:
-                session = ChatSession(session_id=self.session_id, history=self.history, created_at=now_utc, updated_at=now_utc)
+                session = ChatSession(session_id=self.session_id, history=list(self.history), created_at=now_utc, updated_at=now_utc)
                 db.add(session)
             else:
-                # Tetapkan list baru dan updated_at agar SQLAlchemy & sorting mendeteksi perubahan
+                # Tetapkan list baru dan flag_modified agar SQLAlchemy & sorting mendeteksi perubahan
                 session.history = list(self.history)
+                flag_modified(session, "history")
                 session.updated_at = now_utc
             db.commit()
         finally:

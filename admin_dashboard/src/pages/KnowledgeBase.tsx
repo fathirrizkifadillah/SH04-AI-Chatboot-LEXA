@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { UploadCloud, FileText, Trash2, RefreshCw, CheckCircle, AlertTriangle, Download, ShieldAlert } from 'lucide-react';
-import api, { ApiError } from '../lib/apiClient';
+import api, { ApiError, API_URL } from '../lib/apiClient';
 import type { KBFile } from '../types/api';
 
 interface SyncStatus {
@@ -118,7 +118,7 @@ const KnowledgeBase = () => {
   };
 
   const handleExport = async () => {
-    const exportApiUrl = window.__LEXA_CONFIG__?.apiUrl || window.location.origin;
+    const exportApiUrl = API_URL;
     try {
       const res = await fetch(`${exportApiUrl}/api/admin/kb/export`, {
         method: 'POST',

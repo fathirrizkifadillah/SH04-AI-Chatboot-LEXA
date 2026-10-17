@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import lexaBotHead from './assets/lexa_bot_transparent.png';
-import api from './lib/apiClient';
+import api, { API_URL, getWebSocketUrl } from './lib/apiClient';
 import type { WidgetConfig, SSEEvent } from './types/api';
 import { ChatHeader } from './components/ChatHeader';
 import { ChatMessageList, type ChatMessage } from './components/ChatMessageList';
@@ -131,9 +131,7 @@ function App() {
   const connectWebSocket = useCallback(() => {
     if (!sessionId || !sessionToken) return;
 
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.host;
-    const ws = new WebSocket(`${wsProtocol}//${wsHost}/ws/chat/${sessionId}`);
+    const ws = new WebSocket(getWebSocketUrl(`/ws/chat/${sessionId}`));
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -318,7 +316,7 @@ function App() {
         formData.append('session_id', sessionId || '');
         formData.append('session_token', sessionToken || '');
         
-        response = await fetch('/api/chat/upload', {
+        response = await fetch(`${API_URL}/api/chat/upload`, {
           method: 'POST',
           body: formData,
         });
@@ -347,7 +345,7 @@ function App() {
           formData.append('message', text);
           formData.append('session_id', newSessionId);
           formData.append('session_token', newSessionToken);
-          response = await fetch('/api/chat/upload', {
+          response = await fetch(`${API_URL}/api/chat/upload`, {
             method: 'POST',
             body: formData,
           });

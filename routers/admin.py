@@ -224,7 +224,13 @@ async def admin_get_session_history(session_id: str, payload: dict = Depends(ver
                 if "instruksi sistem" in content.lower() or "anda adalah lexa" in content.lower() or len(content) > 500:
                     continue
             history.append(msg)
-        return {"history": history, "is_human_handoff": s.is_human_handoff}
+        return {
+            "session_id": s.session_id,
+            "history": history,
+            "is_human_handoff": bool(s.is_human_handoff),
+            "created_at": s.created_at.isoformat() if s.created_at else "",
+            "updated_at": s.updated_at.isoformat() if s.updated_at else "",
+        }
     finally:
         db.close()
 
@@ -533,9 +539,11 @@ async def admin_set_handoff(request: Request, session_id: str, is_handoff: bool,
         try:
             s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
             if s:
+                from sqlalchemy.orm.attributes import flag_modified
                 new_hist = list(s.history or [])
                 new_hist.append({"role": "system", "content": sys_note, "timestamp": now_ts})
                 s.history = new_hist
+                flag_modified(s, "history")
                 s.updated_at = now_dt
                 db.commit()
                 if session_id in chat_sessions:
@@ -577,6 +585,7 @@ async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depe
             s = db.query(ChatSession).filter(ChatSession.session_id == req.session_id).first()
             if not s:
                 raise HTTPException(status_code=404, detail="Session tidak ditemukan")
+            from sqlalchemy.orm.attributes import flag_modified
             new_hist = list(s.history or [])
             new_hist.append({
                 "role": "admin", 
@@ -586,6 +595,7 @@ async def admin_reply(request: Request, req: AdminReplyReq, payload: dict = Depe
                 "sender_role": admin_role
             })
             s.history = new_hist
+            flag_modified(s, "history")
             s.updated_at = now_dt
             db.commit()
 
