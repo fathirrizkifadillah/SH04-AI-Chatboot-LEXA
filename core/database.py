@@ -358,6 +358,13 @@ def get_analytics_chart_data(range_type: str = "7d"):
     finally:
         db.close()
 
+def _to_utc_iso(dt):
+    if not dt:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
 def get_recent_unanswered_queries(limit: int = 10, include_resolved: bool = False):
     db = SessionLocal()
     try:
@@ -371,7 +378,7 @@ def get_recent_unanswered_queries(limit: int = 10, include_resolved: bool = Fals
                 "session_id": q.session_id,
                 "query": q.user_query,
                 "status": q.status or "pending",
-                "created_at": q.created_at.isoformat() if q.created_at else "",
+                "created_at": _to_utc_iso(q.created_at),
             }
             for q in queries
         ]
@@ -448,8 +455,8 @@ def get_all_sessions(limit: int = 50, offset: int = 0):
                 "session_id": s.session_id,
                 "last_message": last_msg,
                 "is_human_handoff": bool(s.is_human_handoff),
-                "created_at": s.created_at.isoformat() if s.created_at else "",
-                "updated_at": s.updated_at.isoformat() if s.updated_at else ""
+                "created_at": _to_utc_iso(s.created_at),
+                "updated_at": _to_utc_iso(s.updated_at)
             })
             
         paginated = valid_items[offset : offset + limit]
@@ -467,8 +474,8 @@ def get_session_history(session_id: str):
             "session_id": s.session_id,
             "history": s.history,
             "is_human_handoff": s.is_human_handoff,
-            "created_at": s.created_at.isoformat() if s.created_at else "",
-            "updated_at": s.updated_at.isoformat() if s.updated_at else ""
+            "created_at": _to_utc_iso(s.created_at),
+            "updated_at": _to_utc_iso(s.updated_at)
         }
     finally:
         db.close()

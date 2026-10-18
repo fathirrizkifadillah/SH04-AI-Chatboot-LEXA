@@ -43,6 +43,22 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, onInfoClick }: St
   </div>
 );
 
+const formatDateTime = (raw: string | number | undefined | null, locale: string = 'id-ID') => {
+  if (!raw) return '-';
+  let str = String(raw).trim();
+  if (typeof raw === 'string') {
+    if (!str.endsWith('Z') && !str.includes('+')) {
+      if (str.includes(' ')) {
+        str = str.replace(' ', 'T') + 'Z';
+      } else if (str.includes('T')) {
+        str = str + 'Z';
+      }
+    }
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? '-' : d.toLocaleString(locale);
+};
+
 const Analytics = () => {
   const navigate = useNavigate();
   const { lang, t } = useLanguage();
@@ -398,7 +414,7 @@ const Analytics = () => {
                       </p>
                     </td>
                     <td className="py-3.5 px-5 font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                      {item.created_at ? new Date(item.created_at).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US') : '-'}
+                      {item.created_at ? formatDateTime(item.created_at, lang === 'id' ? 'id-ID' : 'en-US') : '-'}
                     </td>
                     <td className="py-3.5 px-5">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">

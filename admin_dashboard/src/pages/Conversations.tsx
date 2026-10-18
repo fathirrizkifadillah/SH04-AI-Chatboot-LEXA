@@ -53,6 +53,22 @@ const playHandoffChime = () => {
   }
 };
 
+const formatSessionTime = (raw: string | number | undefined | null) => {
+  if (!raw) return '';
+  let str = String(raw).trim();
+  if (typeof raw === 'string') {
+    if (!str.endsWith('Z') && !str.includes('+')) {
+      if (str.includes(' ')) {
+        str = str.replace(' ', 'T') + 'Z';
+      } else if (str.includes('T')) {
+        str = str + 'Z';
+      }
+    }
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+};
+
 const Conversations = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
@@ -711,7 +727,7 @@ const Conversations = () => {
                             isSelected ? 'text-blue-100' : 'text-slate-400'
                           }`}>
                             <Clock className="w-2.5 h-2.5" />
-                            {s.updated_at ? new Date(s.updated_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}) : ''}
+                            {s.updated_at ? formatSessionTime(s.updated_at) : ''}
                           </span>
                         </div>
                         <p className={`text-[11px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -836,9 +852,7 @@ const Conversations = () => {
                       );
                     }
 
-                    const timeStr = msg.timestamp
-                      ? new Date(msg.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                      : '';
+                    const timeStr = formatSessionTime(msg.timestamp);
 
                     return (
                       <div key={idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-full`}>
