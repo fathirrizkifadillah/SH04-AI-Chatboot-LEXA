@@ -18,5 +18,3 @@ python-multipart>=0.0.9
 PyPDF2
 python-docx
 Pillow
-gradio
-spaces
