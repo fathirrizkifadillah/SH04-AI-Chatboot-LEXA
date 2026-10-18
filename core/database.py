@@ -11,13 +11,20 @@ logger = logging.getLogger("lexa")
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+# Bersihkan jika ada tanda kutip, spasi, prefix DATABASE_URL= atau tanda =
+if DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.strip("\"' \t\r\n")
+    if DATABASE_URL.startswith("DATABASE_URL="):
+        DATABASE_URL = DATABASE_URL[len("DATABASE_URL="):].strip()
+    if DATABASE_URL.startswith("="):
+        DATABASE_URL = DATABASE_URL[1:].strip()
+    DATABASE_URL = DATABASE_URL.strip("\"' \t\r\n")
 
 # Default ke SQLite jika DATABASE_URL tidak diset (untuk development/local)
 if not DATABASE_URL:
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL", "sqlite:///./lexa.db"
-    ).replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = "sqlite:///./lexa.db"
 
 # Fix untuk Heroku/Supabase format lama
 if DATABASE_URL.startswith("postgres://"):
