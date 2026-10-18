@@ -129,12 +129,22 @@ def get_analytics_metrics(range_type: str = "7d"):
         total_user_queries = 0
         cs_escalated_count = 0
 
+        GREETINGS = {
+            "hai", "halo", "hello", "hi", "p", "test", "tes", 
+            "hai lexa", "halo lexa", "selamat pagi", "selamat siang", "selamat sore", "selamat malam"
+        }
         for s in all_sessions_in_range:
             hist = s.history or []
             user_msgs = [m for m in hist if isinstance(m, dict) and m.get("role") == "user"]
             if user_msgs or s.is_human_handoff:
                 valid_sessions.append(s)
-                total_user_queries += len(user_msgs)
+                # Filter out pure casual greetings
+                substantive_queries = [
+                    m for m in user_msgs 
+                    if str(m.get("content", "")).strip().lower() not in GREETINGS
+                ]
+                session_q_count = len(substantive_queries) if substantive_queries else len(user_msgs)
+                total_user_queries += session_q_count
                 if s.is_human_handoff:
                     cs_escalated_count += 1
 
@@ -156,7 +166,7 @@ def get_analytics_metrics(range_type: str = "7d"):
             ChatFeedback.rating == "thumbs_down"
         ).count()
 
-        answered_queries = max(thumbs_up_count, max(0, total_user_queries - unanswered_queries))
+        answered_queries = max(0, total_user_queries - unanswered_queries)
         total_evaluated = answered_queries + unanswered_queries
         
         # Resolusi rate: jika belum ada percakapan, tampilkan 0.0% secara jujur
@@ -395,17 +405,19 @@ def delete_unanswered_query(query_id: int):
         db.close()
 
 def cleanup_orphaned_unanswered_queries():
-    """Hapus pertanyaan belum terjawab yang sesi chat aslinya sudah dihapus."""
+    """Hapus pertanyaan belum terjawab dan feedback yang sesi chat aslinya sudah dihapus."""
     db = SessionLocal()
     try:
         existing_session_ids = [s.session_id for s in db.query(ChatSession.session_id).all()]
         if existing_session_ids:
             db.query(UnansweredQuery).filter(~UnansweredQuery.session_id.in_(existing_session_ids)).delete(synchronize_session=False)
+            db.query(ChatFeedback).filter(~ChatFeedback.session_id.in_(existing_session_ids)).delete(synchronize_session=False)
         else:
             db.query(UnansweredQuery).delete()
+            db.query(ChatFeedback).delete()
         db.commit()
     except Exception as e:
-        logger.warning(f"Cleanup orphaned unanswered queries failed: {e}")
+        logger.warning(f"Cleanup orphaned data failed: {e}")
     finally:
         db.close()
 

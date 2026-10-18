@@ -392,7 +392,8 @@ const Dashboard = () => {
                   tickLine={false} 
                   tick={{ fill: '#64748b', fontSize: 11 }} 
                   dx={-4} 
-                  allowDecimals={false} 
+                  allowDecimals={false}
+                  domain={[0, (dataMax: number) => Math.max(dataMax, 4)]}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -408,14 +409,14 @@ const Dashboard = () => {
                 />
                 <Area 
                   type="monotone" 
-                  dataKey="percacapan" 
+                  dataKey="chats" 
                   name={lang === 'id' ? 'Percakapan' : 'Chats'}
                   stroke="#0066FF" 
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#lexaTelemetryGradient)"
-                  dot={{ r: 3, fill: '#0066FF', strokeWidth: 2, stroke: '#FFFFFF' }}
-                  activeDot={{ r: 5, fill: '#0052CC', strokeWidth: 0 }}
+                  dot={{ r: 4, fill: '#0066FF', strokeWidth: 2, stroke: '#FFFFFF' }}
+                  activeDot={{ r: 6, fill: '#0052CC', strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
