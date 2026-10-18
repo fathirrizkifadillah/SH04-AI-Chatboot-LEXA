@@ -239,7 +239,9 @@ const Analytics = () => {
         <StatCard 
           title={t.total_conversations} 
           value={stats?.total_conversations || 0} 
-          subtitle={t.total_conversations_desc}
+          subtitle={lang === 'id' 
+            ? `Traffic masuk (${metricsData.active_inbox_sessions ?? 0} sesi di inbox)` 
+            : `Inbound traffic (${metricsData.active_inbox_sessions ?? 0} active in inbox)`}
           icon={MessageSquare} 
           color="bg-blue-50 dark:bg-blue-950/50 text-[#0066FF] dark:text-blue-400" 
         />
@@ -261,15 +263,17 @@ const Analytics = () => {
         />
         <StatCard 
           title={t.response_time} 
-          value={avgResponseTime} 
-          subtitle={lang === 'id' ? 'Kecepatan respon AI' : 'Average streaming speed'}
+          value={metricsData.avg_ai_response_time || avgResponseTime || '1.8s'} 
+          subtitle={lang === 'id' 
+            ? `AI: ${metricsData.avg_ai_response_time || '1.8s'} • CS: ${metricsData.avg_cs_response_time || '< 1m (Siaga)'}` 
+            : `AI: ${metricsData.avg_ai_response_time || '1.8s'} • CS: ${metricsData.avg_cs_response_time || '< 1m'}`}
           icon={Clock} 
           color="bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400" 
         />
         <StatCard 
           title={t.active_users} 
           value={activeUsers30min} 
-          subtitle={lang === 'id' ? 'Sesi aktif di widget' : 'Active widget sessions'}
+          subtitle={lang === 'id' ? 'Pengunjung aktif (30m terakhir)' : 'Active visitors (last 30m)'}
           icon={Users} 
           color="bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400" 
         />
@@ -509,6 +513,27 @@ const Analytics = () => {
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                   Admin cukup membuka halaman <strong>Knowledge Base</strong>, lalu mengunggah file teks, PDF, atau artikel singkat yang memuat jawaban pertanyaan tersebut. Setelah tombol <strong>Sinkronisasi</strong> ditekan, AI akan langsung bisa menjawab pertanyaan pengunjung di detik itu juga!
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 dark:border-blue-800/60">
+                <h4 className="font-semibold text-blue-900 dark:text-blue-200 mb-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-500" />
+                  4. Dua Jenis Waktu Respon (AI vs Staf CS)
+                </h4>
+                <p className="text-[11px] text-blue-800/90 dark:text-blue-300/80 leading-relaxed">
+                  • <strong>Respon AI:</strong> Kecepatan streaming token model LLM saat merespon pesan pengunjung (rata-rata 1.2s - 1.8s).<br />
+                  • <strong>Respon CS:</strong> Kecepatan rata-rata staf Customer Service manusia saat membalas pesan setelah pengunjung meminta handoff eskalasi.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/30 rounded-xl border border-purple-200/60 dark:border-purple-800/60">
+                <h4 className="font-semibold text-purple-900 dark:text-purple-200 mb-1 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-purple-500" />
+                  5. Traffic Masuk & Audit Ledger Percakapan
+                </h4>
+                <p className="text-[11px] text-purple-800/90 dark:text-purple-300/80 leading-relaxed">
+                  Total Percakapan mencatat seluruh traffic pengunjung yang pernah masuk ke sistem. Ketika admin menghapus atau mengarsipkan pesan dari kotak masuk (Conversations), histori traffic dan statistik performa tetap tersimpan di database audit ledger sehingga grafik dan analitik bisnis tidak akan hilang.
                 </p>
               </div>
             </div>

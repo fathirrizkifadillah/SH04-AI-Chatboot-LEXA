@@ -94,17 +94,33 @@ class LexaChatbot:
 
     def _log_unanswered_query(self, message: str):
         """Mencatat pertanyaan nyata yang tidak ditemukan di RAG ke antrean review database."""
-        msg_clean = message.strip().lower()
-        common_greetings = {
-            "hai", "haii", "haiii", "halo", "haloo", "hello", "hi", "hey", "hei", "p", 
-            "siang", "pagi", "malam", "sore", "selamat pagi", "selamat siang", "selamat sore", 
-            "selamat malam", "assalamualaikum", "test", "tes", "1", "ok", "oke", "siap", "terima kasih", "makasih"
-        }
-        if msg_clean in common_greetings or len(msg_clean) <= 2:
-            return
-
         db = SessionLocal()
         try:
+            # 1. Jangan catat jika sesi sudah diambil alih staf CS manusia (Human Handoff)
+            session = db.query(ChatSession).filter(ChatSession.session_id == self.session_id).first()
+            if session and session.is_human_handoff:
+                return
+
+            # 2. Filter sapaan, pesan filler pendek, atau kata percakapan umum
+            msg_clean = message.strip().lower()
+            ignore_phrases = {
+                "hai", "haii", "haiii", "halo", "haloo", "hello", "hi", "hey", "hei", "p", 
+                "siang", "pagi", "malam", "sore", "selamat pagi", "selamat siang", "selamat sore", 
+                "selamat malam", "assalamualaikum", "test", "tes", "1", "ok", "oke", "siap", 
+                "terima kasih", "makasih", "apalah", "apa", "kenapa", "iya", "tidak", "gak", 
+                "nggak", "sebentar", "terus", "chat lagi", "terus lu chat lagi"
+            }
+            if msg_clean in ignore_phrases or len(msg_clean) <= 3:
+                return
+
+            # 3. Cegah duplikasi: jika sesi ini sudah memiliki tiket pending di antrean, jangan tumpuk tiket baru
+            existing = db.query(UnansweredQuery).filter(
+                UnansweredQuery.session_id == self.session_id,
+                UnansweredQuery.status == "pending"
+            ).first()
+            if existing:
+                return
+
             query = UnansweredQuery(session_id=self.session_id, user_query=message, status="pending")
             db.add(query)
             db.commit()

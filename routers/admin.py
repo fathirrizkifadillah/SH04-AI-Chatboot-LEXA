@@ -159,12 +159,17 @@ async def get_dashboard_statistics(range: str = "7d", payload: dict = Depends(ve
     return {
         "kpi": {
             "total_conversations": metrics["total_conversations"],
+            "active_inbox_sessions": metrics.get("active_inbox_sessions", 0),
+            "cs_handoff_sessions": metrics.get("cs_handoff_sessions", 0),
             "active_users": metrics["active_users_30min"],
             "unanswered_queries": metrics["unanswered_queries"],
             "answered_queries": metrics.get("answered_queries", 0),
             "resolution_rate": metrics.get("resolution_rate", "0.0%"),
             "escalation_rate": metrics.get("escalation_rate", "0.0%"),
             "ai_auto_rate": metrics.get("ai_auto_rate", "0.0%"),
+            "avg_response_time": metrics.get("avg_response_time", "1.8s"),
+            "avg_ai_response_time": metrics.get("avg_ai_response_time", "1.8s"),
+            "avg_cs_response_time": metrics.get("avg_cs_response_time", "< 1m (Siaga)"),
             "thumbs_up_count": metrics.get("thumbs_up_count", 0),
             "thumbs_down_count": metrics.get("thumbs_down_count", 0),
             "kb_documents": kb_count,

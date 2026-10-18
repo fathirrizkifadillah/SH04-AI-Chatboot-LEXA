@@ -93,12 +93,17 @@ export interface UserCreateRequest {
 // Stats
 export interface KPIStats {
   total_conversations: number;
+  active_inbox_sessions?: number;
+  cs_handoff_sessions?: number;
   active_users: number;
   unanswered_queries: number;
   answered_queries?: number;
   resolution_rate?: string;
   escalation_rate?: string;
   ai_auto_rate?: string;
+  avg_response_time?: string;
+  avg_ai_response_time?: string;
+  avg_cs_response_time?: string;
   kb_documents?: number;
   thumbs_up_count?: number;
   thumbs_down_count?: number;
@@ -113,8 +118,12 @@ export interface ChartDataPoint {
 
 export interface AnalyticsMetrics {
   avg_response_time: string;
+  avg_ai_response_time?: string;
+  avg_cs_response_time?: string;
   active_users_30min: number;
   monthly_active: number;
+  active_inbox_sessions?: number;
+  cs_handoff_sessions?: number;
 }
 
 export interface AdminStatsResponse {

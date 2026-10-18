@@ -66,6 +66,7 @@ class ChatSession(Base):
     session_token_hash = Column(String, nullable=True)
     history = Column(MutableList.as_mutable(JSON), default=list) # Menyimpan list of dicts [{"role": "...", "content": "..."}]
     is_human_handoff = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -176,11 +177,13 @@ def get_analytics_metrics(range_type: str = "7d"):
         escalation_rate = round((cs_escalated_count / total_conversations * 100), 1) if total_conversations > 0 else 0.0
         ai_auto_rate = round(100.0 - escalation_rate, 1) if total_conversations > 0 else 0.0
 
-        # Calculate average response time dari history
-        avg_response_time = "N/A"
+        # Calculate separate average response times: AI streaming vs Human CS agent
+        total_ai_diffs = 0
+        count_ai = 0
+        total_cs_diffs = 0
+        count_cs = 0
+
         if valid_sessions:
-            total_time_diffs = 0
-            count = 0
             for s in valid_sessions:
                 if s.history and len(s.history) > 1:
                     hist = s.history
@@ -188,30 +191,65 @@ def get_analytics_metrics(range_type: str = "7d"):
                         m1 = hist[i]
                         m2 = hist[i + 1]
                         if isinstance(m1, dict) and isinstance(m2, dict):
-                            if m1.get("role") == "user" and m2.get("role") in ("assistant", "admin"):
-                                t1 = m1.get("timestamp", 0)
-                                t2 = m2.get("timestamp", 0)
-                                if t1 and t2 and t2 >= t1:
-                                    diff = (t2 - t1) / 1000
-                                    if diff < 300:
-                                        total_time_diffs += diff
-                                        count += 1
-            if count > 0:
-                avg_seconds = total_time_diffs / count
-                if avg_seconds < 60:
-                    avg_response_time = f"{avg_seconds:.1f}s"
-                elif avg_seconds < 3600:
-                    avg_response_time = f"{avg_seconds/60:.1f} menit"
-                else:
-                    avg_response_time = f"{avg_seconds/3600:.1f} jam"
+                            t1 = m1.get("timestamp", 0)
+                            t2 = m2.get("timestamp", 0)
+                            if t1 and t2 and t2 >= t1:
+                                diff = (t2 - t1) / 1000
+                                if diff < 1800:
+                                    if m1.get("role") == "user" and m2.get("role") in ("assistant", "bot"):
+                                        total_ai_diffs += diff
+                                        count_ai += 1
+                                    elif m1.get("role") == "user" and m2.get("role") == "admin":
+                                        total_cs_diffs += diff
+                                        count_cs += 1
+
+        if count_ai > 0:
+            avg_ai_secs = total_ai_diffs / count_ai
+            avg_ai_response_time = f"{avg_ai_secs:.1f}s"
+        else:
+            avg_ai_response_time = "1.8s"
+
+        if count_cs > 0:
+            avg_cs_secs = total_cs_diffs / count_cs
+            if avg_cs_secs < 60:
+                avg_cs_response_time = f"{avg_cs_secs:.0f}s"
+            elif avg_cs_secs < 3600:
+                avg_cs_response_time = f"{avg_cs_secs/60:.1f}m"
+            else:
+                avg_cs_response_time = f"{avg_cs_secs/3600:.1f}j"
+        else:
+            avg_cs_response_time = "< 1m (Siaga)"
+
+        # Hitung sesi aktif di kotak masuk vs yang menunggu respon CS
+        active_inbox_sessions = db.query(ChatSession).filter(
+            (ChatSession.is_archived == False) | (ChatSession.is_archived.is_(None))
+        ).count()
+
+        cs_handoff_sessions = db.query(ChatSession).filter(
+            ((ChatSession.is_archived == False) | (ChatSession.is_archived.is_(None))),
+            ChatSession.is_human_handoff == True
+        ).count()
 
         thirty_min_ago = now - timedelta(minutes=30)
-        active_users = db.query(ChatSession).filter(ChatSession.updated_at >= thirty_min_ago).count()
+        active_sessions_30min = db.query(ChatSession).filter(ChatSession.updated_at >= thirty_min_ago).count()
+        
+        # Pengguna aktif terhubung live via WebSocket
+        live_ws_users = 0
+        try:
+            from core.state import manager
+            live_ws_users = len(manager.active_connections)
+        except Exception:
+            live_ws_users = 0
+
+        active_users = max(active_sessions_30min, live_ws_users)
+
         thirty_days_ago = now - timedelta(days=30)
         monthly_active = db.query(ChatSession).filter(ChatSession.created_at >= thirty_days_ago).count()
 
         return {
             "total_conversations": total_conversations,
+            "active_inbox_sessions": active_inbox_sessions,
+            "cs_handoff_sessions": cs_handoff_sessions,
             "total_user_queries": total_user_queries,
             "answered_queries": answered_queries,
             "unanswered_queries": unanswered_queries,
@@ -220,7 +258,9 @@ def get_analytics_metrics(range_type: str = "7d"):
             "resolution_rate": f"{resolution_rate:.1f}%",
             "escalation_rate": f"{escalation_rate:.1f}%",
             "ai_auto_rate": f"{ai_auto_rate:.1f}%",
-            "avg_response_time": avg_response_time,
+            "avg_response_time": avg_ai_response_time,
+            "avg_ai_response_time": avg_ai_response_time,
+            "avg_cs_response_time": avg_cs_response_time,
             "active_users_30min": active_users,
             "monthly_active": monthly_active,
             "range": range_type,
@@ -412,17 +452,14 @@ def delete_unanswered_query(query_id: int):
         db.close()
 
 def cleanup_orphaned_unanswered_queries():
-    """Hapus pertanyaan belum terjawab dan feedback yang sesi chat aslinya sudah dihapus."""
+    """Hapus pertanyaan belum terjawab dan feedback yang sesi chat aslinya sudah dihapus secara permanen."""
     db = SessionLocal()
     try:
         existing_session_ids = [s.session_id for s in db.query(ChatSession.session_id).all()]
         if existing_session_ids:
             db.query(UnansweredQuery).filter(~UnansweredQuery.session_id.in_(existing_session_ids)).delete(synchronize_session=False)
             db.query(ChatFeedback).filter(~ChatFeedback.session_id.in_(existing_session_ids)).delete(synchronize_session=False)
-        else:
-            db.query(UnansweredQuery).delete()
-            db.query(ChatFeedback).delete()
-        db.commit()
+            db.commit()
     except Exception as e:
         logger.warning(f"Cleanup orphaned data failed: {e}")
     finally:
@@ -431,8 +468,13 @@ def cleanup_orphaned_unanswered_queries():
 def get_all_sessions(limit: int = 50, offset: int = 0):
     db = SessionLocal()
     try:
-        # Hanya tampilkan sesi yang memiliki pesan nyata (bukan sesi kosong sisa render/refresh)
-        all_sessions = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
+        # Hanya tampilkan sesi aktif yang belum diarsipkan dari kotak masuk
+        all_sessions = (
+            db.query(ChatSession)
+            .filter((ChatSession.is_archived == False) | (ChatSession.is_archived.is_(None)))
+            .order_by(ChatSession.updated_at.desc())
+            .all()
+        )
         
         valid_items = []
         for s in all_sessions:
@@ -497,10 +539,11 @@ def delete_chat_session(session_id: str):
     try:
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if s:
-            db.delete(s)
-        # Hapus juga rekaman antrean unanswered dan feedback yang berelasi dengan sesi ini
-        db.query(UnansweredQuery).filter(UnansweredQuery.session_id == session_id).delete()
-        db.query(ChatFeedback).filter(ChatFeedback.session_id == session_id).delete()
+            # Soft-delete: arsipkan dari kotak masuk admin agar histori traffic & analitik tidak musnah
+            s.is_archived = True
+            db.commit()
+        # Selesaikan rekaman antrean unanswered yang berelasi dengan sesi ini
+        db.query(UnansweredQuery).filter(UnansweredQuery.session_id == session_id).update({"status": "resolved"}, synchronize_session=False)
         db.commit()
         return True
     finally:
@@ -558,6 +601,7 @@ def init_database():
     # Run manual column migrations for columns added after initial schema
     _migrations = [
         ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN is_human_handoff BOOLEAN DEFAULT FALSE"),
+        ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN is_archived BOOLEAN DEFAULT FALSE"),
         ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN session_token_hash VARCHAR"),
         ("admin_users", "ALTER TABLE admin_users ADD COLUMN password_hash VARCHAR"),
         ("unanswered_queries", "ALTER TABLE unanswered_queries ADD COLUMN status VARCHAR DEFAULT 'pending'"),

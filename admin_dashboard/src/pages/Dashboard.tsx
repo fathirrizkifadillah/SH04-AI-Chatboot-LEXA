@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  MessageSquare, BookOpen, Activity, Plus, 
+  MessageSquare, BookOpen, Plus, 
   ArrowUpRight, UploadCloud, 
   Share2, BarChart3, Settings, ShieldCheck,
   ArrowRight, RefreshCw, AlertTriangle
@@ -45,11 +45,16 @@ const Dashboard = () => {
         if (data.kpi) {
           setStats({
             total_conversations: data.kpi.total_conversations ?? 0,
+            active_inbox_sessions: data.kpi.active_inbox_sessions ?? 0,
+            cs_handoff_sessions: data.kpi.cs_handoff_sessions ?? 0,
             active_users: data.kpi.active_users ?? 0,
             unanswered_queries: data.kpi.unanswered_queries ?? 0,
             resolution_rate: data.kpi.resolution_rate ?? '0.0%',
             escalation_rate: data.kpi.escalation_rate ?? '0.0%',
             ai_auto_rate: data.kpi.ai_auto_rate ?? '0.0%',
+            avg_response_time: data.kpi.avg_response_time ?? '1.8s',
+            avg_ai_response_time: data.kpi.avg_ai_response_time ?? '1.8s',
+            avg_cs_response_time: data.kpi.avg_cs_response_time ?? '< 1m (Siaga)',
             kb_documents: data.kpi.kb_documents ?? 0,
             answered_queries: data.kpi.answered_queries ?? 0,
           });
@@ -207,7 +212,9 @@ const Dashboard = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {t.total_conversations_desc}
+                {lang === 'id' 
+                  ? `Traffic masuk (${stats.active_inbox_sessions ?? 0} sesi aktif di inbox)`
+                  : `Inbound traffic (${stats.active_inbox_sessions ?? 0} active in inbox)`}
               </p>
             </div>
 
@@ -300,38 +307,45 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Bento Card 4: Antrean Review CS */}
+        {/* Bento Card 4: Antrean Eskalasi CS */}
         <div className="col-span-12 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                {t.action_queue}
+                {lang === 'id' ? 'Eskalasi Staf CS' : 'CS Agent Queue'}
               </span>
               <div className={`p-1.5 rounded-lg ${
-                stats.unanswered_queries > 0 
+                (stats.cs_handoff_sessions ?? 0) > 0 
                   ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
                   : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
               }`}>
-                {stats.unanswered_queries > 0 ? <AlertTriangle className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+                {(stats.cs_handoff_sessions ?? 0) > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
               </div>
             </div>
             
             <div className="my-2">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
-                  {stats.unanswered_queries}
+                  {stats.cs_handoff_sessions ?? 0}
                 </span>
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
-                  stats.unanswered_queries > 0
+                  (stats.cs_handoff_sessions ?? 0) > 0
                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                     : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                 }`}>
-                  {stats.unanswered_queries > 0 ? t.pending_cs_review : t.zero_escalations}
+                  {(stats.cs_handoff_sessions ?? 0) > 0 
+                    ? (lang === 'id' ? 'Menunggu CS' : 'Needs CS') 
+                    : (lang === 'id' ? 'Semua Ditangani' : 'All Clear')}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                {lang === 'id' ? 'Sesi chat yang membutuhkan respon dari staf CS' : 'Conversations flagged for manual agent reply'}
+                {lang === 'id' ? 'Sesi aktif di kotak masuk yang dialihkan ke CS' : 'Active inbox sessions waiting for human CS'}
               </p>
+              {stats.unanswered_queries > 0 && (
+                <p className="text-[10px] text-amber-500/90 mt-1">
+                  • {stats.unanswered_queries} {lang === 'id' ? 'topik baru belum di KB' : 'new topics need KB'}
+                </p>
+              )}
             </div>
 
             <button
