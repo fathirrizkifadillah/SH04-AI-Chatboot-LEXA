@@ -65,11 +65,15 @@ async def lifespan(app: FastAPI):
 
     # Load RAG in background task so Uvicorn binds to PORT immediately
     async def init_rag_async():
+        # Beri jeda 1 detik agar Uvicorn selesai bind port dan siap terima koneksi
+        await asyncio.sleep(1)
         try:
             logger.info("Memuat basis pengetahuan RAG di background...")
-            pipeline = RAGPipeline(
-                db_dir=Config.KNOWLEDGE_BASE_DIR,
-                kb_url=Config.KNOWLEDGE_BASE_URL,
+            pipeline = await asyncio.to_thread(
+                lambda: RAGPipeline(
+                    db_dir=Config.KNOWLEDGE_BASE_DIR,
+                    kb_url=Config.KNOWLEDGE_BASE_URL,
+                )
             )
             await asyncio.to_thread(pipeline.load_or_build)
             state.rag_pipeline = pipeline

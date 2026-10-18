@@ -1,3 +1,12 @@
+---
+title: Lexa AI Backend
+emoji: 🤖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # Lexa AI Platform
 
 Platform asisten customer service cerdas berbasis **AI** dan **RAG (Retrieval-Augmented Generation)**. Ditenagai oleh **Groq Cloud API** dengan model `openai/gpt-oss-120b`.
