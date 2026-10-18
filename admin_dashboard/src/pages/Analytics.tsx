@@ -168,7 +168,7 @@ const Analytics = () => {
                 {lang === 'id' ? 'Otomatis Dijawab AI' : 'AI Auto-Resolved'}
               </span>
               <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                {stats?.answered_queries ?? 3} Pertanyaan ({stats?.resolution_rate || '98.4%'})
+                {stats?.answered_queries ?? 0} Pertanyaan ({stats?.resolution_rate || '0.0%'})
               </span>
             </div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -193,7 +193,7 @@ const Analytics = () => {
                 {lang === 'id' ? 'Perlu Dokumen di KB' : 'Needs Knowledge Doc'}
               </span>
               <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
-                {stats?.unanswered_queries ?? 2} {lang === 'id' ? 'Topik Belum Ada' : 'Missing Topics'}
+                {stats?.unanswered_queries ?? 0} {lang === 'id' ? 'Topik Belum Ada' : 'Missing Topics'}
               </span>
             </div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -229,15 +229,15 @@ const Analytics = () => {
         />
         <StatCard 
           title={lang === 'id' ? 'Pertanyaan Terjawab' : 'Resolved Queries'} 
-          value={stats?.answered_queries ?? 3} 
-          subtitle={`Resolusi: ${stats?.resolution_rate || '98.4%'}`}
+          value={stats?.answered_queries ?? 0} 
+          subtitle={`Resolusi: ${stats?.resolution_rate || '0.0%'}`}
           icon={CheckCircle2} 
           color="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400" 
           onInfoClick={() => setShowDefinitionModal(true)}
         />
         <StatCard 
           title={lang === 'id' ? 'Pertanyaan Belum Ada' : 'Unresolved Queries'} 
-          value={stats?.unanswered_queries ?? 2} 
+          value={stats?.unanswered_queries ?? 0} 
           subtitle={lang === 'id' ? 'Perlu dokumen di KB' : 'Needs KB documents'}
           icon={AlertCircle} 
           color="bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400" 

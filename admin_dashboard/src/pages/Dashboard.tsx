@@ -22,7 +22,7 @@ const Dashboard = () => {
     resolution_rate: '0.0%',
     escalation_rate: '0.0%',
     ai_auto_rate: '0.0%',
-    kb_documents: 1,
+    kb_documents: 0,
   });
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [, setFeedbackStats] = useState<FeedbackStats | null>(null);
@@ -50,7 +50,7 @@ const Dashboard = () => {
             resolution_rate: data.kpi.resolution_rate ?? '0.0%',
             escalation_rate: data.kpi.escalation_rate ?? '0.0%',
             ai_auto_rate: data.kpi.ai_auto_rate ?? '0.0%',
-            kb_documents: data.kpi.kb_documents ?? 1,
+            kb_documents: data.kpi.kb_documents ?? 0,
             answered_queries: data.kpi.answered_queries ?? 0,
           });
         }

@@ -541,6 +541,7 @@ def init_database():
         ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN is_human_handoff BOOLEAN DEFAULT FALSE"),
         ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN session_token_hash VARCHAR"),
         ("admin_users", "ALTER TABLE admin_users ADD COLUMN password_hash VARCHAR"),
+        ("unanswered_queries", "ALTER TABLE unanswered_queries ADD COLUMN status VARCHAR DEFAULT 'pending'"),
     ]
     for table_name, migration_sql in _migrations:
         try:
