@@ -19,3 +19,4 @@ PyPDF2
 python-docx
 Pillow
 gradio
+spaces

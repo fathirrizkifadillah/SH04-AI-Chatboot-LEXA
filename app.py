@@ -1,8 +1,4 @@
-import gradio as gr
-import uvicorn
-from api import app as fastapi_app
-
-# Fallback untuk kompatibilitas lokal jika library spaces tidak terpasang
+# MUST BE FIRST IMPORT FOR HUGGING FACE ZEROGPU
 try:
     import spaces
 except ImportError:
@@ -17,6 +13,10 @@ except ImportError:
 @spaces.GPU(duration=60)
 def zerogpu_worker(text: str = "ping"):
     return f"ZeroGPU Worker Active: {text}"
+
+import gradio as gr
+import uvicorn
+from api import app as fastapi_app
 
 # UI Status informatif untuk landing page Space di /gradio
 with gr.Blocks(title="Lexa AI Platform API") as demo:
