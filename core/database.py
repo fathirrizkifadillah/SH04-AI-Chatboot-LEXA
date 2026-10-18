@@ -43,7 +43,10 @@ connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 else:
-    connect_args = {"connect_timeout": 5}
+    connect_args = {"connect_timeout": 10}
+    # Supabase & remote PostgreSQL mewajibkan koneksi SSL terenkripsi
+    if ("supabase.co" in DATABASE_URL or "supabase.com" in DATABASE_URL or "neon.tech" in DATABASE_URL) and "sslmode" not in DATABASE_URL:
+        connect_args["sslmode"] = "require"
 
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args=connect_args)
