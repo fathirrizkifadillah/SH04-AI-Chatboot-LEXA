@@ -33,7 +33,7 @@ class Config:
     # === Chat ===
     MAX_HISTORY_TURNS: int = _getenv("MAX_HISTORY_TURNS", "10", int)
     RAG_TOP_K: int = _getenv("RAG_TOP_K", "5", int)
-    RAG_THRESHOLD: float = _getenv("RAG_THRESHOLD", "0.40", float)
+    RAG_THRESHOLD: float = _getenv("RAG_THRESHOLD", "0.52", float)
     MAX_INPUT_LENGTH: int = _getenv("MAX_INPUT_LENGTH", "2000", int)
 
     # === API Server ===

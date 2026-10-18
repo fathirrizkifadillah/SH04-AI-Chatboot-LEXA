@@ -28,6 +28,9 @@ const Dashboard = () => {
   const [, setFeedbackStats] = useState<FeedbackStats | null>(null);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '7d' | '30d'>('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [timeZone, setTimeZone] = useState<'WIB' | 'WITA' | 'WIT' | 'UTC'>(() => {
+    return (localStorage.getItem('lexa_admin_tz') as 'WIB' | 'WITA' | 'WIT' | 'UTC') || 'WIB';
+  });
 
   const currentUser = (() => {
     try {
@@ -38,9 +41,20 @@ const Dashboard = () => {
     }
   })();
 
-  const fetchStats = (range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange) => {
+  const getTzOffset = (tz: 'WIB' | 'WITA' | 'WIT' | 'UTC') => {
+    if (tz === 'WITA') return 8;
+    if (tz === 'WIT') return 9;
+    if (tz === 'UTC') return 0;
+    return 7; // WIB
+  };
+
+  const fetchStats = (
+    range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange,
+    tz: 'WIB' | 'WITA' | 'WIT' | 'UTC' = timeZone
+  ) => {
     setIsRefreshing(true);
-    api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>(`/api/admin/stats?range=${range}`)
+    const tzOffset = getTzOffset(tz);
+    api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>(`/api/admin/stats?range=${range}&tz_offset=${tzOffset}`)
       .then(data => {
         if (data.kpi) {
           setStats({
@@ -75,11 +89,17 @@ const Dashboard = () => {
 
   const handleTimeRangeChange = (range: '30m' | '1h' | '24h' | '7d' | '30d') => {
     setTimeRange(range);
-    fetchStats(range);
+    fetchStats(range, timeZone);
+  };
+
+  const handleTimeZoneChange = (tz: 'WIB' | 'WITA' | 'WIT' | 'UTC') => {
+    setTimeZone(tz);
+    localStorage.setItem('lexa_admin_tz', tz);
+    fetchStats(timeRange, tz);
   };
   
   useEffect(() => {
-    fetchStats(timeRange);
+    fetchStats(timeRange, timeZone);
   }, []);
 
   const systemActivities = [
@@ -140,7 +160,7 @@ const Dashboard = () => {
         </div>
 
         {/* Operational Controls & Actions */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Time Filter Pill */}
           <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
             {(['30m', '1h', '24h', '7d', '30d'] as const).map((range) => (
@@ -154,6 +174,23 @@ const Dashboard = () => {
                 }`}
               >
                 {range.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Timezone Selector Pill */}
+          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800" title="Pilih Zona Waktu Tampilan Chart">
+            {(['WIB', 'WITA', 'WIT', 'UTC'] as const).map((tz) => (
+              <button
+                key={tz}
+                onClick={() => handleTimeZoneChange(tz)}
+                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all cursor-pointer ${
+                  timeZone === tz
+                    ? 'bg-[#0066FF] text-white shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                {tz}
               </button>
             ))}
           </div>
@@ -190,31 +227,31 @@ const Dashboard = () => {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                  {t.total_conversations}
+                  {lang === 'id' ? 'Total Traffic Masuk' : 'Total Inbound Traffic'}
                 </span>
                 <div className="p-1.5 rounded-lg bg-blue-500/10 text-[#0066FF] border border-blue-500/20">
                   <MessageSquare className="w-4 h-4" />
                 </div>
               </div>
               
-              <div className="mt-3 flex items-baseline gap-3">
+              <div className="mt-3 flex items-baseline gap-2.5 flex-wrap">
                 <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
                   {stats.total_conversations.toLocaleString()}
                 </span>
-                {stats.total_conversations > 0 ? (
-                  <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    Aktif
+                {(stats.active_inbox_sessions ?? 0) > 0 ? (
+                  <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-mono">
+                    {stats.active_inbox_sessions} {lang === 'id' ? 'Aktif di Inbox' : 'Active in Inbox'}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center text-xs font-medium text-slate-400">
-                    {lang === 'id' ? 'Belum ada chat' : 'No chats yet'}
+                  <span className="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/80 font-mono">
+                    {lang === 'id' ? '0 di Inbox (Bersih)' : '0 in Inbox (Clear)'}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 {lang === 'id' 
-                  ? `Traffic masuk (${stats.active_inbox_sessions ?? 0} sesi aktif di inbox)`
-                  : `Inbound traffic (${stats.active_inbox_sessions ?? 0} active in inbox)`}
+                  ? `Histori traffic tersimpan (${stats.active_inbox_sessions ?? 0} obrolan belum diarsipkan)`
+                  : `Archived traffic history (${stats.active_inbox_sessions ?? 0} active in inbox)`}
               </p>
             </div>
 
@@ -368,8 +405,8 @@ const Dashboard = () => {
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
                   {lang === 'id' 
-                    ? `Tren Volume Percakapan (${timeRange === '30m' ? '30 Menit' : timeRange === '1h' ? '1 Jam' : timeRange === '24h' ? '24 Jam' : timeRange === '30d' ? '30 Hari' : '7 Hari'} Terakhir)` 
-                    : `Conversation Trend (Last ${timeRange.toUpperCase()})`}
+                    ? `Tren Volume Percakapan (${timeRange === '30m' ? '30 Menit' : timeRange === '1h' ? '1 Jam' : timeRange === '24h' ? '24 Jam' : timeRange === '30d' ? '30 Hari' : '7 Hari'} Terakhir - ${timeZone})` 
+                    : `Conversation Trend (Last ${timeRange.toUpperCase()} - ${timeZone})`}
                 </h3>
                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
               </div>

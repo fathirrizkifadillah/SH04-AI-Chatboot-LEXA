@@ -76,11 +76,25 @@ const Analytics = () => {
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
   const [showDefinitionModal, setShowDefinitionModal] = useState(false);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '7d' | '30d'>('7d');
+  const [timeZone, setTimeZone] = useState<'WIB' | 'WITA' | 'WIT' | 'UTC'>(() => {
+    return (localStorage.getItem('lexa_admin_tz') as 'WIB' | 'WITA' | 'WIT' | 'UTC') || 'WIB';
+  });
   const [unansweredList, setUnansweredList] = useState<Array<{ id: number; query: string; status: string; created_at: string }>>([]);
 
-  const fetchStats = async (range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange) => {
+  const getTzOffset = (tz: 'WIB' | 'WITA' | 'WIT' | 'UTC') => {
+    if (tz === 'WITA') return 8;
+    if (tz === 'WIT') return 9;
+    if (tz === 'UTC') return 0;
+    return 7; // WIB
+  };
+
+  const fetchStats = async (
+    range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange,
+    tz: 'WIB' | 'WITA' | 'WIT' | 'UTC' = timeZone
+  ) => {
     try {
-      const data = await api.authGet<AdminStatsResponse>(`/api/admin/stats?range=${range}`);
+      const tzOffset = getTzOffset(tz);
+      const data = await api.authGet<AdminStatsResponse>(`/api/admin/stats?range=${range}&tz_offset=${tzOffset}`);
       setStats({ ...data.kpi, chart: data.chart });
       setMetrics(data.metrics);
     } catch (err) {
@@ -101,7 +115,13 @@ const Analytics = () => {
 
   const handleRangeChange = (range: '30m' | '1h' | '24h' | '7d' | '30d') => {
     setTimeRange(range);
-    fetchStats(range);
+    fetchStats(range, timeZone);
+  };
+
+  const handleTimeZoneChange = (tz: 'WIB' | 'WITA' | 'WIT' | 'UTC') => {
+    setTimeZone(tz);
+    localStorage.setItem('lexa_admin_tz', tz);
+    fetchStats(timeRange, tz);
   };
 
   const handleResolve = async (id: number) => {
@@ -125,7 +145,7 @@ const Analytics = () => {
   };
 
   useEffect(() => {
-    fetchStats(timeRange);
+    fetchStats(timeRange, timeZone);
     fetchUnanswered();
   }, []);
 
@@ -145,7 +165,7 @@ const Analytics = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Time Filter Pill (30m, 1h, 24h, 7d, 30d) */}
           <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
             {(['30m', '1h', '24h', '7d', '30d'] as const).map((range) => (
@@ -159,6 +179,23 @@ const Analytics = () => {
                 }`}
               >
                 {range.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Timezone Selector Pill */}
+          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800" title="Pilih Zona Waktu Tampilan Chart">
+            {(['WIB', 'WITA', 'WIT', 'UTC'] as const).map((tz) => (
+              <button
+                key={tz}
+                onClick={() => handleTimeZoneChange(tz)}
+                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all cursor-pointer ${
+                  timeZone === tz
+                    ? 'bg-[#0066FF] text-white shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                {tz}
               </button>
             ))}
           </div>
@@ -287,8 +324,8 @@ const Analytics = () => {
             <div>
               <h2 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
                 {lang === 'id' 
-                  ? `Tren Percakapan (${timeRange === '30m' ? '30 Menit' : timeRange === '1h' ? '1 Jam' : timeRange === '24h' ? '24 Jam' : timeRange === '30d' ? '30 Hari' : '7 Hari'} Terakhir)` 
-                  : `Conversation Trend (Last ${timeRange.toUpperCase()})`}
+                  ? `Tren Percakapan (${timeRange === '30m' ? '30 Menit' : timeRange === '1h' ? '1 Jam' : timeRange === '24h' ? '24 Jam' : timeRange === '30d' ? '30 Hari' : '7 Hari'} Terakhir - ${timeZone})` 
+                  : `Conversation Trend (Last ${timeRange.toUpperCase()} - ${timeZone})`}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {lang === 'id' ? 'Pertumbuhan traffic interaksi pengunjung dan pelanggan' : 'Growth of visitor and customer interactions'}

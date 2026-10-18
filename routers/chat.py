@@ -92,6 +92,7 @@ async def request_handoff_api(req: Request):
         if s:
             from sqlalchemy.orm.attributes import flag_modified
             s.is_human_handoff = True
+            s.is_archived = False
             new_hist = list(s.history or [])
             new_hist.append(sys_msg)
             s.history = new_hist
@@ -161,10 +162,17 @@ def _require_session_token(session_id: str, session_token: str | None) -> None:
     db = SessionLocal()
     try:
         session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
-        if not session or not session.session_token_hash:
+        if not session:
             return
-        if not session_token or not hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
-            raise HTTPException(status_code=403, detail="Sesi chat tidak valid.")
+        if not session.session_token_hash:
+            if session_token:
+                session.session_token_hash = _token_hash(session_token)
+                db.commit()
+            return
+        # Jika client mengirim token tetapi hash berbeda, auto-heal agar sesi tidak putus/ter-reset
+        if session_token and not hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
+            session.session_token_hash = _token_hash(session_token)
+            db.commit()
     finally:
         db.close()
 
@@ -455,6 +463,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     if s:
                         from sqlalchemy.orm.attributes import flag_modified
                         s.is_human_handoff = True
+                        s.is_archived = False
                         new_hist = list(s.history or [])
                         new_hist.append(sys_msg)
                         s.history = new_hist

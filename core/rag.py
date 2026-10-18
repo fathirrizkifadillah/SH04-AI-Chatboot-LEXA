@@ -65,7 +65,7 @@ class ChromaVectorStore:
             ids=ids
         )
 
-    def search(self, query: str, top_k: int = 3, threshold: float = 0.40):
+    def search(self, query: str, top_k: int = 3, threshold: float = 0.52):
         """Mencari chunk dokumen teratas yang relevan."""
         if self.collection.count() == 0:
             return []
@@ -322,6 +322,6 @@ class RAGPipeline:
         else:
             self.build_index()
 
-    def search(self, query: str, top_k: int = 5, threshold: float = 0.40):
+    def search(self, query: str, top_k: int = 5, threshold: float = 0.52):
         """Mencari dokumen yang relevan dengan query user."""
         return self.vector_store.search(query, top_k=top_k, threshold=threshold)

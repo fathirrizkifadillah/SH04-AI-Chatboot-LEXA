@@ -370,22 +370,21 @@ function App() {
         });
       }
 
-      // Jika session invalid / 403, otomatis buat session baru dan retry
+      // Jika session invalid / 403, retry dengan token baru tanpa memecah roomchat / sessionId
       if (!response.ok && (response.status === 403 || response.status === 401)) {
-        console.warn('Session expired or mismatched (403), auto-recovering with new session token...');
-        const newSessionId = crypto.randomUUID();
-        const newSessionToken = crypto.randomUUID();
-        setSessionId(newSessionId);
-        setSessionToken(newSessionToken);
-        localStorage.setItem('lexa_session_id', newSessionId);
-        localStorage.setItem('lexa_session_token', newSessionToken);
+        console.warn('Session sync warning, retrying with existing sessionId...');
+        const currentSessionId = sessionId || getPersistentId('lexa_session_id');
+        const refreshedToken = sessionToken || crypto.randomUUID();
+        setSessionToken(refreshedToken);
+        localStorage.setItem('lexa_session_token', refreshedToken);
+        setCookie('lexa_session_token', refreshedToken);
 
         if (fileToSend) {
           const formData = new FormData();
           formData.append('file', fileToSend);
           formData.append('message', text);
-          formData.append('session_id', newSessionId);
-          formData.append('session_token', newSessionToken);
+          formData.append('session_id', currentSessionId);
+          formData.append('session_token', refreshedToken);
           response = await fetch(`${API_URL}/api/chat/upload`, {
             method: 'POST',
             body: formData,
@@ -393,8 +392,8 @@ function App() {
         } else {
           response = await api.stream('/chat/stream', {
             message: text,
-            session_id: newSessionId,
-            session_token: newSessionToken,
+            session_id: currentSessionId,
+            session_token: refreshedToken,
           });
         }
       }
@@ -541,16 +540,16 @@ function App() {
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'handoff_request', session_id: sessionId, user_name: 'Pelanggan' }));
-    }
-
-    try {
-      await api.post('/api/chat/request-handoff', {
-        session_id: sessionId,
-        session_token: sessionToken,
-        user_name: 'Pelanggan',
-      });
-    } catch (err) {
-      console.warn('REST handoff fallback error:', err);
+    } else {
+      try {
+        await api.post('/api/chat/request-handoff', {
+          session_id: sessionId,
+          session_token: sessionToken,
+          user_name: 'Pelanggan',
+        });
+      } catch (err) {
+        console.warn('REST handoff error:', err);
+      }
     }
 
     setMessages((prev) => [

@@ -173,9 +173,27 @@ def get_analytics_metrics(range_type: str = "7d"):
         # Resolusi rate: jika belum ada percakapan, tampilkan 0.0% secara jujur
         resolution_rate = round((answered_queries / total_evaluated * 100), 1) if total_evaluated > 0 else 0.0
 
-        # Persentase eskalasi CS & AI otomatis
-        escalation_rate = round((cs_escalated_count / total_conversations * 100), 1) if total_conversations > 0 else 0.0
-        ai_auto_rate = round(100.0 - escalation_rate, 1) if total_conversations > 0 else 0.0
+        # Persentase eskalasi CS & AI otomatis berbasis balasan nyata dalam sesi
+        total_ai_replies = 0
+        total_cs_replies = 0
+        if valid_sessions:
+            for s in valid_sessions:
+                if s.history:
+                    for m in s.history:
+                        if isinstance(m, dict):
+                            r = m.get("role")
+                            if r in ("assistant", "bot"):
+                                total_ai_replies += 1
+                            elif r == "admin":
+                                total_cs_replies += 1
+
+        total_replies = total_ai_replies + total_cs_replies
+        if total_replies > 0:
+            ai_auto_rate = round((total_ai_replies / total_replies) * 100, 1)
+            escalation_rate = round((total_cs_replies / total_replies) * 100, 1)
+        else:
+            escalation_rate = round((cs_escalated_count / total_conversations * 100), 1) if total_conversations > 0 else 0.0
+            ai_auto_rate = round(100.0 - escalation_rate, 1) if total_conversations > 0 else 0.0
 
         # Calculate separate average response times: AI streaming vs Human CS agent
         total_ai_diffs = 0
@@ -268,19 +286,22 @@ def get_analytics_metrics(range_type: str = "7d"):
     finally:
         db.close()
 
-def get_analytics_chart_data(range_type: str = "7d"):
-    """Ambil data chart tren aktivitas untuk rentang 30m, 1h, 24h, 7d, atau 30d."""
+def get_analytics_chart_data(range_type: str = "7d", tz_offset_hours: int = 7):
+    """Ambil data chart tren aktivitas untuk rentang 30m, 1h, 24h, 7d, atau 30d disesuaikan dengan zona waktu lokal (default WIB UTC+7)."""
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        user_tz = timezone(timedelta(hours=tz_offset_hours))
+        now_utc = datetime.now(timezone.utc)
+        now_local = now_utc.astimezone(user_tz)
 
         if range_type == "30m":
             slots = {}
             for i in range(5, -1, -1):
-                slot_time = now - timedelta(minutes=i * 5)
-                label = slot_time.strftime("%H:%M")
-                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_time.timestamp()}
-            cutoff = now - timedelta(minutes=30)
+                slot_local = now_local - timedelta(minutes=i * 5)
+                slot_utc = now_utc - timedelta(minutes=i * 5)
+                label = slot_local.strftime("%H:%M")
+                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_utc.timestamp()}
+            cutoff = now_utc - timedelta(minutes=30)
             sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
             for s in sessions:
                 s_ts = s.created_at.replace(tzinfo=timezone.utc).timestamp() if s.created_at.tzinfo is None else s.created_at.timestamp()
@@ -301,10 +322,11 @@ def get_analytics_chart_data(range_type: str = "7d"):
         elif range_type == "1h":
             slots = {}
             for i in range(5, -1, -1):
-                slot_time = now - timedelta(minutes=i * 10)
-                label = slot_time.strftime("%H:%M")
-                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_time.timestamp()}
-            cutoff = now - timedelta(hours=1)
+                slot_local = now_local - timedelta(minutes=i * 10)
+                slot_utc = now_utc - timedelta(minutes=i * 10)
+                label = slot_local.strftime("%H:%M")
+                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_utc.timestamp()}
+            cutoff = now_utc - timedelta(hours=1)
             sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
             for s in sessions:
                 s_ts = s.created_at.replace(tzinfo=timezone.utc).timestamp() if s.created_at.tzinfo is None else s.created_at.timestamp()
@@ -325,10 +347,11 @@ def get_analytics_chart_data(range_type: str = "7d"):
         elif range_type == "24h":
             slots = {}
             for i in range(7, -1, -1):
-                slot_time = now - timedelta(hours=i * 3)
-                label = slot_time.strftime("%H:00")
-                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_time.timestamp()}
-            cutoff = now - timedelta(hours=24)
+                slot_local = now_local - timedelta(hours=i * 3)
+                slot_utc = now_utc - timedelta(hours=i * 3)
+                label = slot_local.strftime("%H:00")
+                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_utc.timestamp()}
+            cutoff = now_utc - timedelta(hours=24)
             sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
             for s in sessions:
                 s_ts = s.created_at.replace(tzinfo=timezone.utc).timestamp() if s.created_at.tzinfo is None else s.created_at.timestamp()
@@ -349,20 +372,22 @@ def get_analytics_chart_data(range_type: str = "7d"):
         elif range_type == "30d":
             days_data = {}
             for i in range(29, -1, -3):
-                d = now - timedelta(days=i)
-                label = d.strftime("%d/%m")
-                days_data[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "date": d.date()}
-            cutoff = now - timedelta(days=30)
+                d_local = now_local - timedelta(days=i)
+                label = d_local.strftime("%d/%m")
+                days_data[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "date": d_local.date()}
+            cutoff = now_utc - timedelta(days=30)
             sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
             for s in sessions:
-                s_date = s.created_at.date()
+                s_local = s.created_at.replace(tzinfo=timezone.utc).astimezone(user_tz) if s.created_at.tzinfo is None else s.created_at.astimezone(user_tz)
+                s_date = s_local.date()
                 best_label = min(days_data.keys(), key=lambda k: abs((days_data[k]["date"] - s_date).days))
                 days_data[best_label]["chats"] += 1
                 days_data[best_label]["percakapan"] += 1
 
             queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
             for q in queries:
-                q_date = q.created_at.date()
+                q_local = q.created_at.replace(tzinfo=timezone.utc).astimezone(user_tz) if q.created_at.tzinfo is None else q.created_at.astimezone(user_tz)
+                q_date = q_local.date()
                 best_label = min(days_data.keys(), key=lambda k: abs((days_data[k]["date"] - q_date).days))
                 days_data[best_label]["unresolved"] += 1
 
@@ -371,28 +396,32 @@ def get_analytics_chart_data(range_type: str = "7d"):
             return list(days_data.values())
 
         else:  # default 7d
-            today = now.date()
-            seven_days_ago = today - timedelta(days=6)
-            cutoff = datetime.combine(seven_days_ago, datetime.min.time(), tzinfo=timezone.utc)
+            today_local = now_local.date()
+            seven_days_ago_local = today_local - timedelta(days=6)
+            cutoff = datetime.combine(seven_days_ago_local, datetime.min.time(), tzinfo=user_tz).astimezone(timezone.utc)
 
             days_data = {}
             for i in range(6, -1, -1):
-                d = today - timedelta(days=i)
+                d = today_local - timedelta(days=i)
                 label = d.strftime("%d/%m")
                 days_data[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0}
 
             sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
             for s in sessions:
-                label = s.created_at.strftime("%d/%m")
+                s_local = s.created_at.replace(tzinfo=timezone.utc).astimezone(user_tz) if s.created_at.tzinfo is None else s.created_at.astimezone(user_tz)
+                label = s_local.strftime("%d/%m")
                 if label in days_data:
                     days_data[label]["chats"] += 1
                     days_data[label]["percakapan"] += 1
 
             queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
             for q in queries:
-                label = q.created_at.strftime("%d/%m")
+                q_local = q.created_at.replace(tzinfo=timezone.utc).astimezone(user_tz) if q.created_at.tzinfo is None else q.created_at.astimezone(user_tz)
+                label = q_local.strftime("%d/%m")
                 if label in days_data:
                     days_data[label]["unresolved"] += 1
+
+            return list(days_data.values())
 
             return list(days_data.values())
     finally:

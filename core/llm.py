@@ -113,9 +113,10 @@ class LexaChatbot:
             if msg_clean in ignore_phrases or len(msg_clean) <= 3:
                 return
 
-            # 3. Cegah duplikasi: jika sesi ini sudah memiliki tiket pending di antrean, jangan tumpuk tiket baru
+            # 3. Cegah duplikasi: jika pertanyaan yang sama sudah tercatat pending untuk sesi ini, jangan duplikasi
             existing = db.query(UnansweredQuery).filter(
                 UnansweredQuery.session_id == self.session_id,
+                UnansweredQuery.user_query == message,
                 UnansweredQuery.status == "pending"
             ).first()
             if existing:

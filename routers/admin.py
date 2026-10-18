@@ -143,12 +143,12 @@ async def update_admin_settings(
 
 
 @router.get("/api/admin/stats")
-async def get_dashboard_statistics(range: str = "7d", payload: dict = Depends(verify_jwt)):
+async def get_dashboard_statistics(range: str = "7d", tz_offset: int = 7, payload: dict = Depends(verify_jwt)):
     # Bersihkan antrean pertanyaan yatim jika sesinya sudah dihapus
     cleanup_orphaned_unanswered_queries()
 
     metrics = get_analytics_metrics(range_type=range)
-    chart_data = get_analytics_chart_data(range_type=range)
+    chart_data = get_analytics_chart_data(range_type=range, tz_offset_hours=tz_offset)
     
     # Hitung dokumen riil di folder knowledge base
     kb_dir = Config.KNOWLEDGE_BASE_DIR
