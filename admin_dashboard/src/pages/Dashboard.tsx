@@ -11,34 +11,22 @@ import api from '../lib/apiClient';
 import { useLanguage } from '../lib/i18n';
 import type { KPIStats, ChartDataPoint, FeedbackStats } from '../types/api';
 
-const defaultChartData: ChartDataPoint[] = (() => {
-  const result: ChartDataPoint[] = [];
-  const now = new Date();
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    const label = `${String(d.getDate()).padStart(2, '0')} ${d.toLocaleDateString('id-ID', { month: 'short' })}`;
-    result.push({ 
-      name: label, 
-      chats: Math.floor(Math.random() * 50) + 80, 
-      percakapan: Math.floor(Math.random() * 60) + 90, 
-      unresolved: 0 
-    });
-  }
-  return result;
-})();
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { lang, t } = useLanguage();
   const [stats, setStats] = useState<KPIStats>({
-    active_users: 156,
-    total_conversations: 12456,
-    unanswered_queries: 12
+    active_users: 0,
+    total_conversations: 0,
+    unanswered_queries: 0,
+    resolution_rate: '0.0%',
+    escalation_rate: '0.0%',
+    ai_auto_rate: '0.0%',
+    kb_documents: 1,
   });
-  const [chartData, setChartData] = useState<ChartDataPoint[]>(defaultChartData);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [, setFeedbackStats] = useState<FeedbackStats | null>(null);
-  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('7d');
+  const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '7d' | '30d'>('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const currentUser = (() => {
@@ -50,19 +38,23 @@ const Dashboard = () => {
     }
   })();
 
-  const fetchStats = (range: '24h' | '7d' | '30d' = timeRange) => {
+  const fetchStats = (range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange) => {
     setIsRefreshing(true);
     api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>(`/api/admin/stats?range=${range}`)
       .then(data => {
         if (data.kpi) {
-          setStats(prev => ({
-            ...prev,
-            total_conversations: data.kpi.total_conversations,
-            active_users: data.kpi.active_users,
-            unanswered_queries: data.kpi.unanswered_queries,
-          }));
+          setStats({
+            total_conversations: data.kpi.total_conversations ?? 0,
+            active_users: data.kpi.active_users ?? 0,
+            unanswered_queries: data.kpi.unanswered_queries ?? 0,
+            resolution_rate: data.kpi.resolution_rate ?? '0.0%',
+            escalation_rate: data.kpi.escalation_rate ?? '0.0%',
+            ai_auto_rate: data.kpi.ai_auto_rate ?? '0.0%',
+            kb_documents: data.kpi.kb_documents ?? 1,
+            answered_queries: data.kpi.answered_queries ?? 0,
+          });
         }
-        if (Array.isArray(data.chart) && data.chart.length > 0) {
+        if (Array.isArray(data.chart)) {
           setChartData(data.chart);
         }
       })
@@ -76,7 +68,7 @@ const Dashboard = () => {
       .catch(() => {});
   };
 
-  const handleTimeRangeChange = (range: '24h' | '7d' | '30d') => {
+  const handleTimeRangeChange = (range: '30m' | '1h' | '24h' | '7d' | '30d') => {
     setTimeRange(range);
     fetchStats(range);
   };
@@ -146,11 +138,11 @@ const Dashboard = () => {
         <div className="flex items-center gap-2.5">
           {/* Time Filter Pill */}
           <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
-            {(['24h', '7d', '30d'] as const).map((range) => (
+            {(['30m', '1h', '24h', '7d', '30d'] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => handleTimeRangeChange(range)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
                   timeRange === range
                     ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
@@ -204,9 +196,15 @@ const Dashboard = () => {
                 <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
                   {stats.total_conversations.toLocaleString()}
                 </span>
-                <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  +18.4%
-                </span>
+                {stats.total_conversations > 0 ? (
+                  <span className="inline-flex items-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    Aktif
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-xs font-medium text-slate-400">
+                    {lang === 'id' ? 'Belum ada chat' : 'No chats yet'}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {t.total_conversations_desc}
@@ -215,18 +213,30 @@ const Dashboard = () => {
 
             {/* Split Progress Meter */}
             <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
-              <div className="flex items-center justify-between text-[11px] mb-2 font-mono">
-                <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#0066FF]"></span>
-                  {lang === 'id' ? '94.2% AI Otomatis' : '94.2% AI Auto-Resolved'}
-                </span>
-                <span className="text-slate-400 dark:text-slate-500">
-                  {lang === 'id' ? '5.8% Eskalasi CS' : '5.8% CS Escalated'}
-                </span>
-              </div>
+              {stats.total_conversations > 0 ? (
+                <div className="flex items-center justify-between text-[11px] mb-2 font-mono">
+                  <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#0066FF]"></span>
+                    {stats.ai_auto_rate} {lang === 'id' ? 'AI Otomatis' : 'AI Auto-Resolved'}
+                  </span>
+                  <span className="text-slate-400 dark:text-slate-500">
+                    {stats.escalation_rate} {lang === 'id' ? 'Eskalasi CS' : 'CS Escalated'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-[11px] mb-2 font-mono text-slate-400">
+                  <span>{lang === 'id' ? '0% Interaksi Terdeteksi' : '0% Interactions Detected'}</span>
+                </div>
+              )}
               <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                <div className="h-full bg-[#0066FF] rounded-l-full" style={{ width: '94.2%' }}></div>
-                <div className="h-full bg-amber-500 rounded-r-full" style={{ width: '5.8%' }}></div>
+                <div 
+                  className="h-full bg-[#0066FF] rounded-l-full transition-all duration-500" 
+                  style={{ width: stats.total_conversations > 0 ? (stats.ai_auto_rate || '100%') : '0%' }}
+                ></div>
+                <div 
+                  className="h-full bg-amber-500 rounded-r-full transition-all duration-500" 
+                  style={{ width: stats.total_conversations > 0 ? (stats.escalation_rate || '0%') : '0%' }}
+                ></div>
               </div>
             </div>
           </div>
@@ -246,15 +256,15 @@ const Dashboard = () => {
             
             <div className="my-2">
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
-                98.4%
+                {stats.resolution_rate || '0.0%'}
               </span>
               <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                <span>{t.optimal_response}</span>
+                <span>{stats.total_conversations > 0 ? t.optimal_response : (lang === 'id' ? 'Menunggu data chat' : 'Waiting for chat data')}</span>
               </div>
             </div>
 
             <div className="text-[11px] text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-              {lang === 'id' ? 'Respon rata-rata ~1.2 detik' : 'Average latency ~1.2s'}
+              {lang === 'id' ? 'Akurasi jawaban mandiri dari Knowledge Base' : 'Autonomous KB answer precision'}
             </div>
           </div>
         </div>
@@ -273,7 +283,7 @@ const Dashboard = () => {
             
             <div className="my-2">
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
-                1,247
+                {(stats.kb_documents ?? 1).toLocaleString()}
               </span>
               <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                 {t.indexed_documents}
@@ -343,7 +353,9 @@ const Dashboard = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
-                  {t.conversation_trends}
+                  {lang === 'id' 
+                    ? `Tren Volume Percakapan (${timeRange === '30m' ? '30 Menit' : timeRange === '1h' ? '1 Jam' : timeRange === '24h' ? '24 Jam' : timeRange === '30d' ? '30 Hari' : '7 Hari'} Terakhir)` 
+                    : `Conversation Trend (Last ${timeRange.toUpperCase()})`}
                 </h3>
                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
               </div>

@@ -33,14 +33,14 @@ const Settings = () => {
       });
   }, []);
 
-  const handleSave = async () => {
+  const handleSave = async (dataToSave = settings) => {
     if (!isSuperAdmin) return;
     setIsSaving(true);
     setSaveMessage('');
     try {
-      await api.authPost('/api/admin/settings', settings);
-      setSaveMessage('Pengaturan AI berhasil diperbarui!');
-      setTimeout(() => setSaveMessage(''), 3000);
+      await api.authPost('/api/admin/settings', dataToSave);
+      setSaveMessage('Pengaturan AI berhasil disimpan permanen ke database!');
+      setTimeout(() => setSaveMessage(''), 3500);
     } catch (err) {
       console.error(err);
       setSaveMessage('Gagal menyimpan pengaturan.');
@@ -49,25 +49,32 @@ const Settings = () => {
     }
   };
 
-  const addQuickReply = () => {
+  const addQuickReply = async () => {
     if (!isSuperAdmin) return;
-    if (newQuickReply.trim() && !settings.quick_replies.includes(newQuickReply.trim())) {
-      setSettings({
+    const trimmed = newQuickReply.trim();
+    if (trimmed && !settings.quick_replies.includes(trimmed)) {
+      const updated = {
         ...settings,
-        quick_replies: [...settings.quick_replies, newQuickReply.trim()]
-      });
+        quick_replies: [...settings.quick_replies, trimmed]
+      };
+      setSettings(updated);
       setNewQuickReply('');
+      // Auto-save langsung ke database agar tidak hilang saat refresh
+      await handleSave(updated);
     }
   };
 
-  const removeQuickReply = (index: number) => {
+  const removeQuickReply = async (index: number) => {
     if (!isSuperAdmin) return;
-    const updated = settings.quick_replies.filter((_, i) => i !== index);
-    setSettings({ ...settings, quick_replies: updated });
+    const updatedReplies = settings.quick_replies.filter((_, i) => i !== index);
+    const updated = { ...settings, quick_replies: updatedReplies };
+    setSettings(updated);
+    // Auto-save langsung ke database
+    await handleSave(updated);
   };
 
   return (
-    <div className="p-6 max-w-4xl space-y-6">
+    <div className="p-6 max-w-4xl space-y-6 pb-20">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Bot Settings</h1>
@@ -75,12 +82,12 @@ const Settings = () => {
         </div>
         {isSuperAdmin && (
           <button 
-            onClick={handleSave}
+            onClick={() => handleSave(settings)}
             disabled={isSaving}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm disabled:opacity-50"
+            className="flex items-center gap-2 bg-[#0066FF] hover:bg-[#0052CC] text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
-            {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            {isSaving ? 'Menyimpan...' : 'Simpan Semua'}
           </button>
         )}
       </div>
@@ -95,7 +102,7 @@ const Settings = () => {
       )}
 
       {saveMessage && (
-        <div className={`p-3.5 rounded-xl text-xs font-medium ${saveMessage.includes('berhasil') ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'}`}>
+        <div className={`p-3.5 rounded-xl text-xs font-medium animate-in fade-in duration-200 ${saveMessage.includes('berhasil') ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'}`}>
           {saveMessage}
         </div>
       )}
@@ -104,14 +111,26 @@ const Settings = () => {
         
         {/* Welcome Message */}
         <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-5 shadow-sm transition-colors">
-          <div className="flex items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <div className="bg-blue-100 dark:bg-blue-950/50 p-2 rounded-lg text-blue-600 dark:text-blue-400">
-              <MessageSquare className="w-4 h-4" />
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 dark:bg-blue-950/50 p-2 rounded-lg text-blue-600 dark:text-blue-400">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">Welcome Message</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Pesan sapaan otomatis pertama kali saat widget dibuka oleh pelanggan.</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">Welcome Message</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pesan sapaan otomatis pertama kali saat widget dibuka oleh pelanggan.</p>
-            </div>
+            {isSuperAdmin && (
+              <button
+                onClick={() => handleSave(settings)}
+                disabled={isSaving}
+                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-[#0066FF] dark:text-blue-400 rounded-lg text-xs font-semibold border border-blue-200 dark:border-blue-900/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3 h-3" />
+                Simpan
+              </button>
+            )}
           </div>
           <textarea 
             value={settings.welcome_message}
@@ -125,14 +144,19 @@ const Settings = () => {
 
         {/* Quick Replies */}
         <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-5 shadow-sm transition-colors">
-          <div className="flex items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <div className="bg-purple-100 dark:bg-purple-950/50 p-2 rounded-lg text-purple-600 dark:text-purple-400">
-              <Bot className="w-4 h-4" />
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-100 dark:bg-purple-950/50 p-2 rounded-lg text-purple-600 dark:text-purple-400">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">Quick Replies</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Daftar pertanyaan cepat yang disarankan ke pelanggan (tersimpan otomatis).</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">Quick Replies</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Daftar pertanyaan cepat yang disarankan ke pelanggan.</p>
-            </div>
+            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+              Auto-Save Aktif
+            </span>
           </div>
           
           <div className="flex flex-wrap gap-2 mb-4">
@@ -140,7 +164,7 @@ const Settings = () => {
               <div key={i} className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-3 py-1 rounded-full text-xs text-slate-700 dark:text-slate-200">
                 <span>{reply}</span>
                 {isSuperAdmin && (
-                  <button onClick={() => removeQuickReply(i)} className="text-slate-400 hover:text-red-500">
+                  <button onClick={() => removeQuickReply(i)} className="text-slate-400 hover:text-red-500 cursor-pointer" title="Hapus pertanyaan cepat">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -155,14 +179,15 @@ const Settings = () => {
                 value={newQuickReply}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNewQuickReply(e.target.value)}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && addQuickReply()}
-                placeholder="Ketik opsi pertanyaan baru lalu tekan Enter..."
+                placeholder="Ketik opsi pertanyaan baru lalu tekan Enter atau klik Tambah..."
                 className="flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-xl px-3 py-1.5 focus:border-blue-500 outline-none text-xs"
               />
               <button 
                 onClick={addQuickReply}
-                className="bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white px-3.5 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-medium"
+                disabled={isSaving}
+                className="bg-slate-900 hover:bg-slate-800 dark:bg-[#0066FF] dark:hover:bg-[#0052CC] text-white px-3.5 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
-                <Plus className="w-3.5 h-3.5" /> Tambah
+                <Plus className="w-3.5 h-3.5" /> Tambah & Simpan
               </button>
             </div>
           )}
@@ -170,25 +195,37 @@ const Settings = () => {
 
         {/* System Prompt */}
         <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 p-5 shadow-sm transition-colors">
-          <div className="flex items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
-            <div className="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-lg text-emerald-600 dark:text-emerald-400">
-              <Terminal className="w-4 h-4" />
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-100 dark:bg-emerald-950/50 p-2 rounded-lg text-emerald-600 dark:text-emerald-400">
+                <Terminal className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">System Prompt & Persona LLM</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Instruksi sistem yang mendikte batasan pengetahuan dan gaya bicara bot.</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100">System Prompt & Persona LLM</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Instruksi sistem yang mendikte batasan pengetahuan dan gaya bicara bot.</p>
-            </div>
+            {isSuperAdmin && (
+              <button
+                onClick={() => handleSave(settings)}
+                disabled={isSaving}
+                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3 h-3" />
+                Simpan Prompt
+              </button>
+            )}
           </div>
           <textarea 
             value={settings.system_prompt}
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => isSuperAdmin && setSettings({...settings, system_prompt: e.target.value})}
             readOnly={!isSuperAdmin}
-            rows={7}
+            rows={8}
             className="w-full bg-slate-950 text-emerald-400 font-mono text-xs border border-slate-800 rounded-xl p-3.5 focus:border-emerald-500 outline-none transition-all resize-y leading-relaxed"
             placeholder="Anda adalah asisten AI..."
           />
           <p className="text-[11px] text-slate-400 mt-2">
-            Perubahan system prompt langsung memengaruhi instruksi konteks pada model AI Groq.
+            Perubahan system prompt langsung memengaruhi instruksi konteks pada model AI Groq dan disimpan permanen di database.
           </p>
         </div>
 

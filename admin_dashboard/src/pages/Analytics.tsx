@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
-import { MessageSquare, Users, AlertCircle, Clock, HelpCircle, BookOpen, ArrowRight, CheckCircle2, X, PlusCircle, Headphones, Sparkles } from 'lucide-react';
+import { MessageSquare, Users, AlertCircle, Clock, HelpCircle, BookOpen, ArrowRight, CheckCircle2, X, PlusCircle, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
 import { useLanguage } from '../lib/i18n';
@@ -43,14 +43,6 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, onInfoClick }: St
   </div>
 );
 
-interface UnansweredItem {
-  id: number;
-  query: string;
-  time: string;
-  frequency: number;
-  type: 'missing_doc' | 'cs_handoff';
-}
-
 const Analytics = () => {
   const navigate = useNavigate();
   const { lang, t } = useLanguage();
@@ -59,53 +51,70 @@ const Analytics = () => {
     unanswered_queries: number;
     answered_queries?: number;
     resolution_rate?: string;
+    escalation_rate?: string;
+    ai_auto_rate?: string;
     thumbs_up_count?: number;
     thumbs_down_count?: number;
     chart: ChartDataPoint[];
   } | null>(null);
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
   const [showDefinitionModal, setShowDefinitionModal] = useState(false);
+  const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '7d' | '30d'>('7d');
+  const [unansweredList, setUnansweredList] = useState<Array<{ id: number; query: string; status: string; created_at: string }>>([]);
 
-  // Unresolved questions queue that admin needs to add to KB
-  const unresolvedList: UnansweredItem[] = [
-    {
-      id: 1,
-      query: lang === 'id' ? 'Apakah ada estimasi biaya untuk pembuatan sistem ERP kustom?' : 'What is the estimated cost for a custom ERP system?',
-      time: '2 jam yang lalu',
-      frequency: 4,
-      type: 'missing_doc',
-    },
-    {
-      id: 2,
-      query: lang === 'id' ? 'Bisa bicara langsung dengan tim sales untuk konsultasi project mobile app?' : 'Can I speak directly with the sales team for a mobile app project?',
-      time: '4 jam yang lalu',
-      frequency: 3,
-      type: 'cs_handoff',
-    },
-    {
-      id: 3,
-      query: lang === 'id' ? 'Apakah melayani integrasi payment gateway BCA Snap dan Midtrans?' : 'Do you support BCA Snap and Midtrans payment gateway integration?',
-      time: 'Kemarin',
-      frequency: 2,
-      type: 'missing_doc',
-    },
-  ];
+  const fetchStats = async (range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange) => {
+    try {
+      const data = await api.authGet<AdminStatsResponse>(`/api/admin/stats?range=${range}`);
+      setStats({ ...data.kpi, chart: data.chart });
+      setMetrics(data.metrics);
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+    }
+  };
+
+  const fetchUnanswered = async () => {
+    try {
+      const data = await api.authGet<Array<{ id: number; query: string; status: string; created_at: string }>>('/api/admin/unanswered');
+      if (Array.isArray(data)) {
+        setUnansweredList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching unanswered queries:', err);
+    }
+  };
+
+  const handleRangeChange = (range: '30m' | '1h' | '24h' | '7d' | '30d') => {
+    setTimeRange(range);
+    fetchStats(range);
+  };
+
+  const handleResolve = async (id: number) => {
+    try {
+      await api.authPost(`/api/admin/unanswered/${id}/resolve`);
+      fetchUnanswered();
+      fetchStats(timeRange);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteUnanswered = async (id: number) => {
+    try {
+      await api.authDelete(`/api/admin/unanswered/${id}`);
+      fetchUnanswered();
+      fetchStats(timeRange);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await api.authGet<AdminStatsResponse>('/api/admin/stats');
-        setStats({ ...data.kpi, chart: data.chart });
-        setMetrics(data.metrics);
-      } catch (err) {
-        console.error('Error fetching analytics:', err);
-      }
-    };
-    fetchStats();
+    fetchStats(timeRange);
+    fetchUnanswered();
   }, []);
 
   const chatData: ChartDataPoint[] = stats?.chart || [];
-  const metricsData: AnalyticsMetrics = metrics || { avg_response_time: '1.2s', active_users_30min: 3, monthly_active: 120 };
+  const metricsData: AnalyticsMetrics = metrics || { avg_response_time: '1.2s', active_users_30min: 0, monthly_active: 0 };
   const avgResponseTime = metricsData.avg_response_time;
   const activeUsers30min = metricsData.active_users_30min;
 
@@ -119,13 +128,33 @@ const Analytics = () => {
             {t.analytics_subtitle}
           </p>
         </div>
-        <button
-          onClick={() => setShowDefinitionModal(true)}
-          className="px-3.5 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-[#0066FF] dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-xs cursor-pointer"
-        >
-          <HelpCircle className="w-3.5 h-3.5" />
-          {t.metrics_guide}
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* Time Filter Pill (30m, 1h, 24h, 7d, 30d) */}
+          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+            {(['30m', '1h', '24h', '7d', '30d'] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => handleRangeChange(range)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                  timeRange === range
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                {range.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShowDefinitionModal(true)}
+            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-[#0066FF] dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-xs cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            {t.metrics_guide}
+          </button>
+        </div>
       </div>
 
       {/* Dual Explanation Cards: Clear System Definition (Anti-Slop, No Wordy Walls) */}
@@ -237,7 +266,9 @@ const Analytics = () => {
           <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
-                {lang === 'id' ? 'Tren Percakapan (7 Hari Terakhir)' : 'Conversation Trend (Last 7 Days)'}
+                {lang === 'id' 
+                  ? `Tren Percakapan (${timeRange === '30m' ? '30 Menit' : timeRange === '1h' ? '1 Jam' : timeRange === '24h' ? '24 Jam' : timeRange === '30d' ? '30 Hari' : '7 Hari'} Terakhir)` 
+                  : `Conversation Trend (Last ${timeRange.toUpperCase()})`}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                 {lang === 'id' ? 'Pertumbuhan traffic interaksi pengunjung dan pelanggan' : 'Growth of visitor and customer interactions'}
@@ -340,51 +371,69 @@ const Analytics = () => {
             <thead className="bg-slate-50/80 dark:bg-white/[0.02] text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-100 dark:border-white/5">
               <tr>
                 <th className="py-3 px-5">{t.col_query}</th>
-                <th className="py-3 px-5">{t.col_frequency}</th>
+                <th className="py-3 px-5">{lang === 'id' ? 'Waktu Masuk' : 'Timestamp'}</th>
                 <th className="py-3 px-5">{t.col_status}</th>
                 <th className="py-3 px-5 text-right">{t.col_action}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {unresolvedList.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3.5 px-5">
-                    <p className="font-medium text-slate-800 dark:text-slate-200">
-                      "{item.query}"
+              {unansweredList.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-10 text-center text-slate-400">
+                    <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500 opacity-90" />
+                    <p className="font-medium text-xs text-slate-700 dark:text-slate-300">
+                      {lang === 'id' ? 'Seluruh Pertanyaan Terjawab dengan Baik' : 'All Queries Successfully Resolved'}
                     </p>
-                    <span className="text-[10px] text-slate-400">
-                      {lang === 'id' ? 'Terdeteksi' : 'Detected'} {item.time}
-                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {lang === 'id' ? 'Tidak ada antrean pertanyaan yang membutuhkan dokumen baru.' : 'No unanswered inquiries in the action queue.'}
+                    </p>
                   </td>
-                  <td className="py-3.5 px-5">
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                      {item.frequency}x {lang === 'id' ? 'ditanyakan' : 'asked'}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-5">
-                    {item.type === 'missing_doc' ? (
+                </tr>
+              ) : (
+                unansweredList.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors">
+                    <td className="py-3.5 px-5 max-w-md">
+                      <p className="font-medium text-slate-800 dark:text-slate-200">
+                        "{item.query}"
+                      </p>
+                    </td>
+                    <td className="py-3.5 px-5 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                      {item.created_at ? new Date(item.created_at).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US') : '-'}
+                    </td>
+                    <td className="py-3.5 px-5">
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                         <AlertCircle className="w-3 h-3" />
                         {t.status_needs_doc}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        <Headphones className="w-3 h-3" />
-                        {t.status_escalated}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-5 text-right">
-                    <button
-                      onClick={() => navigate('/kb')}
-                      className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-[#0066FF] dark:text-[#38BDF8] rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      <span>{lang === 'id' ? 'Buat Dokumen Jawaban' : 'Add Answer to KB'}</span>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3.5 px-5 text-right space-x-2">
+                      <button
+                        onClick={() => navigate(`/kb?query=${encodeURIComponent(item.query)}`)}
+                        className="px-2.5 py-1 bg-[#0066FF] hover:bg-[#0052CC] text-white rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                        title="Buat dokumen baru di Knowledge Base"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>{lang === 'id' ? '+ Tambah ke KB' : '+ Add to KB'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleResolve(item.id)}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                        title="Tandai sudah terjawab"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>{lang === 'id' ? 'Selesai' : 'Resolve'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUnanswered(item.id)}
+                        className="px-2 py-1 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                        title="Hapus dari antrean"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

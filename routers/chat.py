@@ -137,9 +137,9 @@ def _get_or_create_session_token(session_id: str, session_token: str | None) -> 
     try:
         session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if not session:
+            # Sesi belum tersimpan di DB. Jangan buat sesi kosong di database!
+            # Cukup kembalikan token client. Sesi akan otomatis tersimpan saat pengguna mengirim pesan pertama.
             token = session_token or secrets.token_urlsafe(32)
-            db.add(ChatSession(session_id=session_id, history=[], session_token_hash=_token_hash(token)))
-            db.commit()
             return token
         if not session.session_token_hash:
             token = session_token or secrets.token_urlsafe(32)

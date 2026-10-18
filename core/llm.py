@@ -93,12 +93,23 @@ class LexaChatbot:
             self._save_history()
 
     def _log_unanswered_query(self, message: str):
-        """Mencatat pertanyaan yang tidak ditemukan di RAG ke database."""
+        """Mencatat pertanyaan nyata yang tidak ditemukan di RAG ke antrean review database."""
+        msg_clean = message.strip().lower()
+        common_greetings = {
+            "hai", "haii", "haiii", "halo", "haloo", "hello", "hi", "hey", "hei", "p", 
+            "siang", "pagi", "malam", "sore", "selamat pagi", "selamat siang", "selamat sore", 
+            "selamat malam", "assalamualaikum", "test", "tes", "1", "ok", "oke", "siap", "terima kasih", "makasih"
+        }
+        if msg_clean in common_greetings or len(msg_clean) <= 2:
+            return
+
         db = SessionLocal()
         try:
-            query = UnansweredQuery(session_id=self.session_id, user_query=message)
+            query = UnansweredQuery(session_id=self.session_id, user_query=message, status="pending")
             db.add(query)
             db.commit()
+        except Exception as e:
+            logger.error(f"Error logging unanswered query: {e}")
         finally:
             db.close()
 

@@ -19,6 +19,38 @@ type ExtendedSSEEvent =
   | { type: 'session_deleted'; session_id?: string }
   | { type: 'typing'; role?: string };
 
+// Helper Cookie & LocalStorage persistence untuk mencegah roomchat ter-reset saat refresh
+const getCookie = (name: string): string | null => {
+  try {
+    const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setCookie = (name: string, value: string, days = 30) => {
+  try {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  } catch {}
+};
+
+const getPersistentId = (key: string): string => {
+  let val: string | null = null;
+  try {
+    val = getCookie(key) || localStorage.getItem(key);
+  } catch {}
+  if (!val) {
+    val = crypto.randomUUID();
+  }
+  try {
+    setCookie(key, val);
+    localStorage.setItem(key, val);
+  } catch {}
+  return val;
+};
+
 function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -42,22 +74,8 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [isAdminTyping, setIsAdminTyping] = useState(false);
-  const [sessionId, setSessionId] = useState(() => {
-    let id = localStorage.getItem('lexa_session_id');
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem('lexa_session_id', id);
-    }
-    return id;
-  });
-  const [sessionToken, setSessionToken] = useState(() => {
-    let token = localStorage.getItem('lexa_session_token');
-    if (!token) {
-      token = crypto.randomUUID();
-      localStorage.setItem('lexa_session_token', token);
-    }
-    return token;
-  });
+  const [sessionId, setSessionId] = useState(() => getPersistentId('lexa_session_id'));
+  const [sessionToken, setSessionToken] = useState(() => getPersistentId('lexa_session_token'));
   const [config, setConfig] = useState<WidgetConfig | null>(null);
   const [escalationShown, setEscalationShown] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -115,13 +133,17 @@ function App() {
     return () => window.removeEventListener('open-lexa-chat', handleOpen);
   }, []);
 
-  // Save session & messages
+  // Save session & messages to Cookie and LocalStorage
   useEffect(() => {
-    localStorage.setItem('lexa_session_id', sessionId);
-    localStorage.setItem('lexa_session_token', sessionToken);
-    if (messages.length > 0) {
-      localStorage.setItem('lexa_messages', JSON.stringify(messages));
-    }
+    try {
+      localStorage.setItem('lexa_session_id', sessionId);
+      localStorage.setItem('lexa_session_token', sessionToken);
+      setCookie('lexa_session_id', sessionId);
+      setCookie('lexa_session_token', sessionToken);
+      if (messages.length > 0) {
+        localStorage.setItem('lexa_messages', JSON.stringify(messages));
+      }
+    } catch {}
   }, [messages, sessionId, sessionToken]);
 
   // Sinkronkan status handoff saat widget dimuat ulang (agar tidak nyangkut di mode CS setelah refresh)
@@ -227,6 +249,8 @@ function App() {
           setSessionToken(newToken);
           localStorage.setItem('lexa_session_id', newId);
           localStorage.setItem('lexa_session_token', newToken);
+          setCookie('lexa_session_id', newId);
+          setCookie('lexa_session_token', newToken);
           const resetMsg: ChatMessage = {
             id: Date.now(),
             role: 'bot',

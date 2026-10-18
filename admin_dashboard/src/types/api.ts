@@ -97,6 +97,9 @@ export interface KPIStats {
   unanswered_queries: number;
   answered_queries?: number;
   resolution_rate?: string;
+  escalation_rate?: string;
+  ai_auto_rate?: string;
+  kb_documents?: number;
   thumbs_up_count?: number;
   thumbs_down_count?: number;
 }
@@ -163,6 +166,8 @@ export interface UnansweredQuery {
 export interface KBFile {
   filename: string;
   size: number;
+  last_modified?: string;
+  is_core?: boolean;
 }
 
 // Settings

@@ -17,8 +17,10 @@ build/
 
 # Knowledge Base & Databases (Generate otomatis)
 knowledge_base/vector_index.pkl
-knowledge_base/lexa_company_profile.md
+knowledge_base/chroma*
+knowledge_base/lexa_chroma*
 chroma_db/
+**/chroma_db/
 *.db
 *.sqlite
 *.sqlite3

@@ -23,6 +23,9 @@ from core.database import (
     get_analytics_chart_data,
     get_analytics_metrics,
     get_recent_unanswered_queries,
+    resolve_unanswered_query,
+    delete_unanswered_query,
+    cleanup_orphaned_unanswered_queries,
     get_all_sessions,
     get_all_users,
     get_session_history,
@@ -141,17 +144,30 @@ async def update_admin_settings(
 
 @router.get("/api/admin/stats")
 async def get_dashboard_statistics(range: str = "7d", payload: dict = Depends(verify_jwt)):
+    # Bersihkan antrean pertanyaan yatim jika sesinya sudah dihapus
+    cleanup_orphaned_unanswered_queries()
+
     metrics = get_analytics_metrics(range_type=range)
     chart_data = get_analytics_chart_data(range_type=range)
+    
+    # Hitung dokumen riil di folder knowledge base
+    kb_dir = Config.KNOWLEDGE_BASE_DIR
+    kb_count = 0
+    if os.path.exists(kb_dir):
+        kb_count = len([f for f in os.listdir(kb_dir) if f.endswith((".md", ".txt", ".pdf"))])
+
     return {
         "kpi": {
             "total_conversations": metrics["total_conversations"],
             "active_users": metrics["active_users_30min"],
             "unanswered_queries": metrics["unanswered_queries"],
             "answered_queries": metrics.get("answered_queries", 0),
-            "resolution_rate": metrics.get("resolution_rate", "98.4%"),
+            "resolution_rate": metrics.get("resolution_rate", "0.0%"),
+            "escalation_rate": metrics.get("escalation_rate", "0.0%"),
+            "ai_auto_rate": metrics.get("ai_auto_rate", "0.0%"),
             "thumbs_up_count": metrics.get("thumbs_up_count", 0),
             "thumbs_down_count": metrics.get("thumbs_down_count", 0),
+            "kb_documents": kb_count,
         },
         "chart": chart_data,
         "metrics": metrics,
@@ -160,7 +176,24 @@ async def get_dashboard_statistics(range: str = "7d", payload: dict = Depends(ve
 
 @router.get("/api/admin/unanswered")
 async def admin_unanswered_queries(payload: dict = Depends(verify_jwt)):
-    return get_recent_unanswered_queries(limit=10)
+    cleanup_orphaned_unanswered_queries()
+    return get_recent_unanswered_queries(limit=20)
+
+
+@router.post("/api/admin/unanswered/{query_id}/resolve")
+async def admin_resolve_unanswered_query(query_id: int, payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)", "CS Agent"))):
+    success = resolve_unanswered_query(query_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Pertanyaan tidak ditemukan")
+    return {"status": "success", "message": "Pertanyaan berhasil ditandai selesai."}
+
+
+@router.delete("/api/admin/unanswered/{query_id}")
+async def admin_delete_unanswered_query(query_id: int, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
+    success = delete_unanswered_query(query_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Pertanyaan tidak ditemukan")
+    return {"status": "success", "message": "Pertanyaan berhasil dihapus dari antrean."}
 
 
 @router.get("/api/admin/sessions")
@@ -235,6 +268,16 @@ async def admin_get_session_history(session_id: str, payload: dict = Depends(ver
         db.close()
 
 
+class KBDocCreateReq(BaseModel):
+    title: str
+    content: str
+    category: Optional[str] = "FAQ"
+
+
+class KBDocUpdateReq(BaseModel):
+    content: str
+
+
 @router.get("/api/admin/kb/files")
 async def get_kb_files(payload: dict = Depends(verify_jwt)):
     kb_dir = Config.KNOWLEDGE_BASE_DIR
@@ -243,13 +286,90 @@ async def get_kb_files(payload: dict = Depends(verify_jwt)):
 
     files = []
     for f in os.listdir(kb_dir):
-        if f.endswith((".md", ".txt", ".pdf")) and f != "lexa_company_profile.md":
+        if f.endswith((".md", ".txt", ".pdf")):
             path = os.path.join(kb_dir, f)
             files.append({
                 "filename": f,
-                "size": os.path.getsize(path)
+                "size": os.path.getsize(path),
+                "is_core": f == "lexa_company_profile.md",
+                "title": f.replace(".md", "").replace(".txt", "").replace(".pdf", "").replace("_", " ").title()
             })
     return files
+
+
+@router.get("/api/admin/kb/files/{filename}")
+async def get_kb_file_content(filename: str, payload: dict = Depends(verify_jwt)):
+    kb_dir = Config.KNOWLEDGE_BASE_DIR
+    file_path = os.path.join(kb_dir, filename)
+
+    if ".." in filename or not os.path.abspath(file_path).startswith(os.path.abspath(kb_dir)):
+        raise HTTPException(status_code=403, detail="Invalid filename")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        return {"filename": filename, "content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal membaca file: {str(e)}")
+
+
+@router.post("/api/admin/kb/create")
+async def create_kb_document(
+    req: KBDocCreateReq, 
+    background_tasks: BackgroundTasks, 
+    payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))
+):
+    import re
+    import time
+    if not req.title.strip() or not req.content.strip():
+        raise HTTPException(status_code=400, detail="Judul dan konten dokumen tidak boleh kosong")
+
+    kb_dir = Config.KNOWLEDGE_BASE_DIR
+    os.makedirs(kb_dir, exist_ok=True)
+
+    safe_title = re.sub(r'[^\w\-]', '_', req.title.lower()).strip('_')
+    if not safe_title:
+        safe_title = f"doc_{int(time.time())}"
+    filename = f"{safe_title}.md"
+    file_path = os.path.join(kb_dir, filename)
+
+    doc_text = f"# {req.title}\n\nKategori: {req.category or 'Umum'}\n\n{req.content}\n"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(doc_text)
+
+    # Otomatis trigger background reindexing
+    background_tasks.add_task(run_rebuild)
+    return {
+        "status": "success", 
+        "filename": filename, 
+        "message": f"Dokumen '{req.title}' berhasil dibuat dan sedang diindeks ke AI."
+    }
+
+
+@router.put("/api/admin/kb/files/{filename}")
+async def update_kb_file_content(
+    filename: str, 
+    req: KBDocUpdateReq, 
+    background_tasks: BackgroundTasks, 
+    payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))
+):
+    kb_dir = Config.KNOWLEDGE_BASE_DIR
+    file_path = os.path.join(kb_dir, filename)
+
+    if ".." in filename or not os.path.abspath(file_path).startswith(os.path.abspath(kb_dir)):
+        raise HTTPException(status_code=403, detail="Invalid filename")
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(req.content)
+
+    background_tasks.add_task(run_rebuild)
+    return {"status": "success", "message": f"Dokumen '{filename}' berhasil diperbarui dan sedang diindeks ulang."}
 
 
 @router.post("/api/admin/kb/export")

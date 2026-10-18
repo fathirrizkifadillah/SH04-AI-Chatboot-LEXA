@@ -99,6 +99,10 @@ export const api = {
     return this.post<T>(path, body);
   },
 
+  authPut<T>(path: string, body?: unknown): Promise<T> {
+    return this.put<T>(path, body);
+  },
+
   authDelete<T>(path: string): Promise<T> {
     return this.delete<T>(path);
   },

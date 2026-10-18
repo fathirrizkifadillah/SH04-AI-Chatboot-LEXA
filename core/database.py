@@ -87,7 +87,15 @@ class UnansweredQuery(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(String, index=True)
     user_query = Column(Text)
+    status = Column(String, default="pending")  # "pending", "resolved"
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    
+    key = Column(String, primary_key=True, index=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class ChatFeedback(Base):
     __tablename__ = "chat_feedback"
@@ -104,24 +112,39 @@ def get_analytics_metrics(range_type: str = "7d"):
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
-        if range_type == "24h":
+        if range_type == "30m":
+            cutoff = now - timedelta(minutes=30)
+        elif range_type == "1h":
+            cutoff = now - timedelta(hours=1)
+        elif range_type == "24h":
             cutoff = now - timedelta(hours=24)
         elif range_type == "30d":
             cutoff = now - timedelta(days=30)
         else:
             cutoff = now - timedelta(days=7)
 
-        total_conversations = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).count()
-        unanswered_queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).count()
-        
-        # Hitung total pesan user & pertanyaan terjawab
-        sessions_in_range = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+        # Hanya hitung sesi yang memiliki pesan riil dari pengguna
+        all_sessions_in_range = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+        valid_sessions = []
         total_user_queries = 0
-        for s in sessions_in_range:
-            if s.history:
-                for m in s.history:
-                    if m.get("role") == "user":
-                        total_user_queries += 1
+        cs_escalated_count = 0
+
+        for s in all_sessions_in_range:
+            hist = s.history or []
+            user_msgs = [m for m in hist if isinstance(m, dict) and m.get("role") == "user"]
+            if user_msgs or s.is_human_handoff:
+                valid_sessions.append(s)
+                total_user_queries += len(user_msgs)
+                if s.is_human_handoff:
+                    cs_escalated_count += 1
+
+        total_conversations = len(valid_sessions)
+
+        # Hitung unanswered queries yang aktif (belum di-resolve)
+        unanswered_queries = db.query(UnansweredQuery).filter(
+            UnansweredQuery.created_at >= cutoff,
+            (UnansweredQuery.status == "pending") | (UnansweredQuery.status.is_(None))
+        ).count()
 
         # Real feedback dari user
         thumbs_up_count = db.query(ChatFeedback).filter(
@@ -135,36 +158,34 @@ def get_analytics_metrics(range_type: str = "7d"):
 
         answered_queries = max(thumbs_up_count, max(0, total_user_queries - unanswered_queries))
         total_evaluated = answered_queries + unanswered_queries
-        resolution_rate = round((answered_queries / total_evaluated * 100), 1) if total_evaluated > 0 else 98.4
-
-        # Calculate average response time dari history yang sudah ada
-        sessions_with_timestamps = (
-            db.query(ChatSession)
-            .filter(ChatSession.updated_at >= cutoff)
-            .order_by(ChatSession.updated_at.desc())
-            .limit(200)
-            .all()
-        )
         
+        # Resolusi rate: jika belum ada percakapan, tampilkan 0.0% secara jujur
+        resolution_rate = round((answered_queries / total_evaluated * 100), 1) if total_evaluated > 0 else 0.0
+
+        # Persentase eskalasi CS & AI otomatis
+        escalation_rate = round((cs_escalated_count / total_conversations * 100), 1) if total_conversations > 0 else 0.0
+        ai_auto_rate = round(100.0 - escalation_rate, 1) if total_conversations > 0 else 0.0
+
+        # Calculate average response time dari history
         avg_response_time = "N/A"
-        if sessions_with_timestamps:
+        if valid_sessions:
             total_time_diffs = 0
             count = 0
-            for s in sessions_with_timestamps:
+            for s in valid_sessions:
                 if s.history and len(s.history) > 1:
                     hist = s.history
                     for i in range(len(hist) - 1):
                         m1 = hist[i]
                         m2 = hist[i + 1]
-                        if m1.get("role") == "user" and m2.get("role") in ("assistant", "admin"):
-                            t1 = m1.get("timestamp", 0)
-                            t2 = m2.get("timestamp", 0)
-                            if t1 and t2 and t2 >= t1:
-                                diff = (t2 - t1) / 1000  # convert ms to detik
-                                if diff < 300:  # Abaikan jeda > 5 menit
-                                    total_time_diffs += diff
-                                    count += 1
-            
+                        if isinstance(m1, dict) and isinstance(m2, dict):
+                            if m1.get("role") == "user" and m2.get("role") in ("assistant", "admin"):
+                                t1 = m1.get("timestamp", 0)
+                                t2 = m2.get("timestamp", 0)
+                                if t1 and t2 and t2 >= t1:
+                                    diff = (t2 - t1) / 1000
+                                    if diff < 300:
+                                        total_time_diffs += diff
+                                        count += 1
             if count > 0:
                 avg_seconds = total_time_diffs / count
                 if avg_seconds < 60:
@@ -173,19 +194,12 @@ def get_analytics_metrics(range_type: str = "7d"):
                     avg_response_time = f"{avg_seconds/60:.1f} menit"
                 else:
                     avg_response_time = f"{avg_seconds/3600:.1f} jam"
-        
-        # Count active users (sessions aktif dalam waktu 30 menit terakhir)
+
         thirty_min_ago = now - timedelta(minutes=30)
-        active_users = db.query(ChatSession).filter(
-            ChatSession.updated_at >= thirty_min_ago
-        ).count()
-        
-        # Active users bulanan
+        active_users = db.query(ChatSession).filter(ChatSession.updated_at >= thirty_min_ago).count()
         thirty_days_ago = now - timedelta(days=30)
-        monthly_active = db.query(ChatSession).filter(
-            ChatSession.created_at >= thirty_days_ago
-        ).count()
-        
+        monthly_active = db.query(ChatSession).filter(ChatSession.created_at >= thirty_days_ago).count()
+
         return {
             "total_conversations": total_conversations,
             "total_user_queries": total_user_queries,
@@ -194,6 +208,8 @@ def get_analytics_metrics(range_type: str = "7d"):
             "thumbs_up_count": thumbs_up_count,
             "thumbs_down_count": thumbs_down_count,
             "resolution_rate": f"{resolution_rate:.1f}%",
+            "escalation_rate": f"{escalation_rate:.1f}%",
+            "ai_auto_rate": f"{ai_auto_rate:.1f}%",
             "avg_response_time": avg_response_time,
             "active_users_30min": active_users,
             "monthly_active": monthly_active,
@@ -203,12 +219,60 @@ def get_analytics_metrics(range_type: str = "7d"):
         db.close()
 
 def get_analytics_chart_data(range_type: str = "7d"):
-    """Ambil data chart tren aktivitas untuk rentang 24h, 7d, atau 30d."""
+    """Ambil data chart tren aktivitas untuk rentang 30m, 1h, 24h, 7d, atau 30d."""
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc)
 
-        if range_type == "24h":
+        if range_type == "30m":
+            slots = {}
+            for i in range(5, -1, -1):
+                slot_time = now - timedelta(minutes=i * 5)
+                label = slot_time.strftime("%H:%M")
+                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_time.timestamp()}
+            cutoff = now - timedelta(minutes=30)
+            sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+            for s in sessions:
+                s_ts = s.created_at.replace(tzinfo=timezone.utc).timestamp() if s.created_at.tzinfo is None else s.created_at.timestamp()
+                best_slot = min(slots.keys(), key=lambda k: abs(slots[k]["timestamp"] - s_ts))
+                slots[best_slot]["chats"] += 1
+                slots[best_slot]["percakapan"] += 1
+
+            queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
+            for q in queries:
+                q_ts = q.created_at.replace(tzinfo=timezone.utc).timestamp() if q.created_at.tzinfo is None else q.created_at.timestamp()
+                best_slot = min(slots.keys(), key=lambda k: abs(slots[k]["timestamp"] - q_ts))
+                slots[best_slot]["unresolved"] += 1
+
+            for s in slots.values():
+                s.pop("timestamp", None)
+            return list(slots.values())
+
+        elif range_type == "1h":
+            slots = {}
+            for i in range(5, -1, -1):
+                slot_time = now - timedelta(minutes=i * 10)
+                label = slot_time.strftime("%H:%M")
+                slots[label] = {"name": label, "chats": 0, "percakapan": 0, "unresolved": 0, "timestamp": slot_time.timestamp()}
+            cutoff = now - timedelta(hours=1)
+            sessions = db.query(ChatSession).filter(ChatSession.created_at >= cutoff).all()
+            for s in sessions:
+                s_ts = s.created_at.replace(tzinfo=timezone.utc).timestamp() if s.created_at.tzinfo is None else s.created_at.timestamp()
+                best_slot = min(slots.keys(), key=lambda k: abs(slots[k]["timestamp"] - s_ts))
+                slots[best_slot]["chats"] += 1
+                slots[best_slot]["percakapan"] += 1
+
+            queries = db.query(UnansweredQuery).filter(UnansweredQuery.created_at >= cutoff).all()
+            for q in queries:
+                q_ts = q.created_at.replace(tzinfo=timezone.utc).timestamp() if q.created_at.tzinfo is None else q.created_at.timestamp()
+                best_slot = min(slots.keys(), key=lambda k: abs(slots[k]["timestamp"] - q_ts))
+                slots[best_slot]["unresolved"] += 1
+
+            for s in slots.values():
+                s.pop("timestamp", None)
+            return list(slots.values())
+
+        elif range_type == "24h":
             slots = {}
             for i in range(7, -1, -1):
                 slot_time = now - timedelta(hours=i * 3)
@@ -284,38 +348,100 @@ def get_analytics_chart_data(range_type: str = "7d"):
     finally:
         db.close()
 
-def get_recent_unanswered_queries(limit: int = 5):
+def get_recent_unanswered_queries(limit: int = 10, include_resolved: bool = False):
     db = SessionLocal()
     try:
-        queries = db.query(UnansweredQuery).order_by(UnansweredQuery.created_at.desc()).limit(limit).all()
-        return [{"id": q.id, "query": q.user_query, "created_at": q.created_at.isoformat()} for q in queries]
+        q_filter = db.query(UnansweredQuery)
+        if not include_resolved:
+            q_filter = q_filter.filter((UnansweredQuery.status == "pending") | (UnansweredQuery.status.is_(None)))
+        queries = q_filter.order_by(UnansweredQuery.created_at.desc()).limit(limit).all()
+        return [
+            {
+                "id": q.id,
+                "session_id": q.session_id,
+                "query": q.user_query,
+                "status": q.status or "pending",
+                "created_at": q.created_at.isoformat() if q.created_at else "",
+            }
+            for q in queries
+        ]
+    finally:
+        db.close()
+
+def resolve_unanswered_query(query_id: int):
+    """Tandai pertanyaan belum terjawab sebagai sudah diselesaikan/ditambahkan ke KB."""
+    db = SessionLocal()
+    try:
+        q = db.query(UnansweredQuery).filter(UnansweredQuery.id == query_id).first()
+        if q:
+            q.status = "resolved"
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
+
+def delete_unanswered_query(query_id: int):
+    """Hapus entri pertanyaan belum terjawab."""
+    db = SessionLocal()
+    try:
+        q = db.query(UnansweredQuery).filter(UnansweredQuery.id == query_id).first()
+        if q:
+            db.delete(q)
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
+
+def cleanup_orphaned_unanswered_queries():
+    """Hapus pertanyaan belum terjawab yang sesi chat aslinya sudah dihapus."""
+    db = SessionLocal()
+    try:
+        existing_session_ids = [s.session_id for s in db.query(ChatSession.session_id).all()]
+        if existing_session_ids:
+            db.query(UnansweredQuery).filter(~UnansweredQuery.session_id.in_(existing_session_ids)).delete(synchronize_session=False)
+        else:
+            db.query(UnansweredQuery).delete()
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Cleanup orphaned unanswered queries failed: {e}")
     finally:
         db.close()
 
 def get_all_sessions(limit: int = 50, offset: int = 0):
     db = SessionLocal()
     try:
-        total = db.query(ChatSession).count()
-        sessions = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).offset(offset).limit(limit).all()
+        # Hanya tampilkan sesi yang memiliki pesan nyata (bukan sesi kosong sisa render/refresh)
+        all_sessions = db.query(ChatSession).order_by(ChatSession.updated_at.desc()).all()
         
-        results = []
-        for s in sessions:
+        valid_items = []
+        for s in all_sessions:
             history = s.history or []
+            real_msgs = [m for m in history if isinstance(m, dict) and m.get("role") in ("user", "assistant", "admin")]
+            
+            # Jika tidak ada pesan sama sekali dan bukan permintaan handoff, abaikan dari daftar percakapan
+            if not real_msgs and not s.is_human_handoff:
+                continue
+                
             last_msg = ""
-            real_msgs = [m for m in history if isinstance(m, dict) and m.get("role") != "system"]
             if real_msgs:
                 last_msg = real_msgs[-1].get("content", "")
-                if len(last_msg) > 50:
-                    last_msg = last_msg[:50] + "..."
-            
-            results.append({
+                if len(last_msg) > 60:
+                    last_msg = last_msg[:60] + "..."
+            elif s.is_human_handoff:
+                last_msg = "[Permintaan Handoff CS]"
+
+            valid_items.append({
                 "session_id": s.session_id,
                 "last_message": last_msg,
                 "is_human_handoff": bool(s.is_human_handoff),
                 "created_at": s.created_at.isoformat() if s.created_at else "",
                 "updated_at": s.updated_at.isoformat() if s.updated_at else ""
             })
-        return {"items": results, "total": total, "limit": limit, "offset": offset}
+            
+        paginated = valid_items[offset : offset + limit]
+        return {"items": paginated, "total": len(valid_items), "limit": limit, "offset": offset}
     finally:
         db.close()
 
@@ -353,9 +479,11 @@ def delete_chat_session(session_id: str):
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
         if s:
             db.delete(s)
-            db.commit()
-            return True
-        return False
+        # Hapus juga rekaman antrean unanswered dan feedback yang berelasi dengan sesi ini
+        db.query(UnansweredQuery).filter(UnansweredQuery.session_id == session_id).delete()
+        db.query(ChatFeedback).filter(ChatFeedback.session_id == session_id).delete()
+        db.commit()
+        return True
     finally:
         db.close()
 
