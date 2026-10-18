@@ -20,7 +20,10 @@ class ChromaVectorStore:
         self.persist_directory = persist_directory
         self.model_name = model_name
         self.client = chromadb.PersistentClient(path=self.persist_directory)
-        self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=self.model_name)
+        self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=self.model_name,
+            device="cpu"
+        )
         
         self.collection = self.client.get_or_create_collection(
             name="lexa_kb",

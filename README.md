@@ -1,10 +1,11 @@
 ---
-title: Lexa AI Backend
+title: Lexa AI Platform
 emoji: 🤖
 colorFrom: blue
 colorTo: indigo
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 5.20.0
+app_file: app.py
 ---
 
 # Lexa AI Platform
