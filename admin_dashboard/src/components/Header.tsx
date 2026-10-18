@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
 import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users, KeyRound, Loader2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api, { getWebSocketUrl } from '../lib/apiClient';
+import { useLanguage } from '../lib/i18n';
 
 interface Notification {
   id: string;
@@ -26,6 +27,7 @@ interface SearchItem {
 
 const Header = ({ onToggleSidebar }: HeaderProps) => {
   const navigate = useNavigate();
+  const { lang, toggleLanguage, t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -226,7 +228,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         >
           <div className="flex items-center gap-2.5">
             <Search className="w-4 h-4 text-slate-400" />
-            <span className="text-xs">Search anything...</span>
+            <span className="text-xs">{t.search_placeholder}</span>
           </div>
           <span className="text-[10px] font-mono font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 shadow-xs">
             ⌘K
@@ -235,6 +237,21 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        {/* Language Switcher Pill */}
+        <button
+          onClick={toggleLanguage}
+          className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          title={lang === 'id' ? 'Switch interface to English' : 'Ganti tampilan ke Bahasa Indonesia'}
+        >
+          <span className="font-mono text-[11px] font-bold text-[#0066FF] dark:text-[#38BDF8]">
+            {lang === 'id' ? 'ID' : 'EN'}
+          </span>
+          <span className="text-slate-300 dark:text-slate-600">|</span>
+          <span className="text-[11px] text-slate-400">
+            {lang === 'id' ? 'EN' : 'ID'}
+          </span>
+        </button>
+
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setIsDark(!isDark)}

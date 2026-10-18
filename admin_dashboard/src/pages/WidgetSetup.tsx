@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Code, Copy, Check, Globe, Palette, ExternalLink, Info } from 'lucide-react';
+import { Copy, Check, Globe, Palette, ExternalLink, Info, Monitor } from 'lucide-react';
 import api from '../lib/apiClient';
+import { useLanguage } from '../lib/i18n';
 
 interface EmbedCodeResponse {
   embed_code: string;
@@ -14,19 +15,6 @@ interface EmbedCodeResponse {
   };
 }
 
-const positions = [
-  { value: 'bottom-right', label: 'Kanan Bawah' },
-  { value: 'bottom-left', label: 'Kiri Bawah' },
-  { value: 'top-right', label: 'Kanan Atas' },
-  { value: 'top-left', label: 'Kiri Atas' },
-];
-
-const themes = [
-  { value: 'dark', label: 'Dark Mode' },
-  { value: 'light', label: 'Light Mode' },
-  { value: 'auto', label: 'Auto (System)' },
-];
-
 interface CopyButtonProps {
   text: string;
   field: string;
@@ -37,31 +25,45 @@ interface CopyButtonProps {
 const CopyButton = ({ text, field, isCopied, onCopy }: CopyButtonProps) => (
   <button
     onClick={() => onCopy(text, field)}
-    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors
-      bg-white/10 hover:bg-white/20 text-white border border-white/10 cursor-pointer"
+    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors
+      bg-white/10 hover:bg-white/20 text-white border border-white/10 cursor-pointer shadow-xs active:scale-95"
   >
     {isCopied ? (
       <>
-        <Check className="w-3.5 h-3.5 text-green-400" />
-        <span className="text-green-400">Tersalin!</span>
+        <Check className="w-3.5 h-3.5 text-emerald-400" />
+        <span className="text-emerald-400">Tersalin!</span>
       </>
     ) : (
       <>
         <Copy className="w-3.5 h-3.5" />
-        Salin
+        Salin Kode
       </>
     )}
   </button>
 );
 
 const WidgetSetup = () => {
+  const { lang, t } = useLanguage();
   const [embedData, setEmbedData] = useState<EmbedCodeResponse | null>(null);
   const [apiUrl, setApiUrl] = useState('');
   const [position, setPosition] = useState('bottom-right');
-  const [color, setColor] = useState('#2563eb');
+  const [color, setColor] = useState('#0066FF');
   const [theme, setTheme] = useState('dark');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'html' | 'wordpress' | 'react' | 'iframe'>('html');
+  const [previewChatOpen, setPreviewChatOpen] = useState(false);
+
+  const positions = [
+    { value: 'bottom-right', label: t.pos_bottom_right },
+    { value: 'bottom-left', label: t.pos_bottom_left },
+  ];
+
+  const themes = [
+    { value: 'dark', label: t.theme_dark },
+    { value: 'light', label: t.theme_light },
+    { value: 'auto', label: t.theme_auto },
+  ];
 
   const fetchEmbedCode = useCallback(async () => {
     setLoading(true);
@@ -87,158 +89,356 @@ const WidgetSetup = () => {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const reactSnippet = `// Next.js (App Router / Pages) atau React Vite
+import Script from 'next/script'; // atau useEffect biasa di React
+
+export default function ChatWidget() {
   return (
-    <div className="p-6 max-w-5xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Widget Setup</h1>
-        <p className="text-slate-500 dark:text-slate-400">Dapatkan kode embed dan sesuaikan tema serta posisi chat widget di website Anda.</p>
+    <Script
+      src="${embedData?.config.api_url || 'https://gianni-subvitalised-lauditorily.ngrok-free.dev'}/widget/widget-loader.js"
+      data-api-url="${embedData?.config.api_url || 'https://gianni-subvitalised-lauditorily.ngrok-free.dev'}"
+      data-position="${position}"
+      data-color="${color}"
+      data-theme="${theme}"
+      strategy="lazyOnload"
+    />
+  );
+}`;
+
+  const wordpressGuide = `<!-- Panduan WordPress:
+1. Pasang plugin gratis "WPCode - Insert Headers and Footers" dari Menu Plugins.
+2. Buka menu Code Snippets -> Header & Footer.
+3. Tempelkan script berikut ke kolom "Footer": -->
+
+${embedData?.embed_code || ''}`;
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto space-y-6 pb-16">
+      {/* Title & Informative Brief */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {t.widget_setup_title}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t.widget_setup_subtitle}
+          </p>
+        </div>
+
+        <a
+          href="https://lexa-chatbot.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          <span>{t.try_live_widget}</span>
+        </a>
       </div>
 
-      {/* Configuration */}
-      <div className="bg-white dark:bg-[#152238] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm mb-6 transition-colors">
-        <h2 className="font-semibold text-lg text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
-          <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          Konfigurasi Widget
+      {/* Explanatory 3-Step Guide (Truly Informative for Admins) */}
+      <div className="p-5 rounded-2xl bg-white dark:bg-[#0A1224] border border-slate-200/80 dark:border-white/5 shadow-xs">
+        <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+          <Info className="w-4 h-4 text-[#0066FF]" />
+          {t.how_it_works_title}
         </h2>
+        <p className="text-xs text-slate-600 dark:text-slate-300 mb-4 leading-relaxed max-w-4xl">
+          {t.how_it_works_desc}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100 dark:border-white/5">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5">
+            <span className="text-xs font-bold text-[#0066FF] block mb-1">{t.step_1}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {t.step_1_desc}
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5">
+            <span className="text-xs font-bold text-[#0066FF] block mb-1">{t.step_2}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {t.step_2_desc}
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/5">
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block mb-1">{t.step_3}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              {t.step_3_desc}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Configuration & Live Preview Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">API URL (opsional)</label>
-            <input
-              type="text"
-              value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
-              placeholder={embedData?.config.api_url || 'https://your-domain.com'}
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-            />
-          </div>
+        {/* Left: Customization Form (5 cols) */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="bg-white dark:bg-[#0A1224] rounded-2xl border border-slate-200/80 dark:border-white/5 p-5 shadow-xs space-y-4">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <Palette className="w-4 h-4 text-[#0066FF]" />
+              {t.config_widget}
+            </h3>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Posisi</label>
-            <select
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-            >
-              {positions.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-          </div>
+            {/* Accent Color */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t.accent_color}
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent"
+                />
+                <input
+                  type="text"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="flex-1 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none focus:border-[#0066FF]"
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Mode Tampilan Widget</label>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-            >
-              {themes.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
+            {/* Position */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                {lang === 'id' ? 'Posisi Tombol di Layar' : 'Button Screen Position'}
+              </label>
+              <select
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none focus:border-[#0066FF]"
+              >
+                {positions.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Warna Aksen</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent"
-              />
+            {/* Theme */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                {lang === 'id' ? 'Tema Warna Chat' : 'Chat Appearance Theme'}
+              </label>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none focus:border-[#0066FF]"
+              >
+                {themes.map((tItem) => (
+                  <option key={tItem.value} value={tItem.value}>{tItem.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* API Endpoint */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                {lang === 'id' ? 'Host API Backend (Otomatis)' : 'Backend API Host (Auto)'}
+              </label>
               <input
                 type="text"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="flex-1 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+                placeholder={embedData?.config.api_url || 'https://gianni-subvitalised-lauditorily.ngrok-free.dev'}
+                className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 outline-none focus:border-[#0066FF]"
               />
             </div>
           </div>
         </div>
+
+        {/* Right: Interactive Live Simulation Box (7 cols) */}
+        <div className="lg:col-span-7">
+          <div className="bg-white dark:bg-[#0A1224] rounded-2xl border border-slate-200/80 dark:border-white/5 p-5 shadow-xs h-full flex flex-col justify-between">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5 mb-3">
+              <div className="flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-[#0066FF]" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  {t.live_preview}
+                </h3>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {position === 'bottom-right' ? 'Kanan Bawah' : 'Kiri Bawah'} • {theme.toUpperCase()}
+              </span>
+            </div>
+
+            {/* Simulated Web Page */}
+            <div className="relative w-full h-[320px] rounded-xl bg-slate-100 dark:bg-[#060D1E] border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col p-4 shadow-inner">
+              {/* Fake website wireframe */}
+              <div className="w-1/3 h-3 bg-slate-300 dark:bg-slate-700/60 rounded mb-2"></div>
+              <div className="w-2/3 h-2 bg-slate-200 dark:bg-slate-800 rounded mb-1"></div>
+              <div className="w-1/2 h-2 bg-slate-200 dark:bg-slate-800 rounded mb-4"></div>
+              
+              <div className="grid grid-cols-2 gap-3 max-w-sm mb-4">
+                <div className="h-12 bg-slate-200/70 dark:bg-slate-800/60 rounded-lg"></div>
+                <div className="h-12 bg-slate-200/70 dark:bg-slate-800/60 rounded-lg"></div>
+              </div>
+
+              {/* Floating Chat Bubble Simulation */}
+              <div
+                className={`absolute bottom-4 ${
+                  position === 'bottom-right' ? 'right-4' : 'left-4'
+                } flex flex-col items-end gap-2`}
+              >
+                {/* Popover Preview if clicked */}
+                {previewChatOpen && (
+                  <div className="w-64 rounded-2xl bg-white dark:bg-[#0D182E] border border-slate-200 dark:border-white/15 p-3.5 shadow-xl text-left animate-in fade-in slide-in-from-bottom-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full bg-[#0066FF]"></div>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">LEXA AI</span>
+                      </div>
+                      <span className="text-[9px] text-emerald-500 font-medium">Online</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
+                      Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu?
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setPreviewChatOpen(prev => !prev)}
+                  style={{ backgroundColor: color }}
+                  className="w-12 h-12 rounded-full text-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                  title="Klik untuk mencoba simulasi buka/tutup"
+                >
+                  <Globe className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center mt-3">
+              {lang === 'id' ? 'Klik tombol bulat di atas untuk mensimulasikan buka/tutup balon obrolan.' : 'Click the circular bubble above to simulate open/close.'}
+            </p>
+          </div>
+        </div>
+
       </div>
 
-      {/* Embed Code */}
-      {loading ? (
-        <div className="bg-white dark:bg-[#152238] rounded-2xl border border-slate-200 dark:border-slate-800 p-12 shadow-sm text-center">
-          <div className="w-8 h-8 border-4 border-blue-200 dark:border-blue-900 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Memuat kode embed...</p>
+      {/* Tabbed Embed Code Section */}
+      <div className="bg-white dark:bg-[#0A1224] rounded-2xl border border-slate-200/80 dark:border-white/5 shadow-xs overflow-hidden">
+        <div className="flex items-center gap-1 p-2 bg-slate-50 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('html')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'html'
+                ? 'bg-[#0066FF] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-white/5'
+            }`}
+          >
+            {t.tab_html}
+          </button>
+          <button
+            onClick={() => setActiveTab('wordpress')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'wordpress'
+                ? 'bg-[#0066FF] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-white/5'
+            }`}
+          >
+            {t.tab_wordpress}
+          </button>
+          <button
+            onClick={() => setActiveTab('react')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'react'
+                ? 'bg-[#0066FF] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-white/5'
+            }`}
+          >
+            {t.tab_react}
+          </button>
+          <button
+            onClick={() => setActiveTab('iframe')}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'iframe'
+                ? 'bg-[#0066FF] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-white/5'
+            }`}
+          >
+            {t.tab_iframe}
+          </button>
         </div>
-      ) : embedData && (
-        <div className="space-y-6">
-          {/* Primary: Script Tag */}
-          <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-lg border border-slate-800">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-500/20 p-2 rounded-lg">
-                  <Code className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white text-sm">Script Tag (Recommended)</h3>
-                  <p className="text-xs text-slate-400">Copy & paste ke &lt;head&gt; atau &lt;body&gt; website Anda (Mendukung Dark/Light Mode)</p>
-                </div>
-              </div>
-              <CopyButton text={embedData.embed_code} field="script" isCopied={copiedField === 'script'} onCopy={handleCopy} />
-            </div>
-            <pre className="px-6 py-5 text-sm text-green-400 font-mono overflow-x-auto leading-relaxed">
-              {embedData.embed_code}
-            </pre>
-          </div>
 
-          {/* Secondary: Iframe Fallback */}
-          <div className="bg-white dark:bg-[#152238] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="bg-purple-100 dark:bg-purple-950/40 p-2 rounded-lg">
-                  <ExternalLink className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        {loading ? (
+          <div className="p-12 text-center text-xs text-slate-400">
+            Memuat kode embed...
+          </div>
+        ) : embedData && (
+          <div className="p-5">
+            {activeTab === 'html' && (
+              <div className="bg-[#060D1E] rounded-xl overflow-hidden border border-white/10">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+                  <span className="text-xs text-slate-400 font-mono">index.html (sebelum &lt;/body&gt;)</span>
+                  <CopyButton
+                    text={embedData.embed_code}
+                    field="html"
+                    isCopied={copiedField === 'html'}
+                    onCopy={handleCopy}
+                  />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Iframe Embed (Fallback)</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Alternatif jika script tag tidak bisa digunakan</p>
-                </div>
+                <pre className="p-5 text-xs text-emerald-400 font-mono overflow-x-auto leading-relaxed">
+                  {embedData.embed_code}
+                </pre>
               </div>
-              <CopyButton text={embedData.iframe_fallback} field="iframe" isCopied={copiedField === 'iframe'} onCopy={handleCopy} />
-            </div>
-            <pre className="px-6 py-5 text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-900/60 overflow-x-auto leading-relaxed">
-              {embedData.iframe_fallback}
-            </pre>
-          </div>
+            )}
 
-          {/* JS API */}
-          <div className="bg-white dark:bg-[#152238] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="bg-emerald-100 dark:bg-emerald-950/40 p-2 rounded-lg">
-                  <Palette className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            {activeTab === 'wordpress' && (
+              <div className="bg-[#060D1E] rounded-xl overflow-hidden border border-white/10">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+                  <span className="text-xs text-slate-400 font-mono">WordPress WPCode / Theme Footer</span>
+                  <CopyButton
+                    text={embedData.embed_code}
+                    field="wp"
+                    isCopied={copiedField === 'wp'}
+                    onCopy={handleCopy}
+                  />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">JavaScript API</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Kontrol widget secara programmatically</p>
-                </div>
+                <pre className="p-5 text-xs text-blue-300 font-mono overflow-x-auto leading-relaxed">
+                  {wordpressGuide}
+                </pre>
               </div>
-              <CopyButton text={embedData.js_api_example} field="jsapi" isCopied={copiedField === 'jsapi'} onCopy={handleCopy} />
-            </div>
-            <pre className="px-6 py-5 text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-900/60 overflow-x-auto leading-relaxed">
-              {embedData.js_api_example}
-            </pre>
-          </div>
+            )}
 
-          {/* Info Box */}
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-2xl p-5 flex gap-4">
-            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-              <p className="font-semibold">Cara Penggunaan:</p>
-              <ol className="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-400/90">
-                <li>Pilih mode tema (Dark, Light, atau Auto), posisi dan warna aksen yang diinginkan</li>
-                <li>Copy <strong>Script Tag</strong> di atas</li>
-                <li>Paste ke kode HTML website Anda (di dalam <code>&lt;head&gt;</code> atau sebelum <code>&lt;/body&gt;</code>)</li>
-                <li>Widget akan muncul otomatis di halaman website dengan tema yang dipilih</li>
-              </ol>
-            </div>
+            {activeTab === 'react' && (
+              <div className="bg-[#060D1E] rounded-xl overflow-hidden border border-white/10">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+                  <span className="text-xs text-slate-400 font-mono">ChatWidget.tsx (React / Next.js)</span>
+                  <CopyButton
+                    text={reactSnippet}
+                    field="react"
+                    isCopied={copiedField === 'react'}
+                    onCopy={handleCopy}
+                  />
+                </div>
+                <pre className="p-5 text-xs text-violet-300 font-mono overflow-x-auto leading-relaxed">
+                  {reactSnippet}
+                </pre>
+              </div>
+            )}
+
+            {activeTab === 'iframe' && (
+              <div className="bg-[#060D1E] rounded-xl overflow-hidden border border-white/10">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
+                  <span className="text-xs text-slate-400 font-mono">Iframe Fallback</span>
+                  <CopyButton
+                    text={embedData.iframe_fallback}
+                    field="iframe"
+                    isCopied={copiedField === 'iframe'}
+                    onCopy={handleCopy}
+                  />
+                </div>
+                <pre className="p-5 text-xs text-amber-300 font-mono overflow-x-auto leading-relaxed">
+                  {embedData.iframe_fallback}
+                </pre>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

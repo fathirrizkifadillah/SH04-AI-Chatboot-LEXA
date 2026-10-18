@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import api from '../lib/apiClient';
+import { useLanguage } from '../lib/i18n';
 import type { KPIStats, ChartDataPoint, FeedbackStats } from '../types/api';
 
 const defaultChartData: ChartDataPoint[] = (() => {
@@ -16,62 +17,20 @@ const defaultChartData: ChartDataPoint[] = (() => {
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(now.getDate() - i);
-    const label = `${String(d.getDate()).padStart(2, '0')} Mei`;
+    const label = `${String(d.getDate()).padStart(2, '0')} ${d.toLocaleDateString('id-ID', { month: 'short' })}`;
     result.push({ 
       name: label, 
-      chats: Math.floor(Math.random() * 500) + 800, 
-      percakapan: Math.floor(Math.random() * 600) + 900, 
+      chats: Math.floor(Math.random() * 50) + 80, 
+      percakapan: Math.floor(Math.random() * 60) + 90, 
       unresolved: 0 
     });
   }
   return result;
 })();
 
-const operationalLogs = [
-  {
-    id: 1,
-    title: 'Knowledge Base Vector Index updated',
-    desc: '42 chunks embedded into vector memory cluster',
-    actor: 'System Ingestion',
-    time: '8m ago',
-    icon: BookOpen,
-    badge: 'Vector Sync',
-    badgeColor: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-  },
-  {
-    id: 2,
-    title: 'Customer Handoff Escalation resolved',
-    desc: 'Session #8921 transferred & concluded by CS Agent',
-    actor: 'Agent Desk',
-    time: '34m ago',
-    icon: MessageSquare,
-    badge: 'Handoff',
-    badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-  },
-  {
-    id: 3,
-    title: 'WhatsApp Webhook Handshake verified',
-    desc: 'Outbound webhook response 200 OK • 18ms latency',
-    actor: 'Gateway',
-    time: '2h ago',
-    icon: Share2,
-    badge: 'Integration',
-    badgeColor: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
-  },
-  {
-    id: 4,
-    title: 'Automated Telemetry Health Check passed',
-    desc: 'Core LLM pipeline, RAG retriever & DB clusters healthy',
-    actor: 'Monitor',
-    time: '4h ago',
-    icon: ShieldCheck,
-    badge: 'System SLA',
-    badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
-  },
-];
-
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { lang, t } = useLanguage();
   const [stats, setStats] = useState<KPIStats>({
     active_users: 156,
     total_conversations: 12456,
@@ -126,32 +85,61 @@ const Dashboard = () => {
     fetchStats(timeRange);
   }, []);
 
+  const systemActivities = [
+    {
+      id: 1,
+      title: lang === 'id' ? 'Sinkronisasi Dokumen Selesai' : 'Knowledge Base Synchronized',
+      desc: lang === 'id' ? 'Dokumen profil layanan diperbarui dan diindeks ke AI memory' : 'Service profile documents updated and indexed into AI memory',
+      actor: 'Admin',
+      time: '12m ago',
+      icon: BookOpen,
+      badge: lang === 'id' ? 'Knowledge Base' : 'Knowledge Base',
+      badgeColor: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+    },
+    {
+      id: 2,
+      title: lang === 'id' ? 'Permintaan Bantuan CS Ditangani' : 'Customer Escalation Resolved',
+      desc: lang === 'id' ? 'Staf CS merespon tiket konsultasi enterprise via live chat' : 'CS Agent responded to enterprise consultation ticket via live chat',
+      actor: 'CS Desk',
+      time: '34m ago',
+      icon: MessageSquare,
+      badge: lang === 'id' ? 'Eskalasi CS' : 'Handoff',
+      badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+    },
+    {
+      id: 3,
+      title: lang === 'id' ? 'Koneksi Webhook Terverifikasi' : 'Webhook Integration Verified',
+      desc: lang === 'id' ? 'Integrasi chat widget website aktif dan merespon normal' : 'Website chat widget integration active and responding normally',
+      actor: 'System',
+      time: '2h ago',
+      icon: Share2,
+      badge: lang === 'id' ? 'Integrasi' : 'Integration',
+      badgeColor: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
+    },
+    {
+      id: 4,
+      title: lang === 'id' ? 'Pemeriksaan Kesehatan AI Siap' : 'AI Health Check Passed',
+      desc: lang === 'id' ? 'Model LLM, koneksi database, dan streaming berjalan optimal' : 'LLM pipeline, database connection, and streaming running smoothly',
+      actor: 'Monitor',
+      time: '4h ago',
+      icon: ShieldCheck,
+      badge: lang === 'id' ? 'Sistem Siap' : 'System OK',
+      badgeColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+    },
+  ];
+
   return (
     <div className="space-y-6 pb-12 antialiased max-w-[1440px] mx-auto">
       
-      {/* 1. Executive Operations Header Bar (Linear / Vercel Tier) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+      {/* 1. Header Bar (Clean, Minimalist, No Pseudo-Tech Badges) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800/90 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-              Operations Hub
-            </span>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <div className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Cluster ID-CGK-1</span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">99.98% SLA</span>
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Console Overview
-            </h1>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Welcome back, <span className="font-semibold text-slate-700 dark:text-slate-200">{currentUser?.name || 'Admin'}</span>
-            </span>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {t.dashboard_title}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t.welcome_back}, <span className="font-semibold text-slate-700 dark:text-slate-200">{currentUser?.name || 'Admin'}</span> • {t.dashboard_subtitle}
+          </p>
         </div>
 
         {/* Operational Controls & Actions */}
@@ -178,17 +166,17 @@ const Dashboard = () => {
             onClick={() => fetchStats()}
             disabled={isRefreshing}
             className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
-            title="Refresh telemetry"
+            title="Refresh data"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#0066FF]' : ''}`} />
           </button>
 
-          {/* Primary Action Button (Nested Island Architecture) */}
+          {/* Primary Action Button */}
           <button
             onClick={() => navigate('/kb')}
             className="group relative inline-flex items-center gap-2.5 pl-4 pr-1.5 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] active:scale-[0.98] text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/25 cursor-pointer"
           >
-            <span>Ingest Document</span>
+            <span>{t.ingest_document}</span>
             <span className="w-6 h-6 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center transition-colors">
               <Plus className="w-3.5 h-3.5 text-white" />
             </span>
@@ -196,16 +184,16 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* 2. Asymmetric Executive Bento Grid (Double-Bezel Architecture) */}
+      {/* 2. Key Business Metrics Bento Grid */}
       <div className="grid grid-cols-12 gap-4">
         
-        {/* Bento Card 1: Throughput Hero (Col 4) */}
+        {/* Bento Card 1: Total Percakapan */}
         <div className="col-span-12 lg:col-span-4 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                  Autonomous Throughput
+                  {t.total_conversations}
                 </span>
                 <div className="p-1.5 rounded-lg bg-blue-500/10 text-[#0066FF] border border-blue-500/20">
                   <MessageSquare className="w-4 h-4" />
@@ -221,19 +209,19 @@ const Dashboard = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Total chat inquiries processed across all deployment channels
+                {t.total_conversations_desc}
               </p>
             </div>
 
-            {/* Split Progress Meter: AI vs Escalation */}
+            {/* Split Progress Meter */}
             <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
               <div className="flex items-center justify-between text-[11px] mb-2 font-mono">
                 <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#0066FF]"></span>
-                  94.2% AI Auto-Resolved
+                  {lang === 'id' ? '94.2% AI Otomatis' : '94.2% AI Auto-Resolved'}
                 </span>
                 <span className="text-slate-400 dark:text-slate-500">
-                  5.8% Escalated
+                  {lang === 'id' ? '5.8% Eskalasi CS' : '5.8% CS Escalated'}
                 </span>
               </div>
               <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
@@ -244,12 +232,12 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Bento Card 2: AI Resolution Precision (Col 3) */}
+        {/* Bento Card 2: AI Resolution Precision */}
         <div className="col-span-12 sm:col-span-6 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                Resolution Rate
+                {t.ai_resolution_rate}
               </span>
               <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                 <ShieldCheck className="w-4 h-4" />
@@ -261,22 +249,22 @@ const Dashboard = () => {
                 98.4%
               </span>
               <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                <span>Optimal response</span>
+                <span>{t.optimal_response}</span>
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-400 font-mono pt-3 border-t border-slate-100 dark:border-slate-800/80">
-              Avg latency: ~480ms
+            <div className="text-[11px] text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+              {lang === 'id' ? 'Respon rata-rata ~1.2 detik' : 'Average latency ~1.2s'}
             </div>
           </div>
         </div>
 
-        {/* Bento Card 3: Vector Knowledge Corpus (Col 2) */}
+        {/* Bento Card 3: Dokumen Knowledge Base */}
         <div className="col-span-12 sm:col-span-6 lg:col-span-2 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                Vector Corpus
+                {t.kb_documents}
               </span>
               <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-500 border border-violet-500/20">
                 <BookOpen className="w-4 h-4" />
@@ -288,7 +276,7 @@ const Dashboard = () => {
                 1,247
               </span>
               <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                Indexed documents
+                {t.indexed_documents}
               </div>
             </div>
 
@@ -296,18 +284,18 @@ const Dashboard = () => {
               onClick={() => navigate('/kb')}
               className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/80 cursor-pointer"
             >
-              <span>Manage Store</span>
+              <span>{t.manage_kb}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
         </div>
 
-        {/* Bento Card 4: Action Required Queue (Col 3) */}
+        {/* Bento Card 4: Antrean Review CS */}
         <div className="col-span-12 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                Action Queue
+                {t.action_queue}
               </span>
               <div className={`p-1.5 rounded-lg ${
                 stats.unanswered_queries > 0 
@@ -328,11 +316,11 @@ const Dashboard = () => {
                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                     : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                 }`}>
-                  {stats.unanswered_queries > 0 ? 'Pending Agent Review' : 'Zero Escalations'}
+                  {stats.unanswered_queries > 0 ? t.pending_cs_review : t.zero_escalations}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Sessions flagged for manual review or supervisor verification
+                {lang === 'id' ? 'Sesi chat yang membutuhkan respon dari staf CS' : 'Conversations flagged for manual agent reply'}
               </p>
             </div>
 
@@ -340,7 +328,7 @@ const Dashboard = () => {
               onClick={() => navigate('/conversations')}
               className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center justify-between cursor-pointer border border-slate-200 dark:border-slate-700/80"
             >
-              <span>View Escalation Desk</span>
+              <span>{t.view_conversations}</span>
               <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
             </button>
           </div>
@@ -348,39 +336,34 @@ const Dashboard = () => {
 
       </div>
 
-      {/* 3. Main Operational Telemetry: High-Fidelity Waveform Area */}
+      {/* 3. Main Chart: Volume Percakapan */}
       <div className="p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
         <div className="rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 md:p-6 border border-slate-200/40 dark:border-white/5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
-                  Inquiry Volume & Telemetry Waveform
+                  {t.conversation_trends}
                 </h3>
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Real-time throughput metrics recorded across streaming inference endpoints
+                {t.conversation_trends_desc}
               </p>
             </div>
 
-            <div className="flex items-center gap-3 font-mono text-xs text-slate-500 dark:text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-[#0066FF]"></span>
-                <span>Inferences</span>
-              </div>
-              <div className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-[11px]">
-                Peak: <span className="font-semibold text-slate-800 dark:text-slate-200">1,680 / day</span>
-              </div>
+            <div className="flex items-center gap-2 font-mono text-xs text-slate-500 dark:text-slate-400">
+              <span className="w-2.5 h-2.5 rounded-sm bg-[#0066FF]"></span>
+              <span>{lang === 'id' ? 'Volume Chat' : 'Inquiries'}</span>
             </div>
           </div>
 
-          <div className="w-full h-[290px] relative">
-            <ResponsiveContainer width="100%" height={290}>
+          <div className="w-full h-[280px] relative">
+            <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
                 <defs>
                   <linearGradient id="lexaTelemetryGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0066FF" stopOpacity={0.4}/>
+                    <stop offset="5%" stopColor="#0066FF" stopOpacity={0.35}/>
                     <stop offset="95%" stopColor="#0066FF" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
@@ -389,13 +372,13 @@ const Dashboard = () => {
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'monospace' }} 
+                  tick={{ fill: '#64748b', fontSize: 11 }} 
                   dy={8} 
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'monospace' }} 
+                  tick={{ fill: '#64748b', fontSize: 11 }} 
                   dx={-4} 
                   allowDecimals={false} 
                 />
@@ -407,14 +390,14 @@ const Dashboard = () => {
                     color: '#F8FAFC',
                     boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
                     fontSize: '11px',
-                    fontFamily: 'monospace',
                     padding: '10px 14px'
                   }}
                   cursor={{ stroke: '#0066FF', strokeWidth: 1.5, strokeDasharray: '4 4' }}
                 />
                 <Area 
                   type="monotone" 
-                  dataKey="percakapan" 
+                  dataKey="percacapan" 
+                  name={lang === 'id' ? 'Percakapan' : 'Chats'}
                   stroke="#0066FF" 
                   strokeWidth={2.5}
                   fillOpacity={1}
@@ -428,25 +411,25 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* 4. Lower Operational Split: Audit Trail (7 cols) & Quick Dispatch (5 cols) */}
+      {/* 4. Lower Split: Recent System Activity & Quick Admin Shortcuts */}
       <div className="grid grid-cols-12 gap-5">
         
-        {/* Real-Time Operational Audit Trail */}
+        {/* Aktivitas Sistem Terkini */}
         <div className="col-span-12 lg:col-span-7 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div>
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                    Live Operational Audit Trail
+                    {t.system_activity}
                   </h3>
-                  <span className="text-slate-400 text-xs font-mono">• Telemetry Stream</span>
+                  <span className="text-slate-400 text-xs">• {lang === 'id' ? 'Log Terverifikasi' : 'Audit Trail'}</span>
                 </div>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               </div>
 
               <div className="divide-y divide-slate-100 dark:divide-slate-800/60 mt-2">
-                {operationalLogs.map((log) => {
+                {systemActivities.map((log) => {
                   const Icon = log.icon;
                   return (
                     <div key={log.id} className="py-3 flex items-start gap-3 group">
@@ -470,7 +453,7 @@ const Dashboard = () => {
                             {log.badge}
                           </span>
                           <span className="text-[10px] text-slate-400 font-mono">
-                            by {log.actor}
+                            oleh {log.actor}
                           </span>
                         </div>
                       </div>
@@ -481,23 +464,23 @@ const Dashboard = () => {
             </div>
 
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 text-center">
-              <span className="text-[11px] font-mono text-slate-400">
-                Continuous event streaming connected via Secure WebSocket (WSS)
+              <span className="text-[11px] text-slate-400">
+                {lang === 'id' ? 'Seluruh layanan sinkronisasi data aktif & stabil' : 'All services active and connected'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Quick Operations Dispatch (Island Button Architecture) */}
+        {/* Tindakan Cepat Admin */}
         <div className="col-span-12 lg:col-span-5 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div>
               <div className="pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Operations Dispatch
+                  {lang === 'id' ? 'Tindakan Cepat' : 'Quick Actions'}
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Direct hardware access & cluster management shortcuts
+                  {lang === 'id' ? 'Pintasan navigasi dan pengelolaan sistem' : 'Common administrative shortcuts'}
                 </p>
               </div>
 
@@ -513,10 +496,10 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Knowledge Corpus Sync
+                        {lang === 'id' ? 'Sinkronisasi Basis Pengetahuan' : 'Sync Knowledge Base'}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Upload PDF, DOCX, or URL sources into Vector Store
+                        {lang === 'id' ? 'Unggah file PDF, DOCX, atau teks referensi AI' : 'Upload PDF, DOCX, or text files'}
                       </p>
                     </div>
                   </div>
@@ -536,10 +519,10 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Live Escalation Desk
+                        {lang === 'id' ? 'Live Chat Pelanggan' : 'Live Customer Chat'}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Take over active sessions or review flagged messages
+                        {lang === 'id' ? 'Pantau percakapan aktif dan tangani chat CS' : 'Monitor active chats and handle CS sessions'}
                       </p>
                     </div>
                   </div>
@@ -559,10 +542,10 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Integration & Widget Embed
+                        {lang === 'id' ? 'Integrasi & Kode Embed' : 'Widget Setup & Embed'}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Deploy web widget snippets & WhatsApp gateways
+                        {lang === 'id' ? 'Dapatkan script untuk dipasang di website' : 'Get embed code snippet for your website'}
                       </p>
                     </div>
                   </div>
@@ -582,10 +565,10 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Analytics & CSAT Telemetry
+                        {lang === 'id' ? 'Laporan & Kepuasan Pelanggan' : 'Analytics & User Satisfaction'}
                       </p>
                       <p className="text-[10px] text-slate-400">
-                        Inspect user satisfaction scores & query breakdown
+                        {lang === 'id' ? 'Lihat ringkasan pertanyaan dan feedback pengguna' : 'Review query resolution and feedback'}
                       </p>
                     </div>
                   </div>
@@ -597,15 +580,15 @@ const Dashboard = () => {
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-slate-400">
-                LEXA Software House Console
+              <span className="text-[11px] text-slate-400">
+                LEXA Admin Console
               </span>
               <button
                 onClick={() => navigate('/settings')}
                 className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5" />
-                <span>Settings</span>
+                <span>{lang === 'id' ? 'Pengaturan' : 'Settings'}</span>
               </button>
             </div>
           </div>

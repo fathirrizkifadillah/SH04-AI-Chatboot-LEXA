@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight, Code, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
+import { useLanguage } from '../lib/i18n';
 
 interface SidebarProps {
   setAuthToken: (token: string | null) => void;
@@ -22,6 +23,7 @@ interface NavItem {
 const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0, isMobileOpen = false, onCloseMobile }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const userStr = sessionStorage.getItem('lexa_admin_user');
@@ -44,13 +46,13 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
   };
 
   const allNavItems: NavItem[] = [
-    { name: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, path: '/', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
-    { name: 'Conversations', icon: <MessageSquare className="w-5 h-5" />, path: '/conversations', roles: ['Super Admin', 'CS Agent'] },
-    { name: 'Knowledge Base', icon: <BookOpen className="w-5 h-5" />, path: '/kb', roles: ['Super Admin', 'Editor (Knowledge Base)'] },
-    { name: 'Analytics', icon: <BarChart3 className="w-5 h-5" />, path: '/analytics', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
-    { name: 'Users & Roles', icon: <Users className="w-5 h-5" />, path: '/users', roles: ['Super Admin'] },
-    { name: 'Widget Setup', icon: <Code className="w-5 h-5" />, path: '/widget' },
-    { name: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/settings' },
+    { name: t.nav_dashboard, icon: <LayoutDashboard className="w-5 h-5" />, path: '/', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
+    { name: t.nav_conversations, icon: <MessageSquare className="w-5 h-5" />, path: '/conversations', roles: ['Super Admin', 'CS Agent'] },
+    { name: t.nav_kb, icon: <BookOpen className="w-5 h-5" />, path: '/kb', roles: ['Super Admin', 'Editor (Knowledge Base)'] },
+    { name: t.nav_analytics, icon: <BarChart3 className="w-5 h-5" />, path: '/analytics', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
+    { name: t.nav_users, icon: <Users className="w-5 h-5" />, path: '/users', roles: ['Super Admin'] },
+    { name: t.nav_widget, icon: <Code className="w-5 h-5" />, path: '/widget' },
+    { name: t.nav_settings, icon: <Settings className="w-5 h-5" />, path: '/settings' },
   ];
 
   const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
@@ -148,30 +150,23 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="w-5 h-5 shrink-0" />
-            {!isCollapsed && <span className="text-[13px]">Logout</span>}
+            {!isCollapsed && <span className="text-[13px]">{t.nav_logout}</span>}
           </button>
         </div>
       </nav>
 
-      {/* Bottom Brand Card */}
+      {/* Bottom Brand Card - Clean & Minimal */}
       {!isCollapsed && (
         <div className="p-3.5 mt-auto border-t border-[#152238] bg-[#060B1A]/80">
-          <div className="flex items-center gap-3 mb-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 p-1 flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/10 p-1 flex items-center justify-center shrink-0">
               <img src="/lexa_logo.jpeg" alt="LEXA" className="w-full h-full object-contain" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-xs text-white tracking-wide">LEXA Ops</h3>
-              <p className="text-[9.5px] text-slate-400 leading-tight truncate">Leading • eXcellence • Automation</p>
+              <h3 className="font-bold text-xs text-white tracking-wide">LEXA Software House</h3>
+              <p className="text-[9.5px] text-slate-400 leading-tight truncate">Enterprise AI Console v2.4</p>
             </div>
           </div>
-          <Link
-            to="/widget"
-            className="w-full py-1.5 px-3 bg-white/[0.06] hover:bg-white/[0.12] text-[11px] font-medium text-slate-300 hover:text-white rounded-lg transition-colors border border-white/10 flex items-center justify-center gap-1.5 text-center"
-          >
-            <Code className="w-3.5 h-3.5 text-[#0066FF]" />
-            <span>Developer Hub</span>
-          </Link>
           <p className="text-[9px] text-slate-500 text-center mt-2.5 tracking-tight font-mono">
             © 2026 LEXA Software House
           </p>

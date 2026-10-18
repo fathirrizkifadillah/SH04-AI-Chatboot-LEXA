@@ -120,11 +120,6 @@ export const ChatInput = ({ input, setInput, onSend, disabled, inputRef, selecte
           <Send size={15} />
         </button>
       </div>
-
-      <div className="flex items-center justify-between mt-2.5 px-1 text-[10px] text-slate-500 font-mono">
-        <span>LEXA Engine v2.4</span>
-        <span className="text-[9px] uppercase tracking-wider text-slate-600">Enterprise Edition</span>
-      </div>
     </div>
   );
 };

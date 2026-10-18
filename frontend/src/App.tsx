@@ -23,11 +23,21 @@ function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('lexa_messages') || '[]') as ChatMessage[];
+      const stored = JSON.parse(localStorage.getItem('lexa_messages') || '[]') as ChatMessage[];
+      return stored.map((m) => {
+        if (m.role === 'bot' && m.content.toLowerCase().includes('selamat datang di test')) {
+          return {
+            ...m,
+            content: 'Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu seputar layanan teknologi kami?',
+          };
+        }
+        return m;
+      });
     } catch {
       return [];
     }
   });
+  const [showQuickRepliesBar, setShowQuickRepliesBar] = useState(true);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
@@ -67,20 +77,27 @@ function App() {
     api
       .get<WidgetConfig>('/config')
       .then((data: WidgetConfig) => {
+        let welcome = data.welcome_message;
+        if (!welcome || welcome.toLowerCase().includes('selamat datang di test')) {
+          welcome = 'Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu seputar layanan teknologi kami?';
+          data.welcome_message = welcome;
+        }
         setConfig(data);
         setMessages((prev) => {
           const isStaleOrClosedMsg =
             prev.length <= 1 &&
             (!prev[0] ||
               (prev[0].role === 'bot' &&
-                (prev[0].content.includes('telah ditutup') || !prev[0].content.trim())));
+                (prev[0].content.includes('telah ditutup') ||
+                  !prev[0].content.trim() ||
+                  prev[0].content.toLowerCase().includes('selamat datang di test'))));
 
           if (prev.length === 0 || isStaleOrClosedMsg) {
             return [
               {
                 id: Date.now(),
                 role: 'bot',
-                content: data.welcome_message || 'Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu?',
+                content: welcome,
                 timestamp: Date.now(),
               },
             ];
@@ -475,10 +492,14 @@ function App() {
 
     setTimeout(() => {
       if (config) {
+        let msg = config.welcome_message;
+        if (!msg || msg.toLowerCase().includes('selamat datang di test')) {
+          msg = 'Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu seputar layanan teknologi kami?';
+        }
         const welcomeMsg: ChatMessage = {
           id: Date.now(),
           role: 'bot',
-          content: config.welcome_message,
+          content: msg,
           timestamp: Date.now(),
         };
         setMessages([welcomeMsg]);
@@ -540,13 +561,6 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const showQuickReplies =
-    config?.quick_replies &&
-    messages.length <= 2 &&
-    !isStreaming &&
-    !isWaitingForResponse &&
-    !isSmallScreen;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[99999] font-sans">
@@ -651,9 +665,23 @@ function App() {
               messagesEndRef={messagesEndRef}
             />
 
-            {/* Quick Replies */}
-            {showQuickReplies && config && (
-              <QuickReplies replies={config.quick_replies} onSelect={handleSend} />
+            {/* Quick Replies (Always Accessible & Persistent) */}
+            {config?.quick_replies && config.quick_replies.length > 0 && !isStreaming && !isWaitingForResponse && (
+              showQuickRepliesBar ? (
+                <QuickReplies
+                  replies={config.quick_replies}
+                  onSelect={(text) => handleSend(text)}
+                />
+              ) : (
+                <div className="px-4 py-1.5 flex justify-end bg-[#080E20]/95 shrink-0 border-t border-white/[0.04]">
+                  <button
+                    onClick={() => setShowQuickRepliesBar(true)}
+                    className="text-[11px] text-[#0066FF] hover:text-blue-400 font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <span>✨ Tampilkan Saran Pertanyaan</span>
+                  </button>
+                </div>
+              )
             )}
 
             {/* Escalation Banner */}
