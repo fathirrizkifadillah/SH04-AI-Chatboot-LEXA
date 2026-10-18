@@ -533,16 +533,20 @@ function App() {
     }
   };
 
+  const [isSmallScreen, setIsSmallScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => setIsSmallScreen(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const showQuickReplies =
     config?.quick_replies &&
     messages.length <= 2 &&
     !isStreaming &&
     !isWaitingForResponse &&
-    typeof window !== 'undefined' &&
-    window.innerWidth > 480;
-
-  // Deteksi layar kecil untuk menyesuaikan ukuran panel
-  const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 480;
+    !isSmallScreen;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[99999] font-sans">
@@ -592,7 +596,14 @@ function App() {
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={
               isSmallScreen
-                ? { position: 'fixed', inset: 0, width: '100vw', height: '100vh', zIndex: 99999 }
+                ? {
+                    position: 'fixed',
+                    inset: 0,
+                    width: '100vw',
+                    height: '100dvh',
+                    zIndex: 99999,
+                    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                  }
                 : {
                     position: 'fixed',
                     bottom: '24px',
@@ -607,7 +618,7 @@ function App() {
             }
             className={
               isSmallScreen
-                ? 'w-screen h-screen bg-[#0A1224] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
+                ? 'w-screen h-[100dvh] bg-[#0A1224] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
                 : 'bg-[#0A1224] rounded-[24px] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto overflow-hidden select-auto'
             }
           >

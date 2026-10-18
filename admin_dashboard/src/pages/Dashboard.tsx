@@ -199,8 +199,8 @@ const Dashboard = () => {
       {/* 2. Asymmetric Executive Bento Grid (Double-Bezel Architecture) */}
       <div className="grid grid-cols-12 gap-4">
         
-        {/* Bento Card 1: Throughput Hero (Col 5) */}
-        <div className="col-span-12 lg:col-span-5 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        {/* Bento Card 1: Throughput Hero (Col 4) */}
+        <div className="col-span-12 lg:col-span-4 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div>
               <div className="flex items-center justify-between">
@@ -244,8 +244,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Bento Card 2: AI Resolution Precision (Col 2.5) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-2 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        {/* Bento Card 2: AI Resolution Precision (Col 3) */}
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">

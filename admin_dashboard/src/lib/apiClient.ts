@@ -38,6 +38,7 @@ async function request<T>(
 ): Promise<T> {
   const token = typeof window !== 'undefined' ? sessionStorage.getItem('lexa_admin_token') : null;
   const headers: Record<string, string> = {
+    'ngrok-skip-browser-warning': 'true',
     ...(options.headers as Record<string, string> || {}),
   };
 

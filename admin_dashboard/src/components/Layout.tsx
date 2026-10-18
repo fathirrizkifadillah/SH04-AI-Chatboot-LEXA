@@ -47,6 +47,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('lexa_sidebar_collapsed') === 'true';
   });
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [pendingHandoffCount, setPendingHandoffCount] = useState<number>(0);
 
   const toggleSidebar = useCallback(() => {
@@ -125,16 +126,33 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
   }, [refreshPendingCount]);
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B1529] transition-colors">
+    <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B1529] transition-colors relative">
+      {isMobileOpen && (
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+        />
+      )}
       <Sidebar
         setAuthToken={setAuthToken}
         isCollapsed={sidebarCollapsed}
         onToggle={toggleSidebar}
         pendingHandoffCount={pendingHandoffCount}
+        isMobileOpen={isMobileOpen}
+        onCloseMobile={() => setIsMobileOpen(false)}
       />
-      <div className={`${sidebarCollapsed ? 'ml-[72px]' : 'ml-64'} transition-all duration-300`}>
-        <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
-        <main className="p-8">
+      <div className={`min-h-screen transition-all duration-300 ml-0 ${sidebarCollapsed ? 'lg:ml-[74px]' : 'lg:ml-64'}`}>
+        <Header
+          onToggleSidebar={() => {
+            if (window.innerWidth < 1024) {
+              setIsMobileOpen(prev => !prev);
+            } else {
+              toggleSidebar();
+            }
+          }}
+          sidebarCollapsed={sidebarCollapsed}
+        />
+        <main className="p-3.5 sm:p-5 lg:p-8">
           <Outlet />
         </main>
       </div>

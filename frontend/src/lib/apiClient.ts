@@ -37,6 +37,7 @@ async function request<T>(
   options: RequestOptions = {}
 ): Promise<T> {
   const headers: Record<string, string> = {
+    'ngrok-skip-browser-warning': 'true',
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -75,7 +76,10 @@ export const api = {
   stream(path: string, body: unknown): Promise<Response> {
     return fetch(`${API_URL}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
       body: JSON.stringify(body),
     });
   },

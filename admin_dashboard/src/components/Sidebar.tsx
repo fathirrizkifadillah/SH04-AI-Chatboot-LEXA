@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight, Code } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight, Code, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
 
@@ -8,6 +8,8 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
   pendingHandoffCount?: number;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 interface NavItem {
@@ -17,7 +19,7 @@ interface NavItem {
   roles?: string[];
 }
 
-const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0 }: SidebarProps) => {
+const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0, isMobileOpen = false, onCloseMobile }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -54,11 +56,17 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0 
   const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
 
   return (
-    <aside className={`${isCollapsed ? 'w-[74px]' : 'w-64'} bg-[#080E21] border-r border-[#152238] text-white flex flex-col h-screen fixed left-0 top-0 shadow-2xl transition-all duration-300 z-50 select-none`}>
+    <aside
+      className={`
+        fixed left-0 top-0 h-screen bg-[#080E21] border-r border-[#152238] text-white flex flex-col shadow-2xl transition-all duration-300 z-50 select-none
+        ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'}
+        ${isCollapsed ? 'lg:w-[74px]' : 'lg:w-64'}
+      `}
+    >
       {/* Brand Header */}
-      <div className={`p-4 pb-3 flex items-center ${isCollapsed ? 'justify-center flex-col gap-2' : 'justify-between'} border-b border-[#152238]`}>
-        {!isCollapsed ? (
-          <Link to="/" className="flex items-center gap-3 group">
+      <div className={`p-4 pb-3 flex items-center ${isCollapsed ? 'justify-between lg:justify-center lg:flex-col lg:gap-2' : 'justify-between'} border-b border-[#152238]`}>
+        {(!isCollapsed || isMobileOpen) ? (
+          <Link to="/" onClick={() => onCloseMobile && onCloseMobile()} className="flex items-center gap-3 group">
             <div className="p-1 bg-white rounded-xl shadow-md border border-white/20 shrink-0">
               <img src="/lexa_logo.jpeg" alt="LEXA" className="h-8 w-auto object-contain" />
             </div>
@@ -76,14 +84,26 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0 
             <img src="/lexa_logo.jpeg" alt="LEXA" className="h-7 w-7 object-contain" />
           </Link>
         )}
-        <button
-          onClick={onToggle}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-          title={isCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
-        </button>
+        <div className="flex items-center gap-1">
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              title="Tutup Menu"
+              aria-label="Close sidebar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            onClick={onToggle}
+            className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            title={isCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Nav Items */}
@@ -94,9 +114,12 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0 
             <Link
               key={item.name}
               to={item.path}
+              onClick={() => {
+                if (onCloseMobile) onCloseMobile();
+              }}
               title={isCollapsed ? item.name : undefined}
               className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
-                isCollapsed ? 'justify-center' : ''
+                isCollapsed ? 'lg:justify-center' : ''
               } ${
                 isActive
                   ? 'bg-[#0066FF] text-white font-semibold shadow-lg shadow-[#0066FF]/35'
