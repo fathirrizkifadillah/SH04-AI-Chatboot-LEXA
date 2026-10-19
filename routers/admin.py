@@ -67,7 +67,7 @@ class EmbedCodeRequest(BaseModel):
 
 
 @router.get("/api/admin/widget/embed-code")
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 async def get_widget_embed_code(
     request: Request,
     api_url: Optional[str] = None,
@@ -77,6 +77,7 @@ async def get_widget_embed_code(
     payload: dict = Depends(verify_jwt),
 ):
     base_url = api_url or str(request.base_url).rstrip("/")
+    from urllib.parse import quote_plus
 
     script_tag = (
         f'<script src="{base_url}/widget/widget-loader.js"\n'
@@ -87,10 +88,19 @@ async def get_widget_embed_code(
         f'</script>'
     )
 
+    pos_styles = {
+        "bottom-right": "bottom:24px;right:24px;",
+        "bottom-left": "bottom:24px;left:24px;",
+        "top-right": "top:24px;right:24px;",
+        "top-left": "top:24px;left:24px;",
+    }
+    css_pos = pos_styles.get(position, "bottom:24px;right:24px;")
+    iframe_src = f"{base_url}/widget/?theme={theme}&color={quote_plus(color)}&position={position}"
+
     iframe_fallback = (
         f'<!-- Fallback: Direct iframe embed -->\n'
-        f'<iframe src="{base_url}/widget/"\n'
-        f'        style="position:fixed;bottom:24px;right:24px;z-index:99999;border:none;width:380px;height:640px;border-radius:24px;box-shadow:0 20px 60px -15px rgba(0,0,0,0.3);"\n'
+        f'<iframe src="{iframe_src}"\n'
+        f'        style="position:fixed;{css_pos}z-index:99999;border:none;width:380px;height:640px;border-radius:24px;box-shadow:0 20px 60px -15px rgba(0,0,0,0.3);"\n'
         f'        title="Lexa Chat Widget">\n'
         f'</iframe>'
     )
@@ -132,7 +142,7 @@ async def get_admin_settings(payload: dict = Depends(verify_jwt)):
 
 
 @router.post("/api/admin/settings")
-@limiter.limit("10/minute")
+@limiter.limit("120/minute")
 async def update_admin_settings(
     request: Request,
     req: SettingsUpdateRequest,
@@ -377,7 +387,7 @@ async def update_kb_file_content(
     return {"status": "success", "message": f"Dokumen '{filename}' berhasil diperbarui dan sedang diindeks ulang."}
 
 
-@router.post("/api/admin/kb/export")
+@router.api_route("/api/admin/kb/export", methods=["GET", "POST"])
 async def export_kb(payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
     """Export semua dokumen KB sebagai zip/download."""
     import zipfile
@@ -390,15 +400,20 @@ async def export_kb(payload: dict = Depends(require_role("Super Admin", "Editor 
     memory_file = io.BytesIO()
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
         for f in os.listdir(kb_dir):
-            if f.endswith((".md", ".txt", ".pdf")) and f != "lexa_company_profile.md":
+            if f.endswith((".md", ".txt", ".pdf")):
                 filepath = os.path.join(kb_dir, f)
-                zf.write(filepath, arcname=f)
+                if os.path.isfile(filepath):
+                    zf.write(filepath, arcname=f)
     
     memory_file.seek(0)
     return StreamingResponse(
-        io.BytesIO(memory_file.read()),
+        memory_file,
         media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=lexa_kb_export.zip"}
+        headers={
+            "Content-Disposition": "attachment; filename=lexa_kb_export.zip",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+        }
     )
 
 

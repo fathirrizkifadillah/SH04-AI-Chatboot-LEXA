@@ -1,5 +1,5 @@
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
-import { Save, Plus, X, Bot, MessageSquare, Terminal, ShieldAlert } from 'lucide-react';
+import { Save, Plus, X, Bot, MessageSquare, Terminal, ShieldAlert, Check, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '../lib/apiClient';
 import type { Settings as SettingsType } from '../types/api';
 
@@ -11,7 +11,9 @@ const Settings = () => {
   });
   const [newQuickReply, setNewQuickReply] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState('');
+  const [savingTarget, setSavingTarget] = useState<'all' | 'welcome' | 'prompt' | 'quick_replies' | null>(null);
+  const [savedSection, setSavedSection] = useState<'all' | 'welcome' | 'prompt' | 'quick_replies' | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const currentUser = (() => {
     try {
@@ -23,7 +25,7 @@ const Settings = () => {
   })();
   const isSuperAdmin = currentUser?.role === 'Super Admin';
 
-  useEffect(() => {
+  const loadSettings = () => {
     api.authGet<SettingsType>('/api/admin/settings')
       .then(data => {
         setSettings(data);
@@ -31,21 +33,47 @@ const Settings = () => {
       .catch(err => {
         console.error('Failed to load settings:', err);
       });
+  };
+
+  useEffect(() => {
+    loadSettings();
   }, []);
 
-  const handleSave = async (dataToSave = settings) => {
+  const handleSave = async (dataToSave = settings, target: 'all' | 'welcome' | 'prompt' | 'quick_replies' = 'all') => {
     if (!isSuperAdmin) return;
     setIsSaving(true);
-    setSaveMessage('');
+    setSavingTarget(target);
     try {
       await api.authPost('/api/admin/settings', dataToSave);
-      setSaveMessage('Pengaturan AI berhasil disimpan permanen ke database!');
-      setTimeout(() => setSaveMessage(''), 3500);
-    } catch (err) {
+      setSavedSection(target);
+      const targetLabel = 
+        target === 'prompt' ? 'System Prompt' : 
+        target === 'welcome' ? 'Welcome Message' : 
+        target === 'quick_replies' ? 'Quick Replies' : 'Seluruh Pengaturan AI';
+      
+      setToastMessage({
+        type: 'success',
+        text: `${targetLabel} berhasil disimpan permanen ke database!`
+      });
+
+      setTimeout(() => {
+        setSavedSection(null);
+      }, 3000);
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 4000);
+    } catch (err: any) {
       console.error(err);
-      setSaveMessage('Gagal menyimpan pengaturan.');
+      setToastMessage({
+        type: 'error',
+        text: `Gagal menyimpan: ${err.message || 'Terjadi kesalahan'}`
+      });
+      // Re-sync with database to ensure UI does not stay in inconsistent state
+      loadSettings();
+      setTimeout(() => setToastMessage(null), 5000);
     } finally {
       setIsSaving(false);
+      setSavingTarget(null);
     }
   };
 
@@ -59,8 +87,8 @@ const Settings = () => {
       };
       setSettings(updated);
       setNewQuickReply('');
-      // Auto-save langsung ke database agar tidak hilang saat refresh
-      await handleSave(updated);
+      // Auto-save langsung ke database
+      await handleSave(updated, 'quick_replies');
     }
   };
 
@@ -70,7 +98,7 @@ const Settings = () => {
     const updated = { ...settings, quick_replies: updatedReplies };
     setSettings(updated);
     // Auto-save langsung ke database
-    await handleSave(updated);
+    await handleSave(updated, 'quick_replies');
   };
 
   return (
@@ -82,15 +110,45 @@ const Settings = () => {
         </div>
         {isSuperAdmin && (
           <button 
-            onClick={() => handleSave(settings)}
+            onClick={() => handleSave(settings, 'all')}
             disabled={isSaving}
             className="flex items-center gap-2 bg-[#0066FF] hover:bg-[#0052CC] text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer disabled:opacity-50"
           >
-            <Save className="w-3.5 h-3.5" />
-            {isSaving ? 'Menyimpan...' : 'Simpan Semua'}
+            {isSaving && savingTarget === 'all' ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Menyimpan...</span>
+              </>
+            ) : savedSection === 'all' ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Tersimpan!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan Semua</span>
+              </>
+            )}
           </button>
         )}
       </div>
+
+      {/* Floating Toast Notification (Always Visible Regardless of Scroll) */}
+      {toastMessage && (
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold animate-in fade-in slide-in-from-bottom-3 duration-200 ${
+          toastMessage.type === 'success'
+            ? 'bg-slate-900 text-emerald-400 border-emerald-500/40 shadow-emerald-950/40'
+            : 'bg-slate-900 text-rose-400 border-rose-500/40 shadow-rose-950/40'
+        }`}>
+          {toastMessage.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
 
       {!isSuperAdmin && (
         <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
@@ -98,12 +156,6 @@ const Settings = () => {
           <span>
             Mode hanya baca: Anda masuk sebagai <strong>{currentUser?.role || 'Staf'}</strong>. Pengubahan prompt dan pengaturan AI hanya dapat dilakukan oleh <strong>Super Admin</strong>.
           </span>
-        </div>
-      )}
-
-      {saveMessage && (
-        <div className={`p-3.5 rounded-xl text-xs font-medium animate-in fade-in duration-200 ${saveMessage.includes('berhasil') ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'}`}>
-          {saveMessage}
         </div>
       )}
 
@@ -123,12 +175,26 @@ const Settings = () => {
             </div>
             {isSuperAdmin && (
               <button
-                onClick={() => handleSave(settings)}
+                onClick={() => handleSave(settings, 'welcome')}
                 disabled={isSaving}
                 className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-[#0066FF] dark:text-blue-400 rounded-lg text-xs font-semibold border border-blue-200 dark:border-blue-900/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <Save className="w-3 h-3" />
-                Simpan
+                {isSaving && savingTarget === 'welcome' ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : savedSection === 'welcome' ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">Tersimpan!</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3 h-3" />
+                    <span>Simpan</span>
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -154,8 +220,20 @@ const Settings = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400">Daftar pertanyaan cepat yang disarankan ke pelanggan (tersimpan otomatis).</p>
               </div>
             </div>
-            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
-              Auto-Save Aktif
+            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40 flex items-center gap-1.5">
+              {isSaving && savingTarget === 'quick_replies' ? (
+                <>
+                  <RefreshCw className="w-3 h-3 animate-spin text-blue-500" />
+                  <span>Menyimpan ke DB...</span>
+                </>
+              ) : savedSection === 'quick_replies' ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-500" />
+                  <span>Tersimpan ke DB!</span>
+                </>
+              ) : (
+                <span>Auto-Save Aktif</span>
+              )}
             </span>
           </div>
           
@@ -207,12 +285,26 @@ const Settings = () => {
             </div>
             {isSuperAdmin && (
               <button
-                onClick={() => handleSave(settings)}
+                onClick={() => handleSave(settings, 'prompt')}
                 disabled={isSaving}
-                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-semibold border border-emerald-200 dark:border-emerald-900/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <Save className="w-3 h-3" />
-                Simpan Prompt
+                {isSaving && savingTarget === 'prompt' ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : savedSection === 'prompt' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">✓ Tersimpan!</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3 h-3" />
+                    <span>Simpan Prompt</span>
+                  </>
+                )}
               </button>
             )}
           </div>

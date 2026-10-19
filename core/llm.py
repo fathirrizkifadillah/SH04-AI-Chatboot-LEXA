@@ -147,17 +147,23 @@ class LexaChatbot:
             
             if results:
                 context_str = (
-                    "\n\n[DOKUMEN REFERENSI BASIS PENGETAHUAN]\n"
-                    "Gunakan informasi di bawah ini untuk menjawab pertanyaan pelanggan. "
-                    "Jawab secara jujur berdasarkan referensi ini saja. "
-                    "Jika informasi tidak ada di referensi, jawablah jujur bahwa informasi "
-                    "belum tersedia dan arahkan ke info@lexatech.id atau +62 853 2013 2014.\n\n"
+                    "\n\n[DOKUMEN REFERENSI BASIS PENGETAHUAN LEXA SOFTWARE HOUSE]\n"
+                    "Gunakan dokumen referensi resmi di bawah ini untuk menjawab pertanyaan pelanggan:\n\n"
                 )
                 for i, res in enumerate(results):
                     chunk = res["chunk"]
                     source = chunk["metadata"]["source"]
                     doc_title = chunk["metadata"]["document_title"]
                     context_str += f"Dokumen #{i+1} | Sumber: {source} ({doc_title}):\n{chunk['content']}\n---\n\n"
+
+                context_str += (
+                    "[PANDUAN KETAT GROUNDING & KEBIJAKAN RESPON AI]:\n"
+                    "1. Jawab HANYA berdasarkan fakta yang tertulis eksplisit pada dokumen referensi di atas.\n"
+                    "2. JANGAN menambahkan nama fitur teknis spesifik, modul, integrasi (seperti SEO, payment gateway tertentu, modul ERP/CRM) yang TIDAK tercantum dalam dokumen sebagai layanan resmi LEXA.\n"
+                    "3. Layanan resmi LEXA yang terdaftar adalah: Web Development, Mobile Development, System Development, UI/UX Design, IT Consulting, dan Maintenance & Support. Jika ditanya mengenai layanan mana yang cocok untuk kebutuhan klien (misal: bisnis online), rujuk ke layanan resmi tersebut (seperti Web Development, UI/UX Design, dsb.) tanpa mengarang rincian paket yang tidak ada di dokumen.\n"
+                    "4. Jika memberikan contoh ilustratif atau saran umum pengembangan, nyatakan secara eksplisit dan jujur sebagai saran umum/contoh praktis, dan informasikan bahwa detail kebutuhan dapat dikonsultasikan langsung ke tim LEXA.\n"
+                    "5. Jika informasi spesifik belum ada di dokumen (misalnya harga paket Pro atau alamat kantor jalan spesifik), katakan secara jujur dan transparan bahwa informasi tersebut belum tercantum di basis pengetahuan dan berikan kontak resmi (Email: info@lexatech.id, Telepon/WhatsApp: +62 853 2013 2014, Lokasi: Tasikmalaya, Indonesia) atau tawarkan untuk terhubung ke Customer Service.\n"
+                )
             else:
                 self._log_unanswered_query(message)
                 context_str = (
@@ -165,7 +171,7 @@ class LexaChatbot:
                     "Tidak ditemukan informasi relevan di basis pengetahuan untuk pertanyaan ini. "
                     "Jawab jujur bahwa informasi spesifik tersebut belum tersedia di dokumentasi kami. "
                     "Arahkan pelanggan ke info@lexatech.id atau +62 853 2013 2014 untuk informasi lebih lanjut. "
-                    "JANGAN mengarang jawaban.\n"
+                    "JANGAN mengarang jawaban atau membuat-buat harga/paket yang tidak tercatat di basis pengetahuan.\n"
                 )
 
         # Refresh system instruction from settings if updated

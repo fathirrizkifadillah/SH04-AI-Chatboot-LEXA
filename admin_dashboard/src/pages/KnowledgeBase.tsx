@@ -22,6 +22,7 @@ const KnowledgeBase = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -247,23 +248,45 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
   };
 
   const handleExport = async () => {
-    const exportApiUrl = API_URL;
+    setIsExporting(true);
     try {
-      const res = await fetch(`${exportApiUrl}/api/admin/kb/export`, {
+      const token = sessionStorage.getItem('lexa_admin_token');
+      const headers: Record<string, string> = {
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`${API_URL}/api/admin/kb/export`, {
         method: 'POST',
+        headers,
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Export failed');
+
+      if (!res.ok) {
+        let errMsg = `Status ${res.status}`;
+        try {
+          const errData = await res.json();
+          errMsg = errData.detail || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+      }
+
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'lexa_kb_export.zip';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert('Gagal mengunduh knowledge base.');
+    } catch (err: any) {
+      console.error('KB Export Error:', err);
+      alert(`Gagal mengunduh knowledge base: ${err.message || 'Terjadi kesalahan'}`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -352,11 +375,21 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
                 {files.length > 0 && (
                   <button
                     onClick={handleExport}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-white/10 shrink-0 cursor-pointer"
+                    disabled={isExporting}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-white/10 shrink-0 cursor-pointer disabled:opacity-50"
                     title="Unduh seluruh dokumen sebagai file ZIP"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>ZIP</span>
+                    {isExporting ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0066FF]" />
+                        <span>Mengunduh...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>ZIP</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>

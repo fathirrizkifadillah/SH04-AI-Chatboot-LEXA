@@ -52,7 +52,9 @@ const WidgetSetup = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'html' | 'wordpress' | 'react' | 'iframe'>('html');
-  const [previewChatOpen, setPreviewChatOpen] = useState(false);
+  const [previewChatOpen, setPreviewChatOpen] = useState(true);
+
+  const isDarkTheme = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const positions = [
     { value: 'bottom-right', label: t.pos_bottom_right },
@@ -266,13 +268,21 @@ ${embedData?.embed_code || ''}`;
             </div>
 
             {/* Simulated Web Page */}
-            <div className="relative w-full h-[360px] rounded-xl bg-slate-50 dark:bg-[#070D1D] border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col shadow-inner select-none">
+            <div className={`relative w-full h-[360px] rounded-xl overflow-hidden flex flex-col shadow-inner select-none transition-colors duration-300 ${
+              isDarkTheme
+                ? 'dark bg-[#070D1D] text-slate-100 border border-white/10'
+                : 'bg-slate-50 text-slate-900 border border-slate-200'
+            }`}>
               {/* Fake Browser Top Bar */}
-              <div className="h-7 bg-slate-200/80 dark:bg-slate-800/80 px-3 flex items-center gap-1.5 border-b border-slate-200 dark:border-white/5">
+              <div className={`h-7 px-3 flex items-center gap-1.5 border-b transition-colors ${
+                isDarkTheme ? 'bg-slate-900 border-white/10 text-slate-400' : 'bg-slate-200/80 border-slate-300/60 text-slate-600'
+              }`}>
                 <div className="w-2 h-2 rounded-full bg-rose-400"></div>
                 <div className="w-2 h-2 rounded-full bg-amber-400"></div>
                 <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                <div className="mx-auto px-4 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/60 text-[10px] font-mono text-slate-500 dark:text-slate-400 border border-slate-300/40 dark:border-white/5 w-60 text-center truncate">
+                <div className={`mx-auto px-4 py-0.5 rounded-md text-[10px] font-mono border w-60 text-center truncate ${
+                  isDarkTheme ? 'bg-slate-950/70 text-slate-300 border-white/10' : 'bg-white/80 text-slate-600 border-slate-300/50'
+                }`}>
                   https://perusahaan-anda.com
                 </div>
               </div>
@@ -280,10 +290,12 @@ ${embedData?.embed_code || ''}`;
               {/* Fake Website Content */}
               <div className="p-4 flex-1 overflow-hidden space-y-3">
                 {/* Mock Navbar */}
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-white/5">
+                <div className={`flex items-center justify-between pb-2 border-b ${
+                  isDarkTheme ? 'border-white/10' : 'border-slate-200/60'
+                }`}>
                   <div className="flex items-center gap-2">
                     <img src="/lexa_icon.png" alt="Company Logo" className="w-5 h-5 rounded-md object-contain" onError={(e)=>{ (e.target as HTMLElement).style.display = 'none'; }} />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Acme Enterprise</span>
+                    <span className={`text-xs font-bold ${isDarkTheme ? 'text-white' : 'text-slate-800'}`}>Acme Enterprise</span>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] text-slate-400">
                     <span>Produk</span>
@@ -294,33 +306,43 @@ ${embedData?.embed_code || ''}`;
                 </div>
 
                 {/* Mock Hero Section */}
-                <div className="p-4 rounded-xl bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-transparent border border-blue-500/15">
+                <div className={`p-4 rounded-xl border ${
+                  isDarkTheme 
+                    ? 'bg-blue-950/30 border-blue-500/20 text-white' 
+                    : 'bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-transparent border-blue-500/15 text-slate-900'
+                }`}>
                   <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 mb-1.5">
                     🚀 Next-Gen Digital Platform
                   </span>
-                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
+                  <h4 className={`text-sm font-extrabold leading-tight ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>
                     Transformasi Bisnis Lebih Cepat dengan AI
                   </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-sm line-clamp-2">
+                  <p className={`text-[11px] mt-1 max-w-sm line-clamp-2 ${isDarkTheme ? 'text-slate-400' : 'text-slate-500'}`}>
                     Otomasi layanan pelanggan, manajemen pengetahuan, dan komunikasi 24/7 tanpa henti.
                   </p>
                 </div>
 
                 {/* Mock Content Cards */}
                 <div className="grid grid-cols-3 gap-2.5">
-                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5">
+                  <div className={`p-2.5 rounded-lg border ${
+                    isDarkTheme ? 'bg-slate-900/90 border-white/10 text-slate-200' : 'bg-white border-slate-200/70 text-slate-800'
+                  }`}>
                     <div className="w-6 h-6 rounded bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[10px] font-bold mb-1">✓</div>
-                    <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">99.9% Uptime</div>
+                    <div className={`text-[10px] font-bold ${isDarkTheme ? 'text-slate-200' : 'text-slate-800'}`}>99.9% Uptime</div>
                     <div className="text-[9px] text-slate-400">Handal & Teruji</div>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5">
+                  <div className={`p-2.5 rounded-lg border ${
+                    isDarkTheme ? 'bg-slate-900/90 border-white/10 text-slate-200' : 'bg-white border-slate-200/70 text-slate-800'
+                  }`}>
                     <div className="w-6 h-6 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold mb-1">⚡</div>
-                    <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">&lt; 1s Response</div>
+                    <div className={`text-[10px] font-bold ${isDarkTheme ? 'text-slate-200' : 'text-slate-800'}`}>&lt; 1s Response</div>
                     <div className="text-[9px] text-slate-400">Instan & Akurat</div>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5">
+                  <div className={`p-2.5 rounded-lg border ${
+                    isDarkTheme ? 'bg-slate-900/90 border-white/10 text-slate-200' : 'bg-white border-slate-200/70 text-slate-800'
+                  }`}>
                     <div className="w-6 h-6 rounded bg-violet-500/10 text-violet-500 flex items-center justify-center text-[10px] font-bold mb-1">🔒</div>
-                    <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">Bank-Grade</div>
+                    <div className={`text-[10px] font-bold ${isDarkTheme ? 'text-slate-200' : 'text-slate-800'}`}>Bank-Grade</div>
                     <div className="text-[9px] text-slate-400">Enkripsi Aman</div>
                   </div>
                 </div>
@@ -334,8 +356,12 @@ ${embedData?.embed_code || ''}`;
               >
                 {/* Popover Preview if clicked */}
                 {previewChatOpen && (
-                  <div className="w-72 rounded-2xl bg-white dark:bg-[#0D182E] border border-slate-200 dark:border-white/15 p-3.5 shadow-2xl text-left animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10 mb-2.5">
+                  <div className={`w-72 rounded-2xl p-3.5 shadow-2xl text-left border transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 ${
+                    isDarkTheme 
+                      ? 'bg-[#0D182E] border-blue-500/30 text-white shadow-[0_20px_50px_rgba(0,0,0,0.85)]' 
+                      : 'bg-white border-slate-200 text-slate-900 shadow-[0_20px_50px_rgba(0,0,0,0.15)]'
+                  }`}>
+                    <div className={`flex items-center justify-between pb-2 border-b mb-2.5 ${isDarkTheme ? 'border-white/10' : 'border-slate-100'}`}>
                       <div className="flex items-center gap-2">
                         <div className="relative w-7 h-7 rounded-full bg-blue-600/20 p-0.5 border border-blue-500/30 overflow-hidden flex items-center justify-center">
                           <img 
@@ -346,7 +372,7 @@ ${embedData?.embed_code || ''}`;
                           />
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-slate-900 dark:text-white block leading-tight">LEXA AI</span>
+                          <span className={`text-xs font-bold block leading-tight ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>LEXA AI</span>
                           <span className="text-[9px] text-emerald-500 font-medium flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Online Siap Membantu
@@ -355,21 +381,31 @@ ${embedData?.embed_code || ''}`;
                       </div>
                       <button 
                         onClick={() => setPreviewChatOpen(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs p-1"
+                        className={`text-xs p-1 rounded-md transition-colors ${isDarkTheme ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
                       >
                         ✕
                       </button>
                     </div>
 
                     <div className="space-y-2">
-                      <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed border border-slate-200/50 dark:border-white/5">
+                      <div className={`p-2.5 rounded-xl text-[11px] leading-relaxed border ${
+                        isDarkTheme 
+                          ? 'bg-slate-900/90 text-slate-200 border-white/10' 
+                          : 'bg-slate-100 text-slate-800 border-slate-200/60'
+                      }`}>
                         Halo! 👋 Selamat datang di layanan kami. Ada informasi produk atau solusi yang ingin Anda tanyakan?
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 cursor-pointer">
+                        <span 
+                          style={{ borderColor: `${color}50`, color: isDarkTheme ? '#93c5fd' : color }}
+                          className={`text-[9px] px-2 py-0.5 rounded-full border cursor-pointer ${isDarkTheme ? 'bg-white/5' : 'bg-blue-50/60'}`}
+                        >
                           Info Layanan
                         </span>
-                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 cursor-pointer">
+                        <span 
+                          style={{ borderColor: `${color}50`, color: isDarkTheme ? '#93c5fd' : color }}
+                          className={`text-[9px] px-2 py-0.5 rounded-full border cursor-pointer ${isDarkTheme ? 'bg-white/5' : 'bg-blue-50/60'}`}
+                        >
                           Hubungi Tim Sales
                         </span>
                       </div>

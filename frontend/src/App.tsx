@@ -52,6 +52,10 @@ const getPersistentId = (key: string): string => {
 };
 
 function App() {
+  const queryParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const widgetPosition = queryParams.get('position') || 'bottom-right';
+  const isLeftPos = widgetPosition === 'bottom-left' || widgetPosition === 'top-left';
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -589,7 +593,7 @@ function App() {
     <div className="fixed inset-0 pointer-events-none z-[99999] font-sans">
       {/* Floating Button */}
       <motion.div
-        className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 pointer-events-auto"
+        className={`absolute bottom-5 ${isLeftPos ? 'left-5 sm:left-6' : 'right-5 sm:right-6'} pointer-events-auto`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         initial={{ scale: 0, y: 30 }}
         animate={{ scale: isOpen ? 0 : 1, y: isOpen ? 30 : 0 }}
@@ -644,7 +648,7 @@ function App() {
                 : {
                     position: 'fixed',
                     bottom: '24px',
-                    right: '24px',
+                    ...(isLeftPos ? { left: '24px' } : { right: '24px' }),
                     width: isExpanded ? '520px' : '380px',
                     height: isExpanded ? '700px' : '580px',
                     maxWidth: 'calc(100vw - 32px)',

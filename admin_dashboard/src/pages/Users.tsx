@@ -19,6 +19,7 @@ const Users = () => {
   const [pwdUserLoading, setPwdUserLoading] = useState(false);
   const [pwdUserError, setPwdUserError] = useState('');
   const [pwdUserSuccess, setPwdUserSuccess] = useState('');
+  const [userSuccessMessage, setUserSuccessMessage] = useState('');
 
   const currentUser = (() => {
     try {
@@ -60,6 +61,8 @@ const Users = () => {
     if (window.confirm('Hapus pengguna ini dari sistem?')) {
       api.authDelete(`/api/admin/users/${id}`)
         .then(() => {
+          setUserSuccessMessage('Pengguna berhasil dihapus dari sistem.');
+          setTimeout(() => setUserSuccessMessage(''), 4000);
           fetchUsers();
         })
         .catch(err => {
@@ -71,10 +74,14 @@ const Users = () => {
 
   const handleAdd = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const addedName = formData.name;
+    const addedRole = formData.role;
     api.authPost('/api/admin/users', formData)
     .then(() => {
       setIsModalOpen(false);
       setFormData({ name: '', email: '', password: '', role: 'CS Agent' });
+      setUserSuccessMessage(`Anggota "${addedName}" (${addedRole}) berhasil ditambahkan.`);
+      setTimeout(() => setUserSuccessMessage(''), 4000);
       fetchUsers();
     })
     .catch(err => {
@@ -128,6 +135,23 @@ const Users = () => {
           Tambah Anggota
         </button>
       </div>
+
+      {userSuccessMessage && (
+        <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-xl text-xs shadow-sm transition-all animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+              <Check className="w-3.5 h-3.5" />
+            </div>
+            <span>{userSuccessMessage}</span>
+          </div>
+          <button 
+            onClick={() => setUserSuccessMessage('')}
+            className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden shadow-sm transition-colors">
         <div className="overflow-x-auto">

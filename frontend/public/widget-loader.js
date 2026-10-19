@@ -31,7 +31,8 @@
   var config = {
     apiUrl: (scriptTag && scriptTag.getAttribute('data-api-url')) || window.location.origin,
     position: (scriptTag && scriptTag.getAttribute('data-position')) || 'bottom-right',
-    color: (scriptTag && scriptTag.getAttribute('data-color')) || '#2563eb',
+    color: (scriptTag && scriptTag.getAttribute('data-color')) || '#0066FF',
+    theme: (scriptTag && scriptTag.getAttribute('data-theme')) || 'dark',
     greeting: (scriptTag && scriptTag.getAttribute('data-greeting')) || ''
   };
 
@@ -61,7 +62,7 @@
       border-radius: 50%;
       width: 64px;
       height: 64px;
-      background: transparent;
+      background: ${config.color};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -167,7 +168,13 @@
   function toggleChat() {
     isOpen = !isOpen;
     if (isOpen) {
-      iframe.src = config.apiUrl + '/widget/' + (config.greeting ? '?greeting=' + encodeURIComponent(config.greeting) : '');
+      var queryParts = [];
+      if (config.greeting) queryParts.push('greeting=' + encodeURIComponent(config.greeting));
+      if (config.theme) queryParts.push('theme=' + encodeURIComponent(config.theme));
+      if (config.color) queryParts.push('color=' + encodeURIComponent(config.color));
+      if (config.position) queryParts.push('position=' + encodeURIComponent(config.position));
+      var queryString = queryParts.length ? '?' + queryParts.join('&') : '';
+      iframe.src = config.apiUrl + '/widget/' + queryString;
       overlay.classList.add('lexa-open');
       iframe.classList.add('lexa-open');
       launcher.style.transform = 'scale(0)';

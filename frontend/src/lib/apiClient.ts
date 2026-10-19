@@ -38,6 +38,8 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     'ngrok-skip-browser-warning': 'true',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -48,6 +50,7 @@ async function request<T>(
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
+    cache: 'no-cache',
     body: body ? JSON.stringify(body) : undefined,
     ...options,
   });

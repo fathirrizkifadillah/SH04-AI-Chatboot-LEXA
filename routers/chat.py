@@ -70,6 +70,84 @@ def _save_handoff_message(session_id: str, content: str, role: str = "user", fil
         db.close()
 
 
+import re
+
+HANDOFF_PATTERNS = [
+    r"(ingin|mau|bisa|tolong|mohon|perlu|harus)?\s*(bicara|ngobrol|ngomong|diskusi|terhubung|sambung|sambungkan|konek|hubung|hubungi|hubungkan|kontak|panggil|transfer|oper)\s*(langsung)?\s*(ke|dengan|sama|menuju)?\s*(orang\s+)?(customer service|cust service|cs|admin|staf|staff|manusia|human|operator|agent|live agent|team support)",
+    r"(customer service|cs|admin|operator|staf|staff)\s*(manusia|asli|live|orang)",
+    r"(bicara|ngobrol|ngomong)\s*(sama|dengan)\s*(orang|manusia)",
+    r"talk to (a )?(live )?(human|person|agent|representative|cs|support)",
+    r"speak to (a )?(live )?(human|person|agent|representative|cs|support)",
+    r"connect (me )?to (a )?(live )?(human|person|agent|representative|cs|support|admin)",
+    r"^(panggil|hubungi|chat|oper ke|sambungkan ke)\s*(cs|admin|customer service)$",
+]
+
+HANDOFF_CONFIRMATION_REPLY = (
+    "Tentu, saya telah meneruskan percakapan ini ke staf Customer Service LEXA. "
+    "Mohon tunggu sebentar, agen manusia kami akan segera bergabung dan membalas pesan Anda di sini."
+)
+
+def is_handoff_query(message: str) -> bool:
+    if not message:
+        return False
+    clean = message.lower().strip()
+    return any(re.search(pat, clean) for pat in HANDOFF_PATTERNS)
+
+
+async def _trigger_human_handoff(session_id: str, user_message: str):
+    """Mengaktifkan handoff ke CS manusia, mencatat pesan, dan menyiarkan ke admin & session."""
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now_ts = now_dt.timestamp() * 1000
+    
+    # 1. Simpan pesan user
+    _save_handoff_message(session_id, user_message, role="user")
+    
+    # 2. Catat system event handoff di database
+    sys_msg = {
+        "role": "system",
+        "content": "[HANDOFF REQUESTED by Customer (Natural Language)]",
+        "timestamp": now_ts,
+    }
+    db = SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if s:
+            from sqlalchemy.orm.attributes import flag_modified
+            s.is_human_handoff = True
+            s.is_archived = False
+            new_hist = list(s.history or [])
+            new_hist.append(sys_msg)
+            s.history = new_hist
+            flag_modified(s, "history")
+            s.updated_at = now_dt
+            db.commit()
+            if session_id in chat_sessions:
+                chat_sessions[session_id].history = list(s.history)
+    except Exception as e:
+        logger.error(f"Error updating handoff state in db: {e}")
+    finally:
+        db.close()
+        
+    # 3. Notifikasi admin
+    await manager.broadcast_to_admins({
+        "type": "handoff_request",
+        "session_id": session_id,
+        "user_name": "Customer",
+        "timestamp": now_ts,
+    })
+    await manager.broadcast_to_admins({
+        "type": "new_message",
+        "session_id": session_id,
+        "content": user_message,
+        "role": "user",
+        "timestamp": now_ts,
+    })
+    
+    # 4. Notifikasi session (widget)
+    await manager.broadcast_to_session({"type": "handoff_requested"}, session_id)
+    await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": True}, session_id)
+
+
 @router.post("/api/chat/request-handoff")
 async def request_handoff_api(req: Request):
     """Endpoint REST bagi user widget untuk meminta handoff ke staf CS."""
@@ -244,6 +322,17 @@ async def chat(request: Request, req: ChatRequest):
             references=[],
         )
 
+    if is_handoff_query(req.message):
+        async with get_session_lock(session_id):
+            await _trigger_human_handoff(session_id, req.message)
+            _save_handoff_message(session_id, HANDOFF_CONFIRMATION_REPLY, role="bot")
+        return ChatResponse(
+            reply=HANDOFF_CONFIRMATION_REPLY,
+            session_id=session_id,
+            session_token=session_token,
+            references=[],
+        )
+
     try:
         async with get_session_lock(session_id):
             reply = await bot.send_message(req.message)
@@ -300,6 +389,16 @@ async def chat_stream(request: Request, req: ChatRequest):
                     "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
                 })
 
+                yield f"data: {json.dumps({'type': 'done', 'references': []})}\n\n"
+                return
+
+            if is_handoff_query(req.message):
+                async with get_session_lock(session_id):
+                    await _trigger_human_handoff(session_id, req.message)
+                    _save_handoff_message(session_id, HANDOFF_CONFIRMATION_REPLY, role="bot")
+                yield f"data: {json.dumps({'type': 'chunk', 'content': HANDOFF_CONFIRMATION_REPLY})}\n\n"
+                yield f"data: {json.dumps({'type': 'handoff_requested'})}\n\n"
+                yield f"data: {json.dumps({'type': 'handoff_status', 'is_handoff': True})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'references': []})}\n\n"
                 return
 
@@ -423,6 +522,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         "role": "user",
                         "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
                     })
+                elif is_handoff_query(user_msg):
+                    async with get_session_lock(session_id):
+                        await _trigger_human_handoff(session_id, user_msg)
+                        _save_handoff_message(session_id, HANDOFF_CONFIRMATION_REPLY, role="bot")
+                    await manager.broadcast_to_session({"type": "chunk", "content": HANDOFF_CONFIRMATION_REPLY}, session_id)
+                    await manager.broadcast_to_session({"type": "handoff_requested"}, session_id)
+                    await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": True}, session_id)
+                    await manager.broadcast_to_session({"type": "done", "references": []}, session_id)
                 else:
                     await manager.broadcast_to_session({"type": "typing"}, session_id)
 
