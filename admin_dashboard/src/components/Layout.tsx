@@ -72,6 +72,36 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
     refreshPendingCount();
   }, [refreshPendingCount]);
 
+  // 30-minute idle session timeout (BUG-AUTH-002)
+  useEffect(() => {
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 menit
+    let idleTimer: ReturnType<typeof setTimeout>;
+
+    const performIdleLogout = () => {
+      sessionStorage.removeItem('lexa_admin_user');
+      sessionStorage.removeItem('lexa_admin_token');
+      localStorage.removeItem('lexa_admin_user');
+      localStorage.removeItem('lexa_admin_token');
+      api.post('/api/auth/logout').catch(() => {});
+      setAuthToken(null);
+      alert('Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit. Silakan login kembali.');
+    };
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(performIdleLogout, IDLE_TIMEOUT_MS);
+    };
+
+    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimer);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+    };
+  }, [setAuthToken]);
+
   // Global WebSocket listener untuk notifikasi & chime audio
   useEffect(() => {
     let reconnectTimer: ReturnType<typeof setTimeout>;

@@ -24,6 +24,27 @@ const ProtectedRoute = ({ children, authToken }: ProtectedRouteProps) => {
   return <>{children}</>;
 };
 
+interface RoleRouteProps {
+  children: ReactNode;
+  allowedRoles: string[];
+}
+
+const RoleRoute = ({ children, allowedRoles }: RoleRouteProps) => {
+  const userStr = sessionStorage.getItem('lexa_admin_user');
+  let userRole = 'CS Agent';
+  try {
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u.role) userRole = u.role;
+    }
+  } catch {}
+
+  if (!allowedRoles.includes(userRole)) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
+
 const PageLoader = () => (
   <div className="flex items-center justify-center h-64">
     <div className="flex flex-col items-center gap-3">
@@ -72,12 +93,36 @@ function App() {
             </ProtectedRoute>
           }>
             <Route index element={<Dashboard />} />
-            <Route path="conversations" element={<Conversations />} />
-            <Route path="kb" element={<KnowledgeBase />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="users" element={<Users />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="widget" element={<WidgetSetup />} />
+            <Route path="conversations" element={
+              <RoleRoute allowedRoles={['Super Admin', 'CS Agent']}>
+                <Conversations />
+              </RoleRoute>
+            } />
+            <Route path="kb" element={
+              <RoleRoute allowedRoles={['Super Admin', 'Editor (Knowledge Base)']}>
+                <KnowledgeBase />
+              </RoleRoute>
+            } />
+            <Route path="analytics" element={
+              <RoleRoute allowedRoles={['Super Admin', 'CS Agent', 'Editor (Knowledge Base)']}>
+                <Analytics />
+              </RoleRoute>
+            } />
+            <Route path="users" element={
+              <RoleRoute allowedRoles={['Super Admin']}>
+                <Users />
+              </RoleRoute>
+            } />
+            <Route path="settings" element={
+              <RoleRoute allowedRoles={['Super Admin']}>
+                <Settings />
+              </RoleRoute>
+            } />
+            <Route path="widget" element={
+              <RoleRoute allowedRoles={['Super Admin']}>
+                <WidgetSetup />
+              </RoleRoute>
+            } />
             <Route path="*" element={<div className="p-4 text-slate-500">Page not found</div>} />
           </Route>
         </Routes>

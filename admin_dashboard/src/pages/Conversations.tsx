@@ -3,6 +3,7 @@ import { Search, User, Clock, MessageSquare, AlertCircle, Send, ShieldAlert, Bot
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api, { API_URL, getWebSocketUrl } from '../lib/apiClient';
+import { useLanguage } from '../lib/i18n';
 import type { ChatSession, SessionHistory, Message, AdminReplyReq } from '../types/api';
 
 interface SSEEvent {
@@ -70,6 +71,7 @@ const formatSessionTime = (raw: string | number | undefined | null) => {
 };
 
 const Conversations = () => {
+  const { t } = useLanguage();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
@@ -598,7 +600,7 @@ const Conversations = () => {
                 </button>
                 <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-xs tracking-wide uppercase flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> 
-                  Percakapan ({sessions.length})
+                  {t.nav_conversations} ({sessions.length})
                 </h2>
               </div>
               <button
@@ -621,7 +623,7 @@ const Conversations = () => {
                 className="p-1 px-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md transition-colors text-[11px] flex items-center gap-1 border border-slate-200 dark:border-slate-700 cursor-pointer"
               >
                 <Download className="w-3 h-3" />
-                <span>Semua CSV</span>
+                <span>{t.conv_export_all_csv || 'Semua CSV'}</span>
               </button>
             </div>
 
@@ -807,7 +809,7 @@ const Conversations = () => {
                         }`}
                       >
                         {sessionData?.is_human_handoff ? <Bot className="w-3.5 h-3.5" /> : <Headphones className="w-3.5 h-3.5" />}
-                        {sessionData?.is_human_handoff ? 'Kembalikan ke AI' : 'Ambil Alih Obrolan'}
+                        {sessionData?.is_human_handoff ? (t.conv_return_to_ai || 'Kembalikan ke AI') : (t.conv_takeover || 'Ambil Alih Obrolan')}
                       </button>
 
                       <button
@@ -817,7 +819,7 @@ const Conversations = () => {
                         title="Hapus percakapan dan bersihkan sesi pelanggan"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus</span>
+                        <span>{t.conv_delete_session || 'Hapus'}</span>
                       </button>
                     </>
                   )}
@@ -859,7 +861,7 @@ const Conversations = () => {
                         <div className="flex items-center gap-1.5 text-[10.5px] text-slate-400 mb-1 px-1 font-medium">
                           {isUser ? (
                             <>
-                              <span>Pelanggan</span>
+                              <span>{t.conv_customer || 'Pelanggan'}</span>
                               <User className="w-3 h-3 text-blue-500" />
                               {timeStr && <span className="opacity-70 font-mono">• {timeStr}</span>}
                             </>
@@ -994,7 +996,7 @@ const Conversations = () => {
                   <div>
                     {isUserTyping && (
                       <div className="text-[11px] text-blue-500 mb-1 font-medium animate-pulse">
-                        Pelanggan sedang mengetik pesan...
+                        {t.conv_customer || 'Pelanggan'} {t.conv_typing || 'sedang mengetik...'}
                       </div>
                     )}
                     <div className="flex gap-2">
@@ -1013,7 +1015,7 @@ const Conversations = () => {
                             handleSendReply();
                           }
                         }}
-                        placeholder="Ketik balasan langsung ke pelanggan... (Enter untuk mengirim)"
+                        placeholder={t.conv_type_reply || 'Ketik balasan langsung ke pelanggan... (Enter untuk mengirim)'}
                         className="flex-1 resize-none border border-amber-300 dark:border-amber-700/80 bg-amber-50/40 dark:bg-amber-950/20 rounded-xl px-3 py-2 outline-none focus:border-amber-500 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400"
                         rows={2}
                       />
@@ -1022,7 +1024,7 @@ const Conversations = () => {
                         className="px-4 bg-amber-600 hover:bg-amber-500 text-white rounded-xl flex items-center justify-center transition-colors shadow-sm font-semibold text-xs gap-1.5"
                       >
                         <Send className="w-3.5 h-3.5" />
-                        <span>Kirim</span>
+                        <span>{t.conv_send || 'Kirim'}</span>
                       </button>
                     </div>
                     <div className="flex justify-between items-center mt-1.5">

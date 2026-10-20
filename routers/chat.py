@@ -351,7 +351,11 @@ async def chat(request: Request, req: ChatRequest):
             ],
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in chat endpoint: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail="Terjadi kendala pada server saat memproses pesan. Silakan coba sesaat lagi."
+        )
 
 
 @router.post("/chat/stream")
@@ -440,7 +444,8 @@ async def chat_stream(request: Request, req: ChatRequest):
             await manager.broadcast_to_session({"type": "done", "references": refs}, session_id)
 
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            logger.error(f"Error in chat stream: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Maaf, terjadi kendala saat memproses pesan Anda. Silakan coba beberapa saat lagi.'})}\n\n"
 
     return StreamingResponse(
         event_generator(),

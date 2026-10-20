@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
 import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users, KeyRound, Loader2, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api, { getWebSocketUrl } from '../lib/apiClient';
 import { useLanguage } from '../lib/i18n';
 
@@ -27,7 +27,21 @@ interface SearchItem {
 
 const Header = ({ onToggleSidebar }: HeaderProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { lang, toggleLanguage, t } = useLanguage();
+
+  const getPageTitle = () => {
+    switch (location.pathname) {
+      case '/': return t.nav_dashboard || 'Dashboard';
+      case '/conversations': return t.nav_conversations || 'Percakapan';
+      case '/kb': return t.nav_kb || 'Knowledge Base';
+      case '/analytics': return t.nav_analytics || 'Analitik';
+      case '/users': return t.nav_users || 'Kelola Pengguna';
+      case '/settings': return t.nav_settings || 'Pengaturan';
+      case '/widget': return t.nav_widget || 'Widget Setup';
+      default: return 'LEXA Console';
+    }
+  };
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -200,8 +214,8 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
     );
 
   return (
-    <header className="h-16 bg-white dark:bg-[#152238] border-b border-slate-200 dark:border-[#1B2D47] flex items-center justify-between px-6 sticky top-0 z-40 transition-colors">
-      <div className="flex items-center gap-3 shrink-0">
+    <header className="h-16 bg-white dark:bg-[#152238] border-b border-slate-200 dark:border-[#1B2D47] flex items-center justify-between px-3 sm:px-6 sticky top-0 z-40 transition-colors">
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
         <button
           onClick={onToggleSidebar}
           className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -210,12 +224,12 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div className="p-0.5 bg-white rounded-lg shadow-xs border border-slate-200 dark:border-slate-700 shrink-0">
             <img src="/lexa_logo.jpeg" alt="LEXA" className="h-5 w-auto object-contain" />
           </div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-            Dashboard
+          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate max-w-[120px] sm:max-w-none">
+            {getPageTitle()}
           </h2>
         </div>
       </div>
@@ -236,7 +250,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         </button>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Language Switcher Pill */}
         <button
           onClick={toggleLanguage}
@@ -344,7 +358,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         {/* Help Center Button */}
         <button
           onClick={() => setShowHelpModal(true)}
-          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          className="hidden sm:flex w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           title="Pusat Bantuan"
         >
           <HelpCircle className="w-4 h-4" />

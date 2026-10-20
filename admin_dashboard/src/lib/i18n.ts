@@ -98,6 +98,24 @@ export const translations = {
     theme_light: 'Light Mode',
     theme_auto: 'Auto (Ikuti Tema OS)',
     accent_color: 'Warna Aksen',
+
+    // Conversations
+    conv_title: 'Sesi & Riwayat Obrolan',
+    conv_subtitle: 'Kelola interaksi langsung, tanggapi permintaan bantuan pelanggan, atau alihkan kembali ke bot AI.',
+    conv_search_placeholder: 'Cari percakapan atau sesi ID...',
+    conv_all_sessions: 'Semua Sesi',
+    conv_cs_handoff: 'Antrean CS',
+    conv_no_sessions: 'Belum ada percakapan tersimpan',
+    conv_takeover: 'Ambil Alih Obrolan',
+    conv_return_to_ai: 'Kembalikan ke AI',
+    conv_delete_session: 'Hapus Sesi',
+    conv_export_csv: 'Export CSV',
+    conv_export_all_csv: 'Export Semua CSV',
+    conv_export_pdf: 'Export PDF',
+    conv_type_reply: 'Ketik balasan CS ke pelanggan...',
+    conv_send: 'Kirim',
+    conv_customer: 'Pelanggan',
+    conv_typing: 'sedang mengetik...',
   },
   en: {
     // Navigation
@@ -194,6 +212,24 @@ export const translations = {
     theme_light: 'Light Mode',
     theme_auto: 'Auto (System)',
     accent_color: 'Accent Color',
+
+    // Conversations
+    conv_title: 'Customer Conversations & History',
+    conv_subtitle: 'Manage live interactions, assist escalated customer inquiries, or transfer control back to AI.',
+    conv_search_placeholder: 'Search conversations or session ID...',
+    conv_all_sessions: 'All Sessions',
+    conv_cs_handoff: 'CS Handoffs',
+    conv_no_sessions: 'No conversations found',
+    conv_takeover: 'Take Over Conversation',
+    conv_return_to_ai: 'Return to AI',
+    conv_delete_session: 'Delete Session',
+    conv_export_csv: 'Export CSV',
+    conv_export_all_csv: 'Export All CSV',
+    conv_export_pdf: 'Export PDF',
+    conv_type_reply: 'Type a reply to customer as CS...',
+    conv_send: 'Send',
+    conv_customer: 'Customer',
+    conv_typing: 'is typing...',
   },
 };
 

@@ -190,43 +190,26 @@ function App() {
           if (data.type === 'admin_reply' && data.content) {
             const senderName = (data as any).sender_name || 'Staf CS';
             setActiveAdminName(senderName);
-            setMessages((prev) => [
-              ...prev,
-              {
+            setMessages((prev) => {
+              const lastMsg = prev[prev.length - 1];
+              if (lastMsg && lastMsg.role === 'admin' && lastMsg.content === data.content && Math.abs(Date.now() - (lastMsg.timestamp || 0)) < 3000) {
+                return prev;
+              }
+              const newMsg: ChatMessage = {
                 id: Date.now(),
                 role: 'admin',
                 content: data.content,
                 sender_name: senderName,
                 sender_role: (data as any).sender_role || 'CS Agent',
                 timestamp: Date.now(),
-              },
-            ]);
+              };
+              const updated = [...prev, newMsg];
+              try {
+                localStorage.setItem('lexa_messages', JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
           }
-          api
-            .get<{ history: Array<{ role: string; content: string; timestamp?: number; sender_name?: string; sender_role?: string }> }>(
-              `/api/chat/poll?session_id=${sessionId}&t=${Date.now()}`,
-              { headers: { 'X-Lexa-Session': sessionToken } }
-            )
-            .then((pollData) => {
-              if (pollData.history && pollData.history.length > 0) {
-                const mappedHistory = pollData.history.map((m, i) => ({
-                  id: m.timestamp || Date.now() + i,
-                  role: m.role === 'assistant' ? 'bot' : m.role,
-                  content: m.content,
-                  sender_name: m.sender_name,
-                  sender_role: m.sender_role,
-                  timestamp: m.timestamp || Date.now(),
-                })) as ChatMessage[];
-                setMessages((prev) => {
-                  const welcomeMsg = prev.length > 0 && prev[0].role === 'bot' ? prev[0] : null;
-                  const newMsgs = welcomeMsg ? [welcomeMsg, ...mappedHistory] : mappedHistory;
-                  const strip = (msgs: ChatMessage[]) =>
-                    JSON.stringify(msgs.map((msg) => ({ role: msg.role, content: msg.content })));
-                  return strip(prev) !== strip(newMsgs) ? newMsgs : prev;
-                });
-              }
-            })
-            .catch(() => {});
         } else if (data.type === 'handoff_requested') {
           setIsHandoffRequested(true);
         } else if (data.type === 'handoff_status') {
@@ -264,7 +247,7 @@ function App() {
           setMessages([resetMsg]);
           localStorage.setItem('lexa_messages', JSON.stringify([resetMsg]));
         } else if (data.type === 'typing') {
-          if (data.role === 'admin') {
+          if (data.role === 'admin' || (!data.role && isHandoffRequested)) {
             setIsAdminTyping(true);
             if (adminTypingTimeoutRef.current) clearTimeout(adminTypingTimeoutRef.current);
             adminTypingTimeoutRef.current = setTimeout(() => {

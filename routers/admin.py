@@ -74,7 +74,7 @@ async def get_widget_embed_code(
     position: str = "bottom-right",
     color: str = "#2563eb",
     theme: str = "dark",
-    payload: dict = Depends(verify_jwt),
+    payload: dict = Depends(require_role("Super Admin")),
 ):
     base_url = api_url or str(request.base_url).rstrip("/")
     from urllib.parse import quote_plus
@@ -137,7 +137,7 @@ async def reindex(request: Request, background_tasks: BackgroundTasks, payload: 
 
 
 @router.get("/api/admin/settings")
-async def get_admin_settings(payload: dict = Depends(verify_jwt)):
+async def get_admin_settings(payload: dict = Depends(require_role("Super Admin"))):
     return SettingsManager.get_settings()
 
 
@@ -212,12 +212,12 @@ async def admin_delete_unanswered_query(query_id: int, payload: dict = Depends(r
 
 
 @router.get("/api/admin/sessions")
-async def admin_get_sessions(payload: dict = Depends(verify_jwt), limit: int = 50, offset: int = 0):
+async def admin_get_sessions(payload: dict = Depends(require_role("Super Admin", "CS Agent")), limit: int = 50, offset: int = 0):
     return get_all_sessions(limit=limit, offset=offset)
 
 
 @router.get("/api/admin/sessions/export-all")
-async def export_all_sessions(format: str = "csv", payload: dict = Depends(verify_jwt)):
+async def export_all_sessions(format: str = "csv", payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     db = SessionLocal()
     try:
         sessions = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
@@ -256,7 +256,7 @@ async def export_all_sessions(format: str = "csv", payload: dict = Depends(verif
 
 
 @router.get("/api/admin/sessions/{session_id}")
-async def admin_get_session_history(session_id: str, payload: dict = Depends(verify_jwt)):
+async def admin_get_session_history(session_id: str, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     db = SessionLocal()
     try:
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
@@ -294,7 +294,7 @@ class KBDocUpdateReq(BaseModel):
 
 
 @router.get("/api/admin/kb/files")
-async def get_kb_files(payload: dict = Depends(verify_jwt)):
+async def get_kb_files(payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
     kb_dir = Config.KNOWLEDGE_BASE_DIR
     if not os.path.exists(kb_dir):
         return []
@@ -313,7 +313,7 @@ async def get_kb_files(payload: dict = Depends(verify_jwt)):
 
 
 @router.get("/api/admin/kb/files/{filename}")
-async def get_kb_file_content(filename: str, payload: dict = Depends(verify_jwt)):
+async def get_kb_file_content(filename: str, payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
     kb_dir = Config.KNOWLEDGE_BASE_DIR
     file_path = os.path.join(kb_dir, filename)
 
@@ -506,12 +506,12 @@ async def reindex_kb(background_tasks: BackgroundTasks, payload: dict = Depends(
 
 
 @router.get("/api/admin/kb/reindex/status")
-async def reindex_kb_status(payload: dict = Depends(verify_jwt)):
+async def reindex_kb_status(payload: dict = Depends(require_role("Super Admin", "Editor (Knowledge Base)"))):
     return state.reindex_status
 
 
 @router.get("/api/admin/users")
-async def admin_get_users(payload: dict = Depends(verify_jwt), limit: int = 50, offset: int = 0):
+async def admin_get_users(payload: dict = Depends(require_role("Super Admin")), limit: int = 50, offset: int = 0):
     return get_all_users(limit=limit, offset=offset)
 
 
@@ -810,17 +810,17 @@ async def admin_bulk_delete_sessions(request: Request, req: dict, payload: dict 
 
 
 @router.get("/api/admin/feedback/stats")
-async def admin_feedback_stats(payload: dict = Depends(verify_jwt)):
+async def admin_feedback_stats(payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     return get_feedback_stats()
 
 
 @router.get("/api/admin/feedback/recent")
-async def admin_recent_feedback(payload: dict = Depends(verify_jwt), limit: int = 20):
+async def admin_recent_feedback(payload: dict = Depends(require_role("Super Admin", "CS Agent")), limit: int = 20):
     return get_recent_feedback(limit=limit)
 
 
 @router.get("/api/admin/sessions/{session_id}/export")
-async def export_session_chat(session_id: str, format: str = "csv", payload: dict = Depends(verify_jwt)):
+async def export_session_chat(session_id: str, format: str = "csv", payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
     db = SessionLocal()
     try:
         s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()

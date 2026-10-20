@@ -51,8 +51,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
     { name: t.nav_kb, icon: <BookOpen className="w-5 h-5" />, path: '/kb', roles: ['Super Admin', 'Editor (Knowledge Base)'] },
     { name: t.nav_analytics, icon: <BarChart3 className="w-5 h-5" />, path: '/analytics', roles: ['Super Admin', 'CS Agent', 'Editor (Knowledge Base)'] },
     { name: t.nav_users, icon: <Users className="w-5 h-5" />, path: '/users', roles: ['Super Admin'] },
-    { name: t.nav_widget, icon: <Code className="w-5 h-5" />, path: '/widget' },
-    { name: t.nav_settings, icon: <Settings className="w-5 h-5" />, path: '/settings' },
+    { name: t.nav_widget, icon: <Code className="w-5 h-5" />, path: '/widget', roles: ['Super Admin'] },
+    { name: t.nav_settings, icon: <Settings className="w-5 h-5" />, path: '/settings', roles: ['Super Admin'] },
   ];
 
   const navItems = allNavItems.filter(item => !item.roles || item.roles.includes(userRole));
@@ -119,8 +119,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
               onClick={() => {
                 if (onCloseMobile) onCloseMobile();
               }}
-              title={isCollapsed ? item.name : undefined}
-              className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
+              className={`group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
                 isCollapsed ? 'lg:justify-center' : ''
               } ${
                 isActive
@@ -139,6 +138,11 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
                   </span>
                 )
               )}
+              {isCollapsed && (
+                <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-2.5 py-1.5 bg-[#0D1527] text-white text-xs font-medium rounded-lg shadow-xl border border-[#1E2E4A] whitespace-nowrap z-50 pointer-events-none items-center animate-in fade-in zoom-in-95 duration-100">
+                  {item.name}
+                </div>
+              )}
             </Link>
           );
         })}
@@ -146,11 +150,15 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
         <div className="pt-2 border-t border-[#152238] mt-2">
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            title={isCollapsed ? 'Keluar' : undefined}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
+            className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="w-5 h-5 shrink-0" />
             {!isCollapsed && <span className="text-[13px]">{t.nav_logout}</span>}
+            {isCollapsed && (
+              <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-2.5 py-1.5 bg-[#0D1527] text-red-400 text-xs font-medium rounded-lg shadow-xl border border-[#1E2E4A] whitespace-nowrap z-50 pointer-events-none items-center animate-in fade-in zoom-in-95 duration-100">
+                {t.nav_logout}
+              </div>
+            )}
           </button>
         </div>
       </nav>
