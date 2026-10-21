@@ -14,10 +14,19 @@ JWT_EXPIRATION_HOURS = 24
 # Grace period: token expired < 7 hari masih bisa di-refresh
 REFRESH_GRACE_PERIOD_DAYS = 7
 
+_env_mode = os.getenv("ENVIRONMENT", "development").strip().lower()
+
 if not JWT_SECRET:
-    import secrets
-    JWT_SECRET = secrets.token_urlsafe(32)
-    logger.warning("JWT_SECRET not set! Using auto-generated fallback secret to prevent startup crash.")
+    if _env_mode == "production":
+        logger.critical("FATAL: JWT_SECRET environment variable is not set in production!")
+        raise RuntimeError("FATAL CONFIG ERROR: JWT_SECRET must be set in production environment.")
+    else:
+        import secrets
+        JWT_SECRET = secrets.token_urlsafe(32)
+        logger.warning(
+            "JWT_SECRET not set! Generated temporary in-memory secret for development. "
+            "Set JWT_SECRET in .env to persist login sessions across restarts."
+        )
 
 security = HTTPBearer()
 

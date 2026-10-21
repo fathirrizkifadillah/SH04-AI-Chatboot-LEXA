@@ -18,6 +18,9 @@ def _getenv(key: str, default: str = "", cast: Callable[[str], str] = str) -> st
 class Config:
     """Konfigurasi terpusat untuk seluruh aplikasi Lexa Chatbot."""
 
+    # === Environment Mode ===
+    ENVIRONMENT: str = _getenv("ENVIRONMENT", "development").strip().lower()
+
     # === Groq API ===
     GROQ_API_KEY: str = _getenv("GROQ_API_KEY", "").strip()
     MODEL_NAME: str = _getenv("MODEL_NAME", "openai/gpt-oss-120b")
@@ -40,7 +43,7 @@ class Config:
     API_HOST: str = _getenv("API_HOST", "0.0.0.0")
     API_PORT: int = int(os.getenv("PORT") or os.getenv("API_PORT") or "8000")
     CORS_ORIGINS: list = [
-        o.strip()
+        o.strip().rstrip("/")
         for o in _getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",")
         if o.strip()
     ]
@@ -59,15 +62,18 @@ class Config:
 
     @classmethod
     def validate(cls):
-        """Validasi konfigurasi yang wajib diisi (non-blocking)."""
-        import sys
+        """Validasi konfigurasi startup."""
+        is_prod = cls.ENVIRONMENT == "production"
         if not cls.GROQ_API_KEY:
             logger.warning("[CONFIG WARNING] GROQ_API_KEY belum diset. Chatbot AI tidak dapat merespon pesan.")
-        if not cls.CORS_ORIGINS or all(not o.strip() for o in cls.CORS_ORIGINS):
-            logger.warning("[CONFIG WARNING] CORS_ORIGINS tidak diset. Mengizinkan semua origin.")
-            cls.CORS_ORIGINS = ["*"]
-        import os
+
         jwt_secret = os.getenv("JWT_SECRET", "").strip()
-        if not jwt_secret:
-            logger.warning("[CONFIG WARNING] JWT_SECRET belum diset di Railway Variables.")
+        if is_prod:
+            if not jwt_secret or jwt_secret == "lexa-dev-secret-key-change-in-production":
+                raise RuntimeError("FATAL CONFIG ERROR: JWT_SECRET wajib diisi secret unik pada environment production.")
+            if not cls.CORS_ORIGINS or cls.CORS_ORIGINS == ["*"]:
+                logger.warning("[CONFIG WARNING] CORS_ORIGINS di production sebaiknya tidak kosong atau '*' saat allow_credentials aktif.")
+        else:
+            if not jwt_secret:
+                logger.warning("[CONFIG WARNING] JWT_SECRET belum diset di environment lokal. Menggunakan fallback dev secret.")
         return True

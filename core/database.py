@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.ext.mutable import MutableList
 from dotenv import load_dotenv
+from core.config import Config
 
 logger = logging.getLogger("lexa")
 
@@ -24,6 +25,8 @@ if DATABASE_URL:
 
 # Default ke SQLite jika DATABASE_URL tidak diset (untuk development/local)
 if not DATABASE_URL:
+    if Config.ENVIRONMENT == "production":
+        raise RuntimeError("FATAL DATABASE ERROR: DATABASE_URL wajib diset di environment production. Fallback SQLite tidak diizinkan.")
     DATABASE_URL = "sqlite:///./lexa.db"
 
 # Fix untuk Heroku/Supabase format lama
@@ -36,6 +39,8 @@ if "@postgres:" in DATABASE_URL:
     try:
         socket.gethostbyname("postgres")
     except (socket.gaierror, OSError):
+        if Config.ENVIRONMENT == "production":
+            raise RuntimeError("FATAL DATABASE ERROR: Host 'postgres' tidak terjangkau pada environment production.")
         logger.warning("Host 'postgres' tidak terjangkau (di luar Docker). Menggunakan SQLite lokal (sqlite:///./lexa.db).")
         DATABASE_URL = "sqlite:///./lexa.db"
 
@@ -425,8 +430,6 @@ def get_analytics_chart_data(range_type: str = "7d", tz_offset_hours: int = 7):
                     days_data[label]["unresolved"] += 1
 
             return list(days_data.values())
-
-            return list(days_data.values())
     finally:
         db.close()
 
@@ -618,8 +621,10 @@ def init_database():
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         logger.error(f"Gagal koneksi ke database primary ({DATABASE_URL}): {e}")
+        if Config.ENVIRONMENT == "production":
+            raise RuntimeError(f"FATAL DATABASE ERROR: Gagal koneksi ke database primary di production ({DATABASE_URL}): {e}")
         if not str(DATABASE_URL).startswith("sqlite"):
-            logger.warning("Fallback ke SQLite lokal (sqlite:///./lexa.db) agar aplikasi tetap berjalan...")
+            logger.warning("Fallback ke SQLite lokal (sqlite:///./lexa.db) agar aplikasi tetap berjalan di environment dev...")
             try:
                 DATABASE_URL = "sqlite:///./lexa.db"
                 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})

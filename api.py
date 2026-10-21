@@ -138,13 +138,37 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# CORS
+# ──────────────────────────────────────────────
+# CORS Configuration (Security Hardened)
+# ──────────────────────────────────────────────
+is_prod = Config.ENVIRONMENT == "production"
+
+default_dev_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+configured_origins = [o.rstrip("/") for o in Config.CORS_ORIGINS if o.strip()]
+
+if is_prod:
+    # In production, require explicitly configured origins; no wildcard regex allowed
+    cors_allowed_origins = configured_origins if configured_origins else ["https://lexatech.id"]
+    cors_allow_origin_regex = None
+else:
+    # In development/testing, merge configured origins with localhost development servers
+    cors_allowed_origins = list(set(configured_origins + default_dev_origins))
+    cors_allow_origin_regex = None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=Config.CORS_ORIGINS if Config.CORS_ORIGINS else ["*"],
-    allow_origin_regex=r"https://.*(\.railway\.app|\.up\.railway\.app|\.koyeb\.app|\.vercel\.app|\.onrender\.com|\.hf\.space|\.pages\.dev)|http://localhost.*",
+    allow_origins=cors_allowed_origins,
+    allow_origin_regex=cors_allow_origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -190,7 +214,6 @@ app.include_router(chat.router, tags=["Chat & Widget"])
 app.include_router(admin.router, tags=["Admin Management"])
 app.include_router(widget.router, tags=["Widget Config"])
 app.include_router(upload.router, tags=["Chat & Widget"])
-
 
 
 @app.get("/")
