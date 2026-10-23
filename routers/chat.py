@@ -289,6 +289,7 @@ def get_or_create_session(session_id: str) -> LexaChatbot:
 
 
 @router.post("/chat", response_model=ChatResponse)
+@router.post("/api/chat", response_model=ChatResponse)
 @limiter.limit("20/minute")
 async def chat(request: Request, req: ChatRequest):
     if not req.message or not req.message.strip():
@@ -359,6 +360,7 @@ async def chat(request: Request, req: ChatRequest):
 
 
 @router.post("/chat/stream")
+@router.post("/api/chat/stream")
 @limiter.limit("20/minute")
 async def chat_stream(request: Request, req: ChatRequest):
     if not req.message or not req.message.strip():
@@ -623,6 +625,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
 
 @router.post("/chat/reset")
+@router.post("/api/chat/reset")
 @limiter.limit("10/minute")
 async def reset_chat(request: Request, session_id: str = ""):
     if not session_id:
