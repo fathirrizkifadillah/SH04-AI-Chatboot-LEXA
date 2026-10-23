@@ -247,10 +247,9 @@ def _require_session_token(session_id: str, session_token: str | None) -> None:
                 session.session_token_hash = _token_hash(session_token)
                 db.commit()
             return
-        # Jika client mengirim token tetapi hash berbeda, auto-heal agar sesi tidak putus/ter-reset
-        if session_token and not hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
-            session.session_token_hash = _token_hash(session_token)
-            db.commit()
+        # Validasi kepemilikan sesi secara kriptografis (cegah IDOR)
+        if not session_token or not hmac.compare_digest(session.session_token_hash, _token_hash(session_token)):
+            raise HTTPException(status_code=403, detail='Akses ditolak: Token sesi tidak valid.')
     finally:
         db.close()
 

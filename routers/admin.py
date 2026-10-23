@@ -558,7 +558,17 @@ async def admin_create_user(request: Request, req: UserCreateRequest, payload: d
         )
         db.add(new_user)
         db.commit()
-        return {"status": "success", "message": "User berhasil dibuat"}
+        db.refresh(new_user)
+        return {
+            "status": "success",
+            "message": "User berhasil dibuat",
+            "user": {
+                "id": new_user.id,
+                "name": new_user.name,
+                "email": new_user.email,
+                "role": new_user.role,
+            }
+        }
     finally:
         db.close()
 

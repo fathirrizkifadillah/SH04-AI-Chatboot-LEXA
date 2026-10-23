@@ -150,18 +150,27 @@ default_dev_origins = [
     "http://127.0.0.1:5174",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://lexa-chatbot.vercel.app",
+    "https://lexa-admin-dashboard.vercel.app",
 ]
 
 configured_origins = [o.rstrip("/") for o in Config.CORS_ORIGINS if o.strip()]
 
+# Regex allowlist for Vercel deployments
+vercel_origin_regex = r"^https:\/\/[a-zA-Z0-9\-_]+\.vercel\.app$"
+
 if is_prod:
-    # In production, require explicitly configured origins; no wildcard regex allowed
-    cors_allowed_origins = configured_origins if configured_origins else ["https://lexatech.id"]
-    cors_allow_origin_regex = None
+    # In production, require explicitly configured origins or verified vercel app domains
+    cors_allowed_origins = configured_origins if configured_origins else [
+        "https://lexatech.id",
+        "https://lexa-chatbot.vercel.app",
+        "https://lexa-admin-dashboard.vercel.app",
+    ]
+    cors_allow_origin_regex = vercel_origin_regex
 else:
     # In development/testing, merge configured origins with localhost development servers
     cors_allowed_origins = list(set(configured_origins + default_dev_origins))
-    cors_allow_origin_regex = None
+    cors_allow_origin_regex = vercel_origin_regex
 
 app.add_middleware(
     CORSMiddleware,
