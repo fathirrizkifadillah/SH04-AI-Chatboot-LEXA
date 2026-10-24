@@ -12,7 +12,6 @@ import time
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.database import engine
 from core.vector_pg import PostgresVectorStore
 from core.rag import RAGPipeline
 

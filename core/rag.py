@@ -6,8 +6,6 @@ import urllib.error
 import urllib.request
 from typing import Optional
 
-import chromadb
-from chromadb.utils import embedding_functions
 import pypdf
 
 logger = logging.getLogger("lexa")
@@ -34,6 +32,8 @@ class ChromaVectorStore:
     Penyimpanan Vektor menggunakan ChromaDB (Local fallback & dev store).
     """
     def __init__(self, persist_directory="knowledge_base/chroma_db", model_name="all-MiniLM-L6-v2"):
+        import chromadb
+        from chromadb.utils import embedding_functions
         self.persist_directory = persist_directory
         self.model_name = model_name
         self.client = chromadb.PersistentClient(path=self.persist_directory)

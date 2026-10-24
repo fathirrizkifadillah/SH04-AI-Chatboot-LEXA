@@ -28,7 +28,6 @@ from core.database import (
     cleanup_orphaned_unanswered_queries,
     get_all_sessions,
     get_all_users,
-    get_session_history,
     AdminUser,
     SessionLocal,
     ChatSession,

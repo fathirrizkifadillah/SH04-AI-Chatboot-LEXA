@@ -12,14 +12,12 @@ import logging
 import json
 import datetime
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse, FileResponse
 
-from core.database import get_session_history, SessionLocal, ChatSession
+from core.database import get_session_history
 from routers.chat import get_or_create_session, get_session_lock, manager, _get_or_create_session_token, _save_handoff_message
-import core.state as state
 
 logger = logging.getLogger("lexa.upload")
 
@@ -37,8 +35,11 @@ UPLOAD_DIR = "uploads"
 
 def _extract_pdf_text(data: bytes) -> str:
     try:
-        import PyPDF2
-        reader = PyPDF2.PdfReader(io.BytesIO(data))
+        try:
+            import pypdf as pdf_lib
+        except ImportError:
+            import PyPDF2 as pdf_lib
+        reader = pdf_lib.PdfReader(io.BytesIO(data))
         pages = [p.extract_text() or "" for p in reader.pages]
         return "\n".join(pages)[:4000]
     except Exception as e:

@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON, Boolean, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.ext.mutable import MutableList
 from dotenv import load_dotenv
 from core.config import Config
