@@ -97,12 +97,10 @@ def is_handoff_query(message: str) -> bool:
 
 
 RETURN_TO_BOT_PATTERNS = [
-    r"(kembali|balik|pindah|ganti|tukar)\s*(ke|lagi\s*ke)?\s*(bot|ai|chatbot|lexa|robot)",
-    r"(ngobrol|tanya|bicara)\s*(sama|ke)?\s*(bot|ai|chatbot|lexa)",
-    r"(mau|pengen|bisa)\s*(tanya|ngobrol|bicara)\s*(sama)?\s*(bot|ai|chatbot|lexa)",
-    r"kembali\s*ke\s*mode\s*ai",
-    r"kembali\s*ke\s*mode\s*bot",
-    r"kembali\s*ke\s*otomatis",
+    r"(kembali|balik|pindah|ganti|tukar|oper|switch)\s*(lagi)?\s*(ke|sama)?\s*(bot|ai|chatbot|lexa|robot)",
+    r"\b(ke|sama|pake|pakai|mau|pengen|coba)\s*(bot|ai|chatbot|lexa|robot)\b",
+    r"\b(bot|ai|chatbot|lexa|robot)\s*(aja|saja|lagi|dong|deh)\b",
+    r"(ngobrol|tanya|bicara|chat)\s*(lagi)?\s*(sama|ke|dengan)?\s*(bot|ai|chatbot|lexa)",
     r"mode\s*(bot|ai|otomatis)",
     r"stop\s*cs|selesai\s*cs|tutup\s*cs",
 ]

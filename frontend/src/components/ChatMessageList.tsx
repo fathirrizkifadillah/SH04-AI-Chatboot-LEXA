@@ -14,6 +14,7 @@ interface ChatMessageListProps {
   isStreaming: boolean;
   isWaitingForResponse: boolean;
   isAdminTyping: boolean;
+  isHandoffMode?: boolean;
   feedbackGiven: Record<number, 'thumbs_up' | 'thumbs_down'>;
   onFeedback: (idx: number, rating: 'thumbs_up' | 'thumbs_down') => void;
   onRequestHandoff?: () => void;
@@ -26,6 +27,7 @@ export const ChatMessageList = ({
   isStreaming,
   isWaitingForResponse,
   isAdminTyping,
+  isHandoffMode,
   feedbackGiven,
   onFeedback,
   onRequestHandoff,
@@ -217,7 +219,7 @@ export const ChatMessageList = ({
 
       {/* Typing Indicator with Precision Wave */}
       <AnimatePresence>
-        {(isWaitingForResponse || isAdminTyping) && (
+        {((!isHandoffMode && isWaitingForResponse) || isAdminTyping) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -242,17 +244,17 @@ export const ChatMessageList = ({
                 <motion.span
                   animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
                   transition={{ repeat: Infinity, duration: 0.9, delay: 0 }}
-                  className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                  className={`w-1.5 h-1.5 rounded-full ${isAdminTyping ? 'bg-amber-400' : 'bg-blue-400'}`}
                 />
                 <motion.span
                   animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
                   transition={{ repeat: Infinity, duration: 0.9, delay: 0.2 }}
-                  className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                  className={`w-1.5 h-1.5 rounded-full ${isAdminTyping ? 'bg-amber-400' : 'bg-blue-400'}`}
                 />
                 <motion.span
                   animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
                   transition={{ repeat: Infinity, duration: 0.9, delay: 0.4 }}
-                  className="w-1.5 h-1.5 rounded-full bg-blue-400"
+                  className={`w-1.5 h-1.5 rounded-full ${isAdminTyping ? 'bg-amber-400' : 'bg-blue-400'}`}
                 />
               </div>
             </div>

@@ -713,6 +713,7 @@ function App() {
               isStreaming={isStreaming}
               isWaitingForResponse={isWaitingForResponse}
               isAdminTyping={isAdminTyping}
+              isHandoffMode={isHandoffRequested}
               feedbackGiven={feedbackGiven}
               onFeedback={handleFeedback}
               onRequestHandoff={handleRequestHandoff}

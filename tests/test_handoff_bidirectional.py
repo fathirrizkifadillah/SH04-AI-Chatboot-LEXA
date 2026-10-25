@@ -18,7 +18,11 @@ def test_return_to_bot_query_detection():
     assert is_return_to_bot_query("balik ke chatbot")
     assert is_return_to_bot_query("mau ngobrol sama bot lagi")
     assert is_return_to_bot_query("kembali ke mode ai")
+    assert is_return_to_bot_query("eh ke chatbot maksudnya")
+    assert is_return_to_bot_query("ke bot aja")
+    assert is_return_to_bot_query("mau chatbot")
     assert not is_return_to_bot_query("terima kasih mas admin sudah dibantu")
+    assert not is_return_to_bot_query("akumau balik lagi aja deh ke admin")
 
 
 def test_has_admin_replied_in_get_all_sessions(db_session):
