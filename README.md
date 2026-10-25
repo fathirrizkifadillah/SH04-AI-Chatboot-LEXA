@@ -32,7 +32,7 @@ Platform asisten customer service cerdas berbasis **AI** dan **RAG (Retrieval-Au
 |-------|-----------|
 | **Backend** | Python, FastAPI, SQLAlchemy, Uvicorn |
 | **Database** | PostgreSQL (prod) / SQLite (dev) |
-| **AI & RAG** | Groq API (AsyncGroq), ChromaDB, SentenceTransformers |
+| **AI & RAG** | Groq API (AsyncGroq), PostgreSQL (pgvector), SentenceTransformers |
 | **Frontend** | React 19, TypeScript, Vite 8 |
 | **Admin** | React 19, TypeScript, Vite 8, React Router, Recharts |
 | **Styling** | Tailwind CSS (v3 widget, v4 admin) |
@@ -124,7 +124,7 @@ CHATBOT LEXA/
 ├── tests/                  # Backend tests (Pytest)
 ├── frontend/               # Chat widget (React + TypeScript)
 ├── admin_dashboard/        # Admin panel (React + TypeScript)
-├── knowledge_base/         # RAG documents + ChromaDB
+├── knowledge_base/         # RAG documents (.md, .pdf)
 ├── data/                   # Runtime data (settings.json)
 ├── .github/workflows/      # CI/CD pipeline
 ├── Dockerfile              # Backend container

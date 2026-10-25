@@ -459,8 +459,6 @@ async def delete_kb_file(request: Request, filename: str, payload: dict = Depend
 
 
 def run_rebuild():
-    staging_dir = None
-    old_chroma_dir = None
     try:
         if not state.rag_pipeline:
             state.reindex_status = {"state": "failed", "message": "RAG pipeline belum siap."}
@@ -468,50 +466,14 @@ def run_rebuild():
         state.reindex_status = {"state": "indexing", "message": "Sedang membangun index baru."}
         active_pipeline = state.rag_pipeline
 
-        if getattr(active_pipeline, "backend_type", "chroma") == "pgvector":
-            # Native PostgreSQL pgvector: zero disk usage, zero disk leaks
-            logger.info("Membangun ulang knowledge base menggunakan Supabase pgvector...")
-            active_pipeline.load_or_build(force_rebuild=True)
-            if active_pipeline.vector_store.count() == 0:
-                raise RuntimeError("Index pgvector baru kosong.")
-            state.reindex_status = {"state": "success", "message": "Knowledge base pgvector berhasil diperbarui."}
-        else:
-            # ChromaDB fallback with guaranteed cleanup of previous staging folder
-            base_dir = (
-                active_pipeline.db_dir
-                if getattr(active_pipeline, "db_dir", None) and os.path.exists(active_pipeline.db_dir)
-                else Config.KNOWLEDGE_BASE_DIR
-            )
-            os.makedirs(base_dir, exist_ok=True)
-            staging_dir = tempfile.mkdtemp(prefix="lexa_chroma_", dir=base_dir)
-            candidate = RAGPipeline(
-                db_dir=active_pipeline.db_dir,
-                kb_url=active_pipeline.kb_url,
-                chroma_dir=staging_dir,
-                use_pgvector=False,
-            )
-            candidate.load_or_build(force_rebuild=True)
-
-            if candidate.vector_store.count() == 0:
-                raise RuntimeError("Index baru kosong.")
-
-            old_chroma_dir = active_pipeline.chroma_dir
-            state.rag_pipeline = candidate
-            state.reindex_status = {"state": "success", "message": "Knowledge base berhasil diperbarui."}
-
-            # Safely cleanup previous staging directory if it was an ephemeral temp dir
-            if old_chroma_dir and "lexa_chroma_" in os.path.basename(old_chroma_dir) and os.path.exists(old_chroma_dir):
-                try:
-                    shutil.rmtree(old_chroma_dir, ignore_errors=True)
-                    logger.info(f"Cleaned up previous staging directory: {old_chroma_dir}")
-                except Exception as clean_err:
-                    logger.warning(f"Failed to remove previous staging dir {old_chroma_dir}: {clean_err}")
-
+        logger.info("Membangun ulang knowledge base menggunakan PostgreSQL pgvector...")
+        active_pipeline.load_or_build(force_rebuild=True)
+        if active_pipeline.vector_store.count() == 0:
+            raise RuntimeError("Index pgvector baru kosong.")
+        state.reindex_status = {"state": "success", "message": "Knowledge base pgvector berhasil diperbarui."}
     except Exception as e:
         logger.error(f"Error rebuilding RAG: {e}")
         state.reindex_status = {"state": "failed", "message": f"Gagal membangun index baru: {str(e)}"}
-        if staging_dir and os.path.exists(staging_dir):
-            shutil.rmtree(staging_dir, ignore_errors=True)
     finally:
         if state.reindex_lock.locked():
             state.reindex_lock.release()

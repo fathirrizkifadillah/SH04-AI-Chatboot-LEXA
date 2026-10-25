@@ -26,8 +26,8 @@ ENV HOME=/home/user \
 WORKDIR /app
 COPY --chown=user:user . /app
 
-# Pastikan folder data, uploads, dan chroma_db writable
-RUN mkdir -p /app/data /app/uploads /app/knowledge_base/chroma_db && \
+# Pastikan folder data, uploads writable
+RUN mkdir -p /app/data /app/uploads /app/knowledge_base && \
     chown -R user:user /app
 
 USER user

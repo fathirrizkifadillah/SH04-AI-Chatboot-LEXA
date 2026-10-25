@@ -27,6 +27,40 @@ class PostgresVectorStore:
         self.device = device
         self._model: Optional[SentenceTransformer] = None
         self._staging_gen_id: Optional[str] = None
+        self._ensure_tables()
+
+    def _ensure_tables(self):
+        """Ensure pgvector extension and knowledge base tables exist."""
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS kb_generations (
+                        generation_id VARCHAR(64) PRIMARY KEY,
+                        source_type VARCHAR(32) NOT NULL,
+                        status VARCHAR(16) NOT NULL DEFAULT 'building',
+                        chunk_count INT NOT NULL DEFAULT 0,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        activated_at TIMESTAMP WITH TIME ZONE
+                    );
+                """))
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS kb_document_chunks (
+                        id SERIAL PRIMARY KEY,
+                        generation_id VARCHAR(64) REFERENCES kb_generations(generation_id) ON DELETE CASCADE,
+                        content TEXT NOT NULL,
+                        metadata JSONB,
+                        embedding vector(384),
+                        content_hash VARCHAR(32),
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    );
+                """))
+                conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_chunks_gen_id ON kb_document_chunks(generation_id);
+                """))
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Could not auto-create pgvector tables: {e}")
 
     @property
     def model(self) -> SentenceTransformer:

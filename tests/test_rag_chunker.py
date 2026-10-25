@@ -2,12 +2,11 @@ from core.rag import RAGPipeline
 
 
 class DummyPipeline(RAGPipeline):
-    """Subclass without initializing ChromaDB to test chunking pure logic."""
+    """Subclass without initializing vector database to test chunking pure logic."""
     def __init__(self):
         self.db_dir = "dummy"
-        self.chroma_dir = "dummy/chroma"
         self.kb_url = "dummy"
-        # vector_store not needed for chunking tests
+        self.vector_store = None
 
 
 def test_chunk_markdown_sections():

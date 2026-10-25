@@ -4,7 +4,7 @@ import hashlib
 import logging
 import urllib.error
 import urllib.request
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import pypdf
 
@@ -21,117 +21,57 @@ def is_pgvector_supported() -> bool:
             return False
         from sqlalchemy import text
         with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
             val = conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector';")).scalar()
             return val == 1
     except Exception:
         return False
 
 
-class ChromaVectorStore:
-    """
-    Penyimpanan Vektor menggunakan ChromaDB (Local fallback & dev store).
-    """
-    def __init__(self, persist_directory="knowledge_base/chroma_db", model_name="all-MiniLM-L6-v2"):
-        import chromadb
-        from chromadb.utils import embedding_functions
-        self.persist_directory = persist_directory
-        self.model_name = model_name
-        self.client = chromadb.PersistentClient(path=self.persist_directory)
-        self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=self.model_name,
-            device="cpu"
-        )
-        
-        self.collection = self.client.get_or_create_collection(
-            name="lexa_kb",
-            embedding_function=self.embedding_fn,
-            metadata={"hnsw:space": "cosine"}
-        )
+class InMemoryVectorStore:
+    """Penyimpanan Vektor In-Memory ringan untuk testing atau offline dev tanpa database eksternal."""
+    def __init__(self):
+        self._chunks: List[Dict[str, Any]] = []
 
     def reset_collection(self):
-        """Menghapus koleksi lama agar sinkronisasi dokumen bersih dari file yang sudah dihapus."""
-        try:
-            self.client.delete_collection("lexa_kb")
-        except Exception:
-            pass
-        self.collection = self.client.get_or_create_collection(
-            name="lexa_kb",
-            embedding_function=self.embedding_fn,
-            metadata={"hnsw:space": "cosine"}
-        )
+        self._chunks = []
 
-    def add_chunks(self, chunks):
-        """Menambahkan chunks dokumen baru ke ChromaDB."""
-        if not chunks:
-            return
-            
-        documents = []
-        metadatas = []
-        ids = []
-        
-        for i, chunk in enumerate(chunks):
-            documents.append(chunk["content"])
-            metadatas.append(chunk["metadata"])
-            content_hash = hashlib.md5(chunk['content'].encode()).hexdigest()
-            ids.append(f"doc_{i}_{content_hash}")
-            
-        self.collection.upsert(
-            documents=documents,
-            metadatas=metadatas,
-            ids=ids
-        )
+    def add_chunks(self, chunks: List[Dict[str, Any]]):
+        if chunks:
+            self._chunks.extend(chunks)
 
     def count(self) -> int:
-        return self.collection.count()
+        return len(self._chunks)
 
-    def search(self, query: str, top_k: int = 3, threshold: float = 0.52):
-        """Mencari chunk dokumen teratas yang relevan."""
-        if self.collection.count() == 0:
+    def search(self, query: str, top_k: int = 5, threshold: float = 0.52) -> List[Dict[str, Any]]:
+        if not self._chunks:
             return []
-            
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=top_k,
-            include=['documents', 'metadatas', 'distances']
-        )
-        
-        formatted_results = []
-        if results['documents'] and len(results['documents']) > 0:
-            is_cosine = bool(self.collection.metadata and self.collection.metadata.get("hnsw:space") == "cosine")
-            for i in range(len(results['documents'][0])):
-                distance = results['distances'][0][i]
-                if is_cosine:
-                    score = max(0.0, 1.0 - distance)
-                else:
-                    score = 1.0 / (1.0 + distance)
-                
-                if score >= threshold:
-                    formatted_results.append({
-                        "chunk": {
-                            "content": results['documents'][0][i],
-                            "metadata": results['metadatas'][0][i]
-                        },
-                        "score": score,
-                        "similarity": score,
-                    })
-        return formatted_results
+        q_lower = query.lower()
+        results = []
+        for c in self._chunks:
+            text_content = c.get("content", "").lower()
+            if any(w in text_content for w in q_lower.split() if len(w) > 3):
+                results.append({"chunk": c, "score": 0.8, "similarity": 0.8})
+        return results[:top_k]
+
+    def activate_generation(self):
+        pass
 
 
 class RAGPipeline:
     """
     RAG Pipeline untuk mengelola pembacaan folder dokumen, chunking,
     pengindeksan, dan pencarian basis pengetahuan.
-    Mendukung backend native PostgreSQL pgvector dan fallback ChromaDB.
+    Menggunakan backend native PostgreSQL pgvector.
     """
     def __init__(
         self,
         db_dir="knowledge_base",
         kb_url=None,
-        chroma_dir=None,
         use_pgvector: Optional[bool] = None,
     ):
         self.db_dir = db_dir
-        self.chroma_dir = chroma_dir or os.path.join(self.db_dir, "chroma_db")
         self.kb_url = kb_url or os.getenv("KNOWLEDGE_BASE_URL", DEFAULT_KB_URL)
 
         env_pref = os.getenv("USE_PGVECTOR", "").strip().lower()
@@ -143,19 +83,14 @@ class RAGPipeline:
             prefer_pg = is_pgvector_supported()
 
         if prefer_pg:
-            try:
-                from core.vector_pg import PostgresVectorStore
-                self.vector_store = PostgresVectorStore()
-                self.backend_type = "pgvector"
-                logger.info("RAG Pipeline menggunakan backend Supabase pgvector.")
-            except Exception as e:
-                logger.warning(f"Gagal inisialisasi PostgresVectorStore: {e}. Fallback ke ChromaDB.")
-                self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
-                self.backend_type = "chroma"
+            from core.vector_pg import PostgresVectorStore
+            self.vector_store = PostgresVectorStore()
+            self.backend_type = "pgvector"
+            logger.info("RAG Pipeline menggunakan backend PostgreSQL pgvector.")
         else:
-            self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
-            self.backend_type = "chroma"
-            logger.info("RAG Pipeline menggunakan backend lokal ChromaDB.")
+            self.vector_store = InMemoryVectorStore()
+            self.backend_type = "in_memory"
+            logger.info("RAG Pipeline menggunakan backend in-memory (testing/dev).")
 
     def chunk_markdown(self, text: str, filename: str) -> list:
         """
@@ -169,114 +104,119 @@ class RAGPipeline:
         main_title = main_title_match.group(1).strip() if main_title_match else filename
         
         for section in sections:
-            section = section.strip()
-            if not section:
+            clean_section = section.strip()
+            if not clean_section:
                 continue
-            
+                
+            header_match = re.search(r'^(##+)\s+(.+)', clean_section, re.MULTILINE)
+            if header_match:
+                section_title = header_match.group(2).strip()
+            else:
+                section_title = main_title
+                
             chunks.append({
-                "content": section,
+                "content": clean_section,
                 "metadata": {
                     "source": filename,
+                    "section_title": section_title,
                     "document_title": main_title
                 }
             })
+            
         return chunks
 
-    def chunk_text(self, text: str, filename: str, chunk_size: int = 600) -> list:
+    def chunk_text(self, text: str, filename: str, chunk_size: int = 800, chunk_overlap: int = 150) -> list:
         """
-        Memotong teks biasa atau hasil PDF ke dalam chunks berbasis kalimat
-        jika tidak ditemukan header Markdown di dalamnya.
+        Memotong teks biasa atau PDF menjadi potongan paragraf semantik.
+        Mendeteksi jika file teks sebenarnya berformat Markdown.
         """
-        if re.search(r'(?:^|\n)(##+\s+)', text):
+        if re.search(r'(?m)^#{1,6}\s+\S+', text):
             return self.chunk_markdown(text, filename)
-
+            
         paragraphs = text.split("\n\n")
         chunks = []
-        current_chunk = []
-        current_size = 0
-
+        current_chunk = ""
+        
         for para in paragraphs:
             para = para.strip()
             if not para:
                 continue
-
-            if len(para) > chunk_size:
-                if current_chunk:
-                    chunks.append("\n".join(current_chunk))
-                    current_chunk = []
-                    current_size = 0
                 
+            if len(para) > chunk_size:
                 sentences = re.split(r'(?<=[.!?])\s+', para)
                 for sentence in sentences:
                     sentence = sentence.strip()
                     if not sentence:
                         continue
-                    if current_size + len(sentence) > chunk_size:
-                        if current_chunk:
-                            chunks.append(" ".join(current_chunk))
-                        current_chunk = [sentence]
-                        current_size = len(sentence)
+                    if len(current_chunk) + len(sentence) + 1 <= chunk_size:
+                        current_chunk = f"{current_chunk} {sentence}".strip()
                     else:
-                        current_chunk.append(sentence)
-                        current_size += len(sentence)
+                        if current_chunk:
+                            chunks.append(current_chunk)
+                        current_chunk = sentence
+                continue
+
+            if len(current_chunk) + len(para) + 2 <= chunk_size:
+                current_chunk = f"{current_chunk}\n\n{para}".strip()
             else:
-                if current_size + len(para) > chunk_size:
-                    if current_chunk:
-                        chunks.append("\n".join(current_chunk))
-                    current_chunk = [para]
-                    current_size = len(para)
-                else:
-                    current_chunk.append(para)
-                    current_size += len(para)
-
+                if current_chunk:
+                    chunks.append(current_chunk)
+                current_chunk = para
+                
         if current_chunk:
-            chunks.append("\n".join(current_chunk))
-
-        result_chunks = []
-        for i, content in enumerate(chunks):
-            result_chunks.append({
-                "content": content,
+            chunks.append(current_chunk)
+            
+        doc_title = filename.replace(".txt", "").replace(".pdf", "").replace("-", " ").replace("_", " ").title()
+        
+        return [
+            {
+                "content": c,
                 "metadata": {
                     "source": filename,
-                    "document_title": f"{filename} (Bagian {i+1})"
+                    "section_title": f"{doc_title} (Part {i+1})",
+                    "document_title": doc_title
                 }
-            })
-        return result_chunks
+            }
+            for i, c in enumerate(chunks)
+        ]
 
-    def fetch_remote_kb(self, url: str = None) -> str:
-        """Mengambil basis pengetahuan markdown dari API company profile."""
-        url = url or self.kb_url
-        request = urllib.request.Request(url, headers={"User-Agent": "LexaChatbot/1.0"})
+    def fetch_remote_kb(self) -> str:
+        """Mengambil dokumen profil dari API endpoint."""
+        req = urllib.request.Request(
+            self.kb_url,
+            headers={"User-Agent": "LexaChatbot/1.0"},
+        )
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 return response.read().decode("utf-8")
-        except urllib.error.URLError as e:
-            raise RuntimeError(f"Gagal mengambil basis pengetahuan dari {url}: {e}") from e
+        except (urllib.error.URLError, TimeoutError) as e:
+            raise ConnectionError(
+                f"Gagal terhubung ke Knowledge Base di {self.kb_url}: {e}"
+            ) from e
 
-    def _cache_kb_text(self, text: str) -> str:
-        """Menyimpan salinan lokal basis pengetahuan untuk fallback offline."""
-        os.makedirs(self.db_dir, exist_ok=True)
-        cache_path = os.path.join(self.db_dir, "lexa_company_profile.md")
-        with open(cache_path, "w", encoding="utf-8") as f:
+    def _cache_path(self) -> str:
+        return os.path.join(self.db_dir, "lexa_company_profile.md")
+
+    def _cache_kb_text(self, text: str):
+        if not os.path.exists(self.db_dir):
+            os.makedirs(self.db_dir)
+        with open(self._cache_path(), "w", encoding="utf-8") as f:
             f.write(text)
-        return cache_path
 
-    def _load_cached_kb_text(self):
-        cache_path = os.path.join(self.db_dir, "lexa_company_profile.md")
-        if not os.path.exists(cache_path):
-            return None
-        with open(cache_path, "r", encoding="utf-8") as f:
-            return f.read()
+    def _load_cached_kb(self) -> Optional[str]:
+        path = self._cache_path()
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        return None
 
-    def build_index_from_url(self, url: str = None):
-        """Fetch KB dari API, cache ke disk, lalu bangun indeks vektor."""
-        filename = "lexa_company_profile.md"
+    def build_index_from_url(self, filename="lexa_company_profile.md"):
+        """Download dari API -> chunk -> masukkan ke Vector Store."""
         try:
-            text = self.fetch_remote_kb(url)
+            text = self.fetch_remote_kb()
             self._cache_kb_text(text)
-            logger.info("Basis pengetahuan berhasil diambil dari API.")
-        except RuntimeError as e:
-            cached = self._load_cached_kb_text()
+        except ConnectionError as e:
+            cached = self._load_cached_kb()
             if cached:
                 text = cached
                 logger.warning(f"Peringatan: {e}. Menggunakan cache lokal.")
@@ -289,8 +229,6 @@ class RAGPipeline:
         if not chunks:
             raise RuntimeError("Basis pengetahuan kosong setelah chunking.")
 
-        if self.backend_type == "chroma":
-            self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
         self.vector_store.reset_collection()
         self.vector_store.add_chunks(chunks)
         if hasattr(self.vector_store, "activate_generation"):
@@ -337,8 +275,6 @@ class RAGPipeline:
                     logger.error(f"Gagal membaca file {file}: {e}")
 
         if all_chunks:
-            if self.backend_type == "chroma":
-                self.vector_store = ChromaVectorStore(persist_directory=self.chroma_dir)
             self.vector_store.reset_collection()
             self.vector_store.add_chunks(all_chunks)
             if hasattr(self.vector_store, "activate_generation"):
@@ -349,27 +285,13 @@ class RAGPipeline:
             self.build_index_from_url()
 
     def load_or_build(self, force_rebuild=False):
-        """Memuat indeks dari cache/database. Jika belum ada atau force_rebuild, bangun dari dokumen lokal/API."""
-        if self.backend_type == "pgvector":
-            active_count = self.vector_store.count()
-            if active_count > 0 and not force_rebuild:
-                logger.info(f"Indeks RAG pgvector siap dengan {active_count} chunks aktif.")
-                return
-            logger.info("Indeks pgvector kosong atau force_rebuild, membangun indeks...")
-            self.build_index()
-        else:
-            if os.path.exists(self.chroma_dir) and not force_rebuild:
-                try:
-                    if self.vector_store.count() > 0:
-                        logger.info(f"Indeks RAG berhasil dimuat dari ChromaDB ({self.vector_store.count()} chunks).")
-                    else:
-                        logger.info("ChromaDB kosong, membangun ulang...")
-                        self.build_index()
-                except Exception as e:
-                    logger.error(f"Gagal memuat indeks dari cache, membangun ulang: {e}")
-                    self.build_index()
-            else:
-                self.build_index()
+        """Memuat indeks dari database. Jika belum ada atau force_rebuild, bangun dari dokumen lokal/API."""
+        active_count = self.vector_store.count()
+        if active_count > 0 and not force_rebuild:
+            logger.info(f"Indeks RAG {self.backend_type} siap dengan {active_count} chunks aktif.")
+            return
+        logger.info(f"Indeks {self.backend_type} kosong atau force_rebuild, membangun indeks...")
+        self.build_index()
 
     def search(self, query: str, top_k: int = 5, threshold: float = 0.52):
         """Mencari dokumen yang relevan dengan query user."""
