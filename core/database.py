@@ -527,10 +527,13 @@ def get_all_sessions(limit: int = 50, offset: int = 0):
             elif s.is_human_handoff:
                 last_msg = "[Permintaan Handoff CS]"
 
+            has_admin_replied = any(isinstance(m, dict) and m.get("role") == "admin" for m in history)
+
             valid_items.append({
                 "session_id": s.session_id,
                 "last_message": last_msg,
                 "is_human_handoff": bool(s.is_human_handoff),
+                "has_admin_replied": has_admin_replied,
                 "created_at": _to_utc_iso(s.created_at),
                 "updated_at": _to_utc_iso(s.updated_at)
             })

@@ -80,6 +80,7 @@ const Analytics = () => {
     return (localStorage.getItem('lexa_admin_tz') as 'WIB' | 'WITA' | 'WIT' | 'UTC') || 'WIB';
   });
   const [unansweredList, setUnansweredList] = useState<Array<{ id: number; query: string; status: string; created_at: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const getTzOffset = (tz: 'WIB' | 'WITA' | 'WIT' | 'UTC') => {
     if (tz === 'WITA') return 8;
@@ -92,6 +93,7 @@ const Analytics = () => {
     range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange,
     tz: 'WIB' | 'WITA' | 'WIT' | 'UTC' = timeZone
   ) => {
+    setIsLoading(true);
     try {
       const tzOffset = getTzOffset(tz);
       const data = await api.authGet<AdminStatsResponse>(`/api/admin/stats?range=${range}&tz_offset=${tzOffset}`);
@@ -99,6 +101,8 @@ const Analytics = () => {
       setMetrics(data.metrics);
     } catch (err) {
       console.error('Error fetching analytics:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -217,7 +221,7 @@ const Analytics = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                <img src="/elements/mascot_happy_transparent.png" alt="AI" className="w-4 h-4 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 {lang === 'id' ? 'Otomatis Dijawab AI' : 'AI Auto-Resolved'}
               </span>
               <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
@@ -242,7 +246,7 @@ const Analytics = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                <img src="/elements/mascot_thinking_transparent.png" alt="Topic" className="w-4 h-4 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                <BookOpen className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 {lang === 'id' ? 'Perlu Dokumen di KB' : 'Needs Knowledge Doc'}
               </span>
               <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
@@ -332,7 +336,13 @@ const Analytics = () => {
               </p>
             </div>
           </div>
-          <div className="h-72 w-full">
+          <div className="h-72 w-full relative">
+            {isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 dark:bg-[#0A1224]/70 backdrop-blur-xs z-10 rounded-xl transition-all">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2"></div>
+                <span className="text-xs text-slate-500 font-medium">Memuat data grafik...</span>
+              </div>
+            )}
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chatData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>

@@ -1,4 +1,4 @@
-import { Minus, RotateCcw, Headphones, Maximize2, Minimize2 } from 'lucide-react';
+import { Minus, RotateCcw, Headphones, Maximize2, Minimize2, Bot } from 'lucide-react';
 
 interface ChatHeaderProps {
   isRefreshing: boolean;
@@ -6,6 +6,7 @@ interface ChatHeaderProps {
   onClose: () => void;
   botAvatar: string;
   onRequestHandoff?: () => void;
+  onReturnToBot?: () => void;
   isHandoffRequested?: boolean;
   isHandoffActive?: boolean;
   adminName?: string;
@@ -21,6 +22,7 @@ export const ChatHeader = ({
   onClose,
   botAvatar,
   onRequestHandoff,
+  onReturnToBot,
   isHandoffRequested,
   isHandoffActive,
   adminName,
@@ -87,20 +89,25 @@ export const ChatHeader = ({
 
       {/* Right: Action Controls */}
       <div className="flex items-center gap-1 z-20 shrink-0 ml-1">
-        {onRequestHandoff && !isHandoffActive && (
+        {(isHandoffRequested || isHandoffActive) && onReturnToBot ? (
+          <button
+            onClick={onReturnToBot}
+            className="px-2 py-1 text-[11px] font-semibold bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 rounded-lg flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap active:scale-[0.95]"
+            title="Kembali ke AI Bot"
+          >
+            <Bot size={12} className="text-blue-400" />
+            <span className="text-[10.5px]">Ke AI</span>
+          </button>
+        ) : onRequestHandoff ? (
           <button
             onClick={onRequestHandoff}
-            className={`px-2 py-1 text-[11px] font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap active:scale-[0.95] ${
-              isHandoffRequested
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
-                : 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/10 hover:text-white'
-            }`}
-            title={isHandoffRequested ? 'Menunggu respons CS' : 'Minta bantuan staf CS manusia'}
+            className="px-2 py-1 text-[11px] font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap active:scale-[0.95] bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 border border-white/10 hover:text-white"
+            title="Minta bantuan staf CS manusia"
           >
-            <Headphones size={12} className={isHandoffRequested ? 'animate-pulse text-amber-300' : 'text-slate-400'} />
-            <span className="text-[10.5px]">{isHandoffRequested ? 'Menunggu' : 'CS'}</span>
+            <Headphones size={12} className="text-slate-400" />
+            <span className="text-[10.5px]">CS</span>
           </button>
-        )}
+        ) : null}
 
         {!isSmallScreen && (
           <button

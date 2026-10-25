@@ -137,6 +137,7 @@ export interface ChatSession {
   session_id: string;
   last_message: string;
   is_human_handoff?: boolean;
+  has_admin_replied?: boolean;
   created_at: string;
   updated_at: string;
 }

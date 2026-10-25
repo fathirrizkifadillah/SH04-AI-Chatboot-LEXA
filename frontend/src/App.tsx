@@ -474,19 +474,8 @@ function App() {
         setEscalationShown(true);
       }
 
-      // Jika sesi dalam mode CS Manusia, backend hanya mengembalikan event 'done'
-      // sehingga kita perlu menampilkan pesan konfirmasi agar user tahu pesannya terkirim.
-      if (!fullResponse && isHandoffRequested) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 2,
-            role: 'bot',
-            content: 'Pesan Anda telah diteruskan ke staf CS. Mohon tunggu balasan sebentar ya.',
-            timestamp: Date.now(),
-          },
-        ]);
-      }
+      // Jika sesi dalam mode CS Manusia, pesan user telah tersimpan dan disiarkan ke admin CS.
+      // Jangan menyisipkan balasan bot palsu agar tidak mengganggu percakapan dengan staf CS.
 
       const userMessageCount = messages.filter((m) => m.role === 'user').length + 1;
       if ((userMessageCount >= 3 || wantsHuman) && !escalationShown) {
@@ -584,6 +573,27 @@ function App() {
     ]);
   };
 
+  const handleReturnToBot = async () => {
+    setIsHandoffRequested(false);
+    setActiveAdminName('');
+    try {
+      await api.post('/api/chat/return-to-bot', { session_id: sessionId });
+    } catch {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'return_to_bot' }));
+      }
+    }
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        role: 'bot',
+        content: 'Anda telah kembali terhubung dengan LEXA AI Assistant. Ada yang bisa saya bantu seputar layanan kami?',
+        timestamp: Date.now(),
+      },
+    ]);
+  };
+
   const handleFeedback = async (messageIndex: number, rating: 'thumbs_up' | 'thumbs_down') => {
     if (!sessionId || feedbackGiven[messageIndex]) return;
     try {
@@ -653,7 +663,7 @@ function App() {
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={
-              isSmallScreen
+              isSmallScreen || isExpanded
                 ? {
                     position: 'fixed',
                     inset: 0,
@@ -666,8 +676,8 @@ function App() {
                     position: 'fixed',
                     bottom: '24px',
                     ...(isLeftPos ? { left: '24px' } : { right: '24px' }),
-                    width: isExpanded ? '520px' : '380px',
-                    height: isExpanded ? '700px' : '580px',
+                    width: '380px',
+                    height: '580px',
                     maxWidth: 'calc(100vw - 32px)',
                     maxHeight: 'calc(100vh - 48px)',
                     zIndex: 99999,
@@ -675,7 +685,7 @@ function App() {
                   }
             }
             className={
-              isSmallScreen
+              isSmallScreen || isExpanded
                 ? 'w-screen h-[100dvh] bg-[#0A1224] rounded-none shadow-none border-0 flex flex-col pointer-events-auto overflow-hidden'
                 : 'bg-[#0A1224] rounded-[24px] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.85)] border border-white/15 flex flex-col pointer-events-auto overflow-hidden select-auto'
             }
@@ -687,6 +697,7 @@ function App() {
               onClose={() => setIsOpen(false)}
               botAvatar={lexaBotHead}
               onRequestHandoff={handleRequestHandoff}
+              onReturnToBot={handleReturnToBot}
               isHandoffRequested={isHandoffRequested}
               isHandoffActive={isHandoffRequested && Boolean(activeAdminName || messages.some(m => m.role === 'admin'))}
               adminName={activeAdminName}

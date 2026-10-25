@@ -96,6 +96,62 @@ def is_handoff_query(message: str) -> bool:
     return any(re.search(pat, clean) for pat in HANDOFF_PATTERNS)
 
 
+RETURN_TO_BOT_PATTERNS = [
+    r"(kembali|balik|pindah|ganti|tukar)\s*(ke|lagi\s*ke)?\s*(bot|ai|chatbot|lexa|robot)",
+    r"(ngobrol|tanya|bicara)\s*(sama|ke)?\s*(bot|ai|chatbot|lexa)",
+    r"(mau|pengen|bisa)\s*(tanya|ngobrol|bicara)\s*(sama)?\s*(bot|ai|chatbot|lexa)",
+    r"kembali\s*ke\s*mode\s*ai",
+    r"kembali\s*ke\s*mode\s*bot",
+    r"kembali\s*ke\s*otomatis",
+    r"mode\s*(bot|ai|otomatis)",
+    r"stop\s*cs|selesai\s*cs|tutup\s*cs",
+]
+
+def is_return_to_bot_query(message: str) -> bool:
+    if not message:
+        return False
+    clean = message.lower().strip()
+    return any(re.search(pat, clean) for pat in RETURN_TO_BOT_PATTERNS)
+
+
+async def _trigger_return_to_bot(session_id: str):
+    """Mengembalikan sesi dari handoff CS ke AI Bot."""
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now_ts = now_dt.timestamp() * 1000
+    sys_msg = {
+        "role": "system",
+        "content": "[Obrolan dialihkan kembali ke AI oleh Pelanggan]",
+        "timestamp": now_ts,
+    }
+    db = SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if s:
+            from sqlalchemy.orm.attributes import flag_modified
+            s.is_human_handoff = False
+            new_hist = list(s.history or [])
+            new_hist.append(sys_msg)
+            s.history = new_hist
+            flag_modified(s, "history")
+            s.updated_at = now_dt
+            db.commit()
+            if session_id in chat_sessions:
+                chat_sessions[session_id].history = list(s.history)
+    except Exception as e:
+        logger.error(f"Error resetting handoff state in db: {e}")
+    finally:
+        db.close()
+
+    await manager.broadcast_to_session({"type": "handoff_status", "is_handoff": False}, session_id)
+    await manager.broadcast_to_session({"type": "handoff_ended"}, session_id)
+    await manager.broadcast_to_admins({
+        "type": "handoff_status",
+        "session_id": session_id,
+        "is_handoff": False,
+        "timestamp": now_ts,
+    })
+
+
 async def _trigger_human_handoff(session_id: str, user_message: str):
     """Mengaktifkan handoff ke CS manusia, mencatat pesan, dan menyiarkan ke admin & session."""
     now_dt = datetime.datetime.now(datetime.timezone.utc)
@@ -206,6 +262,17 @@ async def request_handoff_api(req: Request):
     })
     await manager.broadcast_to_session({"type": "handoff_requested"}, session_id)
     return {"status": "ok", "message": "Permintaan handoff berhasil dikirim ke Admin CS"}
+
+
+@router.post("/api/chat/return-to-bot")
+async def return_to_bot_api(req: Request):
+    """Endpoint REST bagi user widget untuk kembali ke AI bot."""
+    data = await req.json()
+    session_id = data.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+    await _trigger_return_to_bot(session_id)
+    return {"status": "ok", "message": "Sesi telah dikembalikan ke AI bot"}
 
 
 def _token_hash(token: str) -> str:
@@ -385,19 +452,25 @@ async def chat_stream(request: Request, req: ChatRequest):
             full_response = ""
 
             if is_handoff:
-                async with get_session_lock(session_id):
-                    _save_handoff_message(session_id, req.message)
-                await manager.broadcast_to_session({"type": "handoff_user_msg", "content": req.message}, session_id)
-                await manager.broadcast_to_admins({
-                    "type": "new_message",
-                    "session_id": session_id,
-                    "content": req.message,
-                    "role": "user",
-                    "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
-                })
+                if is_return_to_bot_query(req.message):
+                    # Pelanggan meminta kembali berkomunikasi dengan AI bot
+                    async with get_session_lock(session_id):
+                        await _trigger_return_to_bot(session_id)
+                    is_handoff = False
+                else:
+                    async with get_session_lock(session_id):
+                        _save_handoff_message(session_id, req.message)
+                    await manager.broadcast_to_session({"type": "handoff_user_msg", "content": req.message}, session_id)
+                    await manager.broadcast_to_admins({
+                        "type": "new_message",
+                        "session_id": session_id,
+                        "content": req.message,
+                        "role": "user",
+                        "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
+                    })
 
-                yield f"data: {json.dumps({'type': 'done', 'references': []})}\n\n"
-                return
+                    yield f"data: {json.dumps({'type': 'done', 'references': []})}\n\n"
+                    return
 
             if is_handoff_query(req.message):
                 async with get_session_lock(session_id):
@@ -520,17 +593,25 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 is_handoff = history_data.get("is_human_handoff", False) if history_data else False
 
                 if is_handoff:
-                    async with get_session_lock(session_id):
-                        _save_handoff_message(session_id, user_msg)
-                    await manager.broadcast_to_session({"type": "handoff_user_msg", "content": user_msg}, session_id)
-                    await manager.broadcast_to_admins({
-                        "type": "new_message",
-                        "session_id": session_id,
-                        "content": user_msg,
-                        "role": "user",
-                        "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
-                    })
-                elif is_handoff_query(user_msg):
+                    if is_return_to_bot_query(user_msg):
+                        async with get_session_lock(session_id):
+                            await _trigger_return_to_bot(session_id)
+                        is_handoff = False
+                    else:
+                        async with get_session_lock(session_id):
+                            _save_handoff_message(session_id, user_msg)
+                        await manager.broadcast_to_session({"type": "handoff_user_msg", "content": user_msg}, session_id)
+                        await manager.broadcast_to_admins({
+                            "type": "new_message",
+                            "session_id": session_id,
+                            "content": user_msg,
+                            "role": "user",
+                            "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000,
+                        })
+                        await manager.broadcast_to_session({"type": "done", "references": []}, session_id)
+                        continue
+
+                if is_handoff_query(user_msg):
                     async with get_session_lock(session_id):
                         await _trigger_human_handoff(session_id, user_msg)
                         _save_handoff_message(session_id, HANDOFF_CONFIRMATION_REPLY, role="bot")

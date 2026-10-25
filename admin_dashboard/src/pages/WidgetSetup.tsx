@@ -445,7 +445,7 @@ ${embedData?.embed_code || ''}`;
                       <div className="flex items-center gap-2">
                         <div className="relative w-7 h-7 rounded-full bg-blue-600/20 p-0.5 border border-blue-500/30 overflow-hidden flex items-center justify-center">
                           <img 
-                            src="/elements/mascot_idle_transparent.png" 
+                            src="/lexa_bot_transparent.png" 
                             alt="LEXA AI" 
                             className="w-full h-full object-contain filter drop-shadow-sm"
                             onError={(e) => { (e.target as HTMLImageElement).src = '/lexa_icon.png'; }}
@@ -501,11 +501,11 @@ ${embedData?.embed_code || ''}`;
                   title="Klik untuk mencoba simulasi buka/tutup balon obrolan"
                 >
                   <img
-                    src="/elements/mascot_idle_transparent.png"
+                    src="/lexa_bot_transparent.png"
                     alt="Chat Bot"
-                    className="w-9 h-9 object-contain transition-transform group-hover:scale-110 drop-shadow-md"
+                    className="w-8 h-8 object-contain transition-transform group-hover:scale-110 drop-shadow-md"
                     onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
+                      (e.target as HTMLImageElement).src = '/lexa_icon.png';
                     }}
                   />
                   <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-white dark:border-slate-900 rounded-full"></span>

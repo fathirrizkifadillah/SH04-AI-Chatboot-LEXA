@@ -67,7 +67,10 @@ const formatSessionTime = (raw: string | number | undefined | null) => {
     }
   }
   const d = new Date(str);
-  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  if (isNaN(d.getTime())) return '';
+  const dayDate = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  return `${dayDate} • ${timeStr}`;
 };
 
 const Conversations = () => {
@@ -727,9 +730,11 @@ const Conversations = () => {
                             {s.session_id.substring(0, 8)}...
                             {s.is_human_handoff && (
                               <span className={`px-1.5 py-0.5 text-[9px] font-semibold rounded-md flex items-center gap-0.5 ${
-                                isSelected ? 'bg-amber-400 text-slate-900' : 'bg-amber-500 text-white'
+                                isSelected 
+                                  ? (s.has_admin_replied ? 'bg-white/20 text-white' : 'bg-amber-400 text-slate-900') 
+                                  : (s.has_admin_replied ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' : 'bg-amber-500 text-white')
                               }`}>
-                                <Headphones className="w-2.5 h-2.5" /> BUTUH CS
+                                <Headphones className="w-2.5 h-2.5" /> {s.has_admin_replied ? 'CS Aktif' : 'Menunggu CS'}
                               </span>
                             )}
                           </div>
@@ -768,10 +773,10 @@ const Conversations = () => {
                   </button>
                   <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 p-1 flex items-center justify-center shrink-0">
                     <img 
-                      src={sessionData?.is_human_handoff ? "/elements/mascot_help.png" : "/elements/mascot_default_transparent.png"} 
+                      src="/lexa_bot_transparent.png" 
                       alt="Avatar" 
                       className="w-full h-full object-contain" 
-                      onError={(e) => { (e.target as HTMLImageElement).src = '/elements/app_icon_card.png'; }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/lexa_icon.png'; }}
                     />
                   </div>
                   <div>
@@ -847,12 +852,9 @@ const Conversations = () => {
                 {!sessionData ? (
                   <div className="h-full flex items-center justify-center text-slate-400 text-xs">
                     <div className="flex flex-col items-center gap-3">
-                      <img 
-                        src="/elements/mascot_thinking_transparent.png" 
-                        alt="Memuat..." 
-                        className="w-12 h-12 object-contain animate-bounce" 
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 flex items-center justify-center">
+                        <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-pulse" />
+                      </div>
                       <div className="flex items-center gap-2 font-medium text-slate-500 dark:text-slate-400">
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
                         <span>Memuat riwayat percakapan...</span>
@@ -1082,12 +1084,9 @@ const Conversations = () => {
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 bg-slate-50/50 dark:bg-slate-900/40">
-              <img 
-                src="/elements/empty_conversations_transparent.png" 
-                alt="Pilih Percakapan" 
-                className="w-28 h-auto mb-3 object-contain opacity-90 filter drop-shadow-sm" 
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 text-slate-400 dark:text-slate-500">
+                <MessageSquare className="w-6 h-6" />
+              </div>
               <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pilih Percakapan Pelanggan</p>
               <p className="text-xs text-slate-400 mt-1 max-w-xs text-center leading-relaxed">
                 Pilih salah satu sesi di kolom sebelah kiri untuk meninjau riwayat obrolan atau mengambil alih komunikasi langsung.
