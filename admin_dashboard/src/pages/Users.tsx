@@ -20,6 +20,8 @@ const Users = () => {
   const [pwdUserError, setPwdUserError] = useState('');
   const [pwdUserSuccess, setPwdUserSuccess] = useState('');
   const [userSuccessMessage, setUserSuccessMessage] = useState('');
+  const [userErrorMessage, setUserErrorMessage] = useState('');
+  const [userToDelete, setUserToDelete] = useState<{ id: number; name: string } | null>(null);
 
   const currentUser = (() => {
     try {
@@ -57,19 +59,27 @@ const Users = () => {
     );
   }
 
-  const handleDelete = (id: number) => {
-    if (window.confirm('Hapus pengguna ini dari sistem?')) {
-      api.authDelete(`/api/admin/users/${id}`)
-        .then(() => {
-          setUserSuccessMessage('Pengguna berhasil dihapus dari sistem.');
-          setTimeout(() => setUserSuccessMessage(''), 4000);
-          fetchUsers();
-        })
-        .catch(err => {
-          console.error(err);
-          alert(err.message || 'Gagal menghapus pengguna.');
-        });
-    }
+  const confirmDeleteUser = () => {
+    if (!userToDelete) return;
+    const { id, name } = userToDelete;
+    api.authDelete(`/api/admin/users/${id}`)
+      .then(() => {
+        setUserSuccessMessage(`Pengguna "${name}" berhasil dihapus.`);
+        setTimeout(() => setUserSuccessMessage(''), 4000);
+        fetchUsers();
+      })
+      .catch(err => {
+        console.error(err);
+        setUserErrorMessage(err.message || 'Gagal menghapus pengguna.');
+        setTimeout(() => setUserErrorMessage(''), 4000);
+      })
+      .finally(() => {
+        setUserToDelete(null);
+      });
+  };
+
+  const handleDelete = (id: number, name?: string) => {
+    setUserToDelete({ id, name: name || 'Pengguna' });
   };
 
   const handleAdd = (e: FormEvent<HTMLFormElement>) => {
@@ -136,6 +146,12 @@ const Users = () => {
         </button>
       </div>
 
+            {userErrorMessage && (
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <span>{userErrorMessage}</span>
+          <button onClick={() => setUserErrorMessage('')} className="p-1 hover:bg-rose-500/20 rounded-md">✕</button>
+        </div>
+      )}
       {userSuccessMessage && (
         <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-xl text-xs shadow-sm transition-all animate-fadeIn">
           <div className="flex items-center gap-2.5">
@@ -231,7 +247,7 @@ const Users = () => {
                         </span>
                       ) : (
                         <button 
-                          onClick={() => handleDelete(user.id)} 
+                          onClick={() => handleDelete(user.id, user.name)} 
                           className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                           title="Hapus user"
                         >
@@ -281,7 +297,7 @@ const Users = () => {
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Role / Peran</label>
                 <select value={formData.role} onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormData({...formData, role: e.target.value as UserCreateRequest['role']})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500">
                   <option value="CS Agent">CS Agent (Balas Chat & Handoff)</option>
-                  <option value="Editor (Knowledge Base)">Editor (Knowledge Base & Sync RAG)</option>
+                  <option value="Editor (Knowledge Base)">Editor (Knowledge Base)</option>
                   <option value="Super Admin">Super Admin (Akses Penuh)</option>
                 </select>
               </div>
@@ -361,6 +377,45 @@ const Users = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Konfirmasi Hapus Pengguna */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0D182E] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-white/10 animate-in fade-in zoom-in-95 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Hapus Anggota Tim?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Akses pengguna ke Admin Dashboard LEXA akan dicabut seketika.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-slate-200">
+              {userToDelete.name}
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                Hapus Anggota
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -75,30 +75,36 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
   // 30-minute idle session timeout (BUG-AUTH-002)
   useEffect(() => {
     const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 menit
-    let idleTimer: ReturnType<typeof setTimeout>;
 
     const performIdleLogout = () => {
       sessionStorage.removeItem('lexa_admin_user');
       sessionStorage.removeItem('lexa_admin_token');
       localStorage.removeItem('lexa_admin_user');
       localStorage.removeItem('lexa_admin_token');
+      localStorage.removeItem('lexa_last_activity');
       api.post('/api/auth/logout').catch(() => {});
       setAuthToken(null);
       alert('Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit. Silakan login kembali.');
     };
 
-    const resetIdleTimer = () => {
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(performIdleLogout, IDLE_TIMEOUT_MS);
+    const recordActivity = () => {
+      localStorage.setItem('lexa_last_activity', Date.now().toString());
     };
 
     const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    activityEvents.forEach(evt => window.addEventListener(evt, resetIdleTimer, { passive: true }));
-    resetIdleTimer();
+    activityEvents.forEach(evt => window.addEventListener(evt, recordActivity, { passive: true }));
+    recordActivity();
+
+    const intervalCheck = setInterval(() => {
+      const last = Number(localStorage.getItem('lexa_last_activity') || Date.now());
+      if (Date.now() - last > IDLE_TIMEOUT_MS) {
+        performIdleLogout();
+      }
+    }, 10000);
 
     return () => {
-      clearTimeout(idleTimer);
-      activityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+      clearInterval(intervalCheck);
+      activityEvents.forEach(evt => window.removeEventListener(evt, recordActivity));
     };
   }, [setAuthToken]);
 
@@ -156,7 +162,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
   }, [refreshPendingCount]);
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B1529] transition-colors relative">
+    <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0B1529] transition-colors relative w-full max-w-full overflow-x-hidden">
       {isMobileOpen && (
         <div
           onClick={() => setIsMobileOpen(false)}
@@ -171,7 +177,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
       />
-      <div className={`min-h-screen transition-all duration-300 ml-0 ${sidebarCollapsed ? 'lg:ml-[74px]' : 'lg:ml-64'}`}>
+      <div className={`min-h-screen transition-all duration-300 ml-0 w-full max-w-full overflow-x-hidden ${sidebarCollapsed ? 'lg:ml-[74px]' : 'lg:ml-64'}`}>
         <Header
           onToggleSidebar={() => {
             if (window.innerWidth < 1024) {
@@ -182,7 +188,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
           }}
           sidebarCollapsed={sidebarCollapsed}
         />
-        <main className="p-3.5 sm:p-5 lg:p-8">
+        <main className="w-full max-w-full min-w-0 p-3.5 sm:p-5 lg:p-8 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

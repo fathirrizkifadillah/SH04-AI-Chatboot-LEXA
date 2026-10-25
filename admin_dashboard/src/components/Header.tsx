@@ -77,6 +77,11 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
+    const title = getPageTitle();
+    document.title = `${title} | LEXA Console`;
+  }, [location.pathname, lang, t]);
+
+  useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
@@ -197,13 +202,13 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   };
 
   const allSearchItems: SearchItem[] = [
-    { title: 'Dashboard', description: 'Ringkasan metriks, KPI, dan performa AI', path: '/', icon: LayoutDashboard },
-    { title: 'Conversations', description: 'Pantau obrolan aktif dan live chat pelanggan', path: '/conversations', icon: MessageSquare, roles: ['Super Admin', 'CS Agent'] },
-    { title: 'Knowledge Base', description: 'Kelola dokumen dan sinkronisasi data RAG', path: '/kb', icon: BookOpen, roles: ['Super Admin', 'Editor (Knowledge Base)'] },
-    { title: 'Analytics', description: 'Laporan kepuasan dan tren percakapan', path: '/analytics', icon: BarChart3 },
-    { title: 'Users & Roles', description: 'Kelola anggota tim dan hak akses', path: '/users', icon: Users, roles: ['Super Admin'] },
-    { title: 'Widget Setup', description: 'Panduan integrasi dan kode embed widget', path: '/widget', icon: Code },
-    { title: 'Settings', description: 'Konfigurasi prompt dan parameter model AI', path: '/settings', icon: Settings },
+    { title: t.nav_dashboard, description: lang === 'id' ? 'Ringkasan metriks, KPI, dan performa AI' : 'Metrics overview, KPIs, and AI performance', path: '/', icon: LayoutDashboard },
+    { title: t.nav_conversations, description: lang === 'id' ? 'Pantau obrolan aktif dan live chat pelanggan' : 'Monitor active chats and customer support desk', path: '/conversations', icon: MessageSquare, roles: ['Super Admin', 'CS Agent'] },
+    { title: t.nav_kb, description: lang === 'id' ? 'Kelola dokumen dan basis pengetahuan asisten AI' : 'Manage documents and AI knowledge base', path: '/kb', icon: BookOpen, roles: ['Super Admin', 'Editor (Knowledge Base)'] },
+    { title: t.nav_analytics, description: lang === 'id' ? 'Laporan kepuasan dan tren percakapan' : 'Resolution analytics and conversation trends', path: '/analytics', icon: BarChart3 },
+    { title: t.nav_users, description: lang === 'id' ? 'Kelola anggota tim dan hak akses' : 'Manage team members and RBAC permissions', path: '/users', icon: Users, roles: ['Super Admin'] },
+    { title: t.nav_widget, description: lang === 'id' ? 'Panduan integrasi dan kode embed widget' : 'Integration guide and widget embed code', path: '/widget', icon: Code },
+    { title: t.nav_settings, description: lang === 'id' ? 'Konfigurasi prompt dan parameter model AI' : 'Configure AI prompt and system parameters', path: '/settings', icon: Settings },
   ];
 
   const searchItems = allSearchItems
@@ -224,13 +229,24 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="p-0.5 bg-white rounded-lg shadow-xs border border-slate-200 dark:border-slate-700 shrink-0">
             <img src="/lexa_logo.jpeg" alt="LEXA" className="h-5 w-auto object-contain" />
           </div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate max-w-[120px] sm:max-w-none">
-            {getPageTitle()}
-          </h2>
+          <div className="flex flex-col min-w-0">
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
+              <span>{t.breadcrumb_home || 'Dashboard'}</span>
+              {location.pathname !== '/' && (
+                <>
+                  <span>/</span>
+                  <span className="text-[#0066FF] dark:text-[#38BDF8] font-semibold truncate max-w-[140px]">{getPageTitle()}</span>
+                </>
+              )}
+            </div>
+            <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate max-w-[110px] sm:max-w-none">
+              {getPageTitle()}
+            </h2>
+          </div>
         </div>
       </div>
 
@@ -250,41 +266,41 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         </button>
       </div>
 
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {/* Language Switcher Pill */}
         <button
           onClick={toggleLanguage}
-          className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          className="h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center gap-1 sm:gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           title={lang === 'id' ? 'Switch interface to English' : 'Ganti tampilan ke Bahasa Indonesia'}
         >
-          <span className="font-mono text-[11px] font-bold text-[#0066FF] dark:text-[#38BDF8]">
-            {lang === 'id' ? 'ID' : 'EN'}
+          <span className={`font-mono text-[10px] sm:text-[11px] font-bold ${lang === 'id' ? 'text-[#0066FF] dark:text-[#38BDF8]' : 'text-slate-400'}`}>
+            ID
           </span>
-          <span className="text-slate-300 dark:text-slate-600">|</span>
-          <span className="text-[11px] text-slate-400">
-            {lang === 'id' ? 'EN' : 'ID'}
+          <span className="text-slate-300 dark:text-slate-600 text-[10px]">|</span>
+          <span className={`font-mono text-[10px] sm:text-[11px] font-bold ${lang === 'en' ? 'text-[#0066FF] dark:text-[#38BDF8]' : 'text-slate-400'}`}>
+            EN
           </span>
         </button>
 
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setIsDark(!isDark)}
-          className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           title={isDark ? 'Beralih ke Light Mode' : 'Beralih ke Dark Mode'}
         >
-          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          {isDark ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />}
         </button>
 
         {/* Notification Bell */}
         <div className="relative" ref={notificationDropdownRef}>
           <button
             onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
-            className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors relative"
-            title="Notifikasi"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors relative"
+            title={t.notifications || 'Notifikasi'}
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-[#0D7AFF] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-[#0D7AFF] text-white text-[8px] font-bold rounded-full flex items-center justify-center px-0.5">
                 {unreadCount}
               </span>
             )}
@@ -540,7 +556,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
                   <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                     <p className="font-semibold text-slate-800 dark:text-slate-200 mb-1">Editor KB</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Fokus konten: mengunggah dokumen referensi (.txt, .md, .pdf), memelihara FAQ, dan memperbarui indeks Chroma vector.
+                      Fokus konten: mengunggah dokumen referensi (.txt, .md, .pdf), memelihara FAQ, dan memperbarui basis pengetahuan asisten AI.
                     </p>
                   </div>
                 </div>
@@ -551,7 +567,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
                   2. Definisi "Unanswered Queries"
                 </h4>
                 <p className="text-slate-500 dark:text-slate-400">
-                  Pertanyaan pelanggan dikategorikan sebagai <strong className="text-slate-700 dark:text-slate-300">Unanswered Query</strong> apabila mesin RAG tidak menemukan potongan konteks referensi yang relevan pada Knowledge Base, atau bot membalas bahwa informasi belum tersedia. Administrator dan Editor KB disarankan memeriksa daftar ini dan menambahkan informasi tersebut ke dokumen Knowledge Base.
+                  Pertanyaan pelanggan dikategorikan sebagai <strong className="text-slate-700 dark:text-slate-300">Unanswered Query</strong> apabila asisten AI tidak menemukan dokumen referensi yang relevan pada Knowledge Base, atau bot membalas bahwa informasi belum tersedia. Administrator dan Editor KB disarankan memeriksa daftar ini dan menambahkan informasi tersebut ke dokumen Knowledge Base.
                 </p>
               </div>
 

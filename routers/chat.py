@@ -73,9 +73,11 @@ def _save_handoff_message(session_id: str, content: str, role: str = "user", fil
 import re
 
 HANDOFF_PATTERNS = [
-    r"(ingin|mau|bisa|tolong|mohon|perlu|harus)?\s*(bicara|ngobrol|ngomong|diskusi|terhubung|sambung|sambungkan|konek|hubung|hubungi|hubungkan|kontak|panggil|transfer|oper)\s*(langsung)?\s*(ke|dengan|sama|menuju)?\s*(orang\s+)?(customer service|cust service|cs|admin|staf|staff|manusia|human|operator|agent|live agent|team support)",
+    r"(ingin|mau|bisa|tolong|mohon|perlu|harus|butuh|minta)?\s*(bicara|ngobrol|ngomong|diskusi|terhubung|sambung|sambungkan|konek|hubung|hubungi|hubungkan|kontak|panggil|transfer|oper|bantuan|tanya)?\s*(langsung)?\s*(ke|dengan|sama|menuju)?\s*(orang\s+)?(customer service|cust service|cs|admin|staf|staff|manusia|human|operator|agent|live agent|team support)",
     r"(customer service|cs|admin|operator|staf|staff)\s*(manusia|asli|live|orang)",
-    r"(bicara|ngobrol|ngomong)\s*(sama|dengan)\s*(orang|manusia)",
+    r"(bicara|ngobrol|ngomong)\s*(sama|dengan)\s*(orang|manusia|cs|admin)",
+    r"\b(minta|butuh|perlu|tolong|mau)\s+(bantuan\s+)?(cs|admin|operator|agent|manusia|human)\b",
+    r"\b(transfer|oper|hubungkan|sambungkan)\s+(ke|dengan)?\s*(cs|admin|operator|agent|manusia|human)\b",
     r"talk to (a )?(live )?(human|person|agent|representative|cs|support)",
     r"speak to (a )?(live )?(human|person|agent|representative|cs|support)",
     r"connect (me )?to (a )?(live )?(human|person|agent|representative|cs|support|admin)",

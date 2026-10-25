@@ -42,6 +42,8 @@ const KnowledgeBase = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ filename: string; isCore?: boolean } | null>(null);
+  const [modalError, setModalError] = useState('');
 
   const currentUser = (() => {
     try {
@@ -99,7 +101,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     if (!file) return;
 
     if (!file.name.endsWith('.md') && !file.name.endsWith('.txt') && !file.name.endsWith('.pdf')) {
-      alert('Hanya file .txt, .md, atau .pdf yang didukung');
+      setSyncStatus({ type: 'error', message: 'Hanya format berkas .txt, .md, atau .pdf yang didukung.' });
       return;
     }
 
@@ -110,13 +112,13 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     try {
       await api.authUpload('/api/admin/kb/upload', formData);
       fetchFiles();
-      setSyncStatus({ type: 'warning', message: 'Dokumen baru diunggah. Silakan klik "Sinkronisasi Pengetahuan" agar langsung aktif di AI.' });
-    } catch (err) {
+      setSyncStatus({ type: 'warning', message: 'Dokumen baru berhasil diunggah. Silakan klik "Perbarui Basis Pengetahuan" agar langsung aktif di AI.' });
+    } catch (err: any) {
       if (err instanceof ApiError) {
-        alert(`Gagal: ${err.message}`);
+        setSyncStatus({ type: 'error', message: `Gagal unggah: ${err.message}` });
       } else {
         console.error(err);
-        alert('Terjadi kesalahan saat mengunggah file.');
+        setSyncStatus({ type: 'error', message: 'Terjadi kendala saat mengunggah file. Silakan coba kembali.' });
       }
     } finally {
       setIsUploading(false);
@@ -124,30 +126,38 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     }
   };
 
-  const handleDelete = async (filename: string, isCore?: boolean) => {
-    if (!canManageKB) return;
-    if (isCore) {
-      alert('Dokumen utama (Company Profile) dilindungi sistem dan tidak dapat dihapus.');
-      return;
-    }
-    if (!confirm(`Hapus dokumen "${filename}" secara permanen dari Knowledge Base?`)) return;
+  const confirmDeleteFile = async () => {
+    if (!canManageKB || !fileToDelete) return;
+    const { filename } = fileToDelete;
     
     try {
       await api.authDelete(`/api/admin/kb/files/${filename}`);
       fetchFiles();
-      setSyncStatus({ type: 'warning', message: `Dokumen "${filename}" dihapus. Harap sinkronisasi ulang RAG.` });
+      setSyncStatus({ type: 'warning', message: `Dokumen "${filename}" berhasil dihapus. Harap perbarui basis pengetahuan AI.` });
     } catch (err) {
       console.error(err);
-      alert('Gagal menghapus dokumen.');
+      setSyncStatus({ type: 'error', message: `Gagal menghapus dokumen "${filename}".` });
+    } finally {
+      setFileToDelete(null);
     }
+  };
+
+  const handleDelete = (filename: string, isCore?: boolean) => {
+    if (!canManageKB) return;
+    if (isCore) {
+      setSyncStatus({ type: 'warning', message: 'Dokumen utama (Company Profile) dilindungi sistem dan tidak dapat dihapus.' });
+      return;
+    }
+    setFileToDelete({ filename, isCore });
   };
 
   const handleCreateDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) {
-      alert('Judul dan isi konten dokumen tidak boleh kosong.');
+      setModalError('Judul dan isi konten dokumen tidak boleh kosong.');
       return;
     }
+    setModalError('');
 
     setIsCreating(true);
     try {
@@ -162,11 +172,11 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
       fetchFiles();
       setSyncStatus({ 
         type: 'warning', 
-        message: 'Dokumen baru berhasil dibuat! Tekan tombol "Sinkronisasi Pengetahuan" untuk memperbarui indeks vektor AI.' 
+        message: 'Dokumen baru berhasil dibuat! Klik "Perbarui Basis Pengetahuan" untuk memperbarui data asisten AI.' 
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal membuat dokumen baru.');
+      setModalError(err.message || 'Gagal membuat dokumen baru.');
     } finally {
       setIsCreating(false);
     }
@@ -205,9 +215,9 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
         type: 'warning', 
         message: `Isi dokumen "${selectedFile.filename}" berhasil diperbarui. Silakan lakukan sinkronisasi.` 
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Gagal menyimpan perubahan dokumen.');
+      setModalError(err.message || 'Gagal menyimpan perubahan dokumen.');
     } finally {
       setIsSaving(false);
     }
@@ -216,7 +226,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
   const handleReindex = async () => {
     if (!canManageKB) return;
     setIsSyncing(true);
-    setSyncStatus({ type: 'warning', message: 'Memulai proses sinkronisasi RAG di background...' });
+    setSyncStatus({ type: 'warning', message: 'Sedang memperbarui basis pengetahuan AI di latar belakang...' });
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
     try {
@@ -227,14 +237,14 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
           if (res.state === 'success') {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             setIsSyncing(false);
-            setSyncStatus({ type: 'success', message: res.message || 'Knowledge base berhasil diperbarui dan siap digunakan AI.' });
+            setSyncStatus({ type: 'success', message: res.message || 'Basis pengetahuan berhasil diperbarui dan siap digunakan AI.' });
             fetchFiles();
           } else if (res.state === 'failed') {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             setIsSyncing(false);
-            setSyncStatus({ type: 'error', message: res.message || 'Gagal membangun index baru.' });
+            setSyncStatus({ type: 'error', message: res.message || 'Gagal memperbarui basis pengetahuan.' });
           } else {
-            setSyncStatus({ type: 'warning', message: res.message || 'Sedang memproses embedding dokumen...' });
+            setSyncStatus({ type: 'warning', message: res.message || 'Sedang membaca dan memproses dokumen...' });
           }
         } catch {
           // ignore transient poll errors
@@ -243,14 +253,14 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     } catch (err) {
       console.error(err);
       setIsSyncing(false);
-      setSyncStatus({ type: 'error', message: 'Gagal melakukan sinkronisasi.' });
+      setSyncStatus({ type: 'error', message: 'Gagal melakukan sinkronisasi basis pengetahuan.' });
     }
   };
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const token = sessionStorage.getItem('lexa_admin_token');
+      const token = sessionStorage.getItem('lexa_admin_token') || localStorage.getItem('lexa_admin_token');
       const headers: Record<string, string> = {
         'ngrok-skip-browser-warning': 'true',
       };
@@ -306,7 +316,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
               Knowledge Base Management
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              RAG Engine
+              Basis Pengetahuan AI
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -398,14 +408,23 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
             {/* Documents List */}
             <div className="space-y-2.5">
               {filteredFiles.length === 0 ? (
-                <div className="text-center p-10 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-xl text-slate-400">
-                  <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {searchFilter ? 'Tidak ada dokumen yang cocok dengan pencarian.' : 'Belum ada dokumen referensi.'}
+                <div className="text-center p-8 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 bg-slate-50/50 dark:bg-white/[0.01]">
+                  <img src="/elements/empty_knowledge_base_transparent.png" alt="Knowledge Base Kosong" className="w-20 h-auto mx-auto mb-3 object-contain opacity-90" onError={(e)=>{ (e.target as HTMLElement).style.display = 'none'; }} />
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    {searchFilter ? 'Tidak ada dokumen yang cocok dengan pencarian.' : 'Knowledge Base Kosong'}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    {canManageKB ? 'Klik tombol "+ Buat Dokumen Baru" atau unggah berkas di samping.' : 'Hubungi Super Admin untuk menambahkan materi pengetahuan.'}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                    {searchFilter ? 'Coba gunakan kata kunci pencarian yang berbeda.' : 'Belum ada dokumen di Knowledge Base. Tambahkan dokumen untuk meningkatkan akurasi jawaban AI.'}
                   </p>
+                  {canManageKB && !searchFilter && (
+                    <button
+                      onClick={() => setIsCreateOpen(true)}
+                      className="mt-4 px-4 py-2 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold rounded-xl transition-all shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah Dokumen</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 filteredFiles.map((file, i) => (
@@ -527,14 +546,14 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
             </div>
           )}
 
-          {/* Re-index RAG ChromaDB Card */}
+          {/* Perbarui Basis Pengetahuan AI */}
           <div className="bg-[#0A1224] text-white rounded-2xl shadow-md p-5 border border-white/10 relative overflow-hidden">
             <div className="flex items-center gap-2 mb-2">
               <RefreshCw className="w-4 h-4 text-emerald-400" />
-              <h2 className="font-bold text-sm text-white">Sinkronisasi Indeks RAG</h2>
+              <h2 className="font-bold text-sm text-white">Perbarui Basis Pengetahuan AI</h2>
             </div>
             <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-              Setelah dokumen dibuat, diubah, atau dihapus, klik tombol di bawah agar vector database (ChromaDB) memperbarui data embedding AI.
+              Setelah dokumen dibuat, diubah, atau dihapus, klik tombol di bawah agar asisten AI segera mempelajari materi terbaru.
             </p>
             
             {syncStatus && (
@@ -555,7 +574,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
                 className="w-full py-2.5 bg-[#0066FF] hover:bg-[#0052CC] disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Sedang Memproses Index...' : 'Sinkronisasi Pengetahuan'}
+                {isSyncing ? 'Sedang Memperbarui Pengetahuan...' : 'Perbarui Pengetahuan AI'}
               </button>
             )}
           </div>
@@ -579,7 +598,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
                     Buat Dokumen Pengetahuan Baru
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Dokumen akan tersimpan langsung ke sistem RAG dalam format Markdown (.md)
+                    Dokumen akan tersimpan langsung ke basis pengetahuan AI dalam format Markdown (.md)
                   </p>
                 </div>
               </div>
@@ -593,6 +612,11 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
 
             {/* Modal Form */}
             <form onSubmit={handleCreateDocument} className="flex-1 overflow-y-auto p-5 space-y-4">
+              {modalError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-semibold rounded-xl">
+                  {modalError}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -755,7 +779,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    Pratinjau RAG
+                    Pratinjau Dokumen
                   </button>
                 </div>
 
@@ -822,6 +846,52 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Konfirmasi Hapus Dokumen */}
+      {fileToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0D182E] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-white/10 animate-in fade-in zoom-in-95 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Hapus Dokumen Pengetahuan?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Tindakan ini permanen dan tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 break-all">
+              {fileToDelete.filename}
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Dokumen ini akan dihapus dari server dan tidak akan lagi digunakan oleh AI untuk menjawab pertanyaan pelanggan.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setFileToDelete(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteFile}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                Hapus Dokumen
+              </button>
+            </div>
           </div>
         </div>
       )}

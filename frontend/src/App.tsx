@@ -166,6 +166,40 @@ function App() {
       .catch(() => {});
   }, [sessionId, sessionToken]);
 
+  // Active handoff polling fallback to ensure low-latency CS delivery (BUG-E2E-001)
+  useEffect(() => {
+    if (!sessionId || !sessionToken || !isHandoffRequested) return;
+
+    const intervalId = setInterval(() => {
+      api
+        .get<{ history: Array<{ role: string; content: string; timestamp?: number; sender_name?: string }> }>(
+          `/api/chat/poll?session_id=${sessionId}&t=${Date.now()}`,
+          { headers: { 'X-Lexa-Session': sessionToken } }
+        )
+        .then((pollData) => {
+          if (pollData.history && pollData.history.length > 0) {
+            const mappedHistory = pollData.history.map((m, i) => ({
+              id: m.timestamp || Date.now() + i,
+              role: m.role === 'assistant' ? 'bot' : m.role,
+              content: m.content,
+              sender_name: m.sender_name,
+              timestamp: m.timestamp || Date.now(),
+            })) as ChatMessage[];
+            setMessages((prev) => {
+              const welcomeMsg = prev.length > 0 && prev[0].role === 'bot' ? prev[0] : null;
+              const newMsgs = welcomeMsg ? [welcomeMsg, ...mappedHistory] : mappedHistory;
+              const strip = (msgs: ChatMessage[]) =>
+                JSON.stringify(msgs.map((msg) => ({ role: msg.role, content: msg.content })));
+              return strip(prev) !== strip(newMsgs) ? newMsgs : prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }, 1500);
+
+    return () => clearInterval(intervalId);
+  }, [sessionId, sessionToken, isHandoffRequested]);
+
   // WebSocket connection for real-time sync
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);

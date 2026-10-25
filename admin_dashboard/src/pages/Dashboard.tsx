@@ -160,14 +160,14 @@ const Dashboard = () => {
         </div>
 
         {/* Operational Controls & Actions */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto">
           {/* Time Filter Pill */}
-          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+          <div className="inline-flex p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 max-w-full overflow-x-auto scrollbar-hidden">
             {(['30m', '1h', '24h', '7d', '30d'] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => handleTimeRangeChange(range)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                className={`px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-mono font-medium transition-all cursor-pointer ${
                   timeRange === range
                     ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
@@ -179,12 +179,12 @@ const Dashboard = () => {
           </div>
 
           {/* Timezone Selector Pill */}
-          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800" title="Pilih Zona Waktu Tampilan Chart">
+          <div className="inline-flex p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800" title="Pilih Zona Waktu Tampilan Chart">
             {(['WIB', 'WITA', 'WIT', 'UTC'] as const).map((tz) => (
               <button
                 key={tz}
                 onClick={() => handleTimeZoneChange(tz)}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all cursor-pointer ${
+                className={`px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-mono font-medium transition-all cursor-pointer ${
                   timeZone === tz
                     ? 'bg-[#0066FF] text-white shadow-xs font-bold'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
@@ -195,26 +195,28 @@ const Dashboard = () => {
             ))}
           </div>
 
-          {/* Refresh Button */}
-          <button
-            onClick={() => fetchStats()}
-            disabled={isRefreshing}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
-            title="Refresh data"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#0066FF]' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2 ml-auto md:ml-0">
+            {/* Refresh Button */}
+            <button
+              onClick={() => fetchStats()}
+              disabled={isRefreshing}
+              className="p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
+              title="Refresh data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin text-[#0066FF]' : ''}`} />
+            </button>
 
-          {/* Primary Action Button */}
-          <button
-            onClick={() => navigate('/kb')}
-            className="group relative inline-flex items-center gap-2.5 pl-4 pr-1.5 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] active:scale-[0.98] text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/25 cursor-pointer"
-          >
-            <span>{t.ingest_document}</span>
-            <span className="w-6 h-6 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center transition-colors">
-              <Plus className="w-3.5 h-3.5 text-white" />
-            </span>
-          </button>
+            {/* Primary Action Button */}
+            <button
+              onClick={() => navigate('/kb')}
+              className="group relative inline-flex items-center gap-2 pl-3 sm:pl-4 pr-1.5 py-1 sm:py-1.5 bg-[#0066FF] hover:bg-[#0052CC] active:scale-[0.98] text-white text-[11px] sm:text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/25 cursor-pointer"
+            >
+              <span>{t.ingest_document}</span>
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center transition-colors">
+                <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -222,7 +224,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-12 gap-4">
         
         {/* Bento Card 1: Total Percakapan */}
-        <div className="col-span-12 lg:col-span-4 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        <div className="col-span-12 lg:col-span-4 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs min-w-0 w-full">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div>
               <div className="flex items-center justify-between">
@@ -287,7 +289,7 @@ const Dashboard = () => {
         </div>
 
         {/* Bento Card 2: AI Resolution Precision */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs min-w-0 w-full">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
@@ -314,7 +316,7 @@ const Dashboard = () => {
         </div>
 
         {/* Bento Card 3: Dokumen Knowledge Base */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-2 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-2 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs min-w-0 w-full">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
@@ -345,7 +347,7 @@ const Dashboard = () => {
         </div>
 
         {/* Bento Card 4: Antrean Eskalasi CS */}
-        <div className="col-span-12 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs">
+        <div className="col-span-12 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs min-w-0 w-full">
           <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
@@ -421,7 +423,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="w-full h-[280px] relative">
+          <div className="w-full min-w-0 h-[280px] relative overflow-hidden">
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 5, left: -20 }}>
                 <defs>
@@ -541,10 +543,10 @@ const Dashboard = () => {
             <div>
               <div className="pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  {lang === 'id' ? 'Tindakan Cepat' : 'Quick Actions'}
+                  {t.quick_actions}
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {lang === 'id' ? 'Pintasan navigasi dan pengelolaan sistem' : 'Common administrative shortcuts'}
+                  {t.quick_actions_desc}
                 </p>
               </div>
 
@@ -554,20 +556,20 @@ const Dashboard = () => {
                   onClick={() => navigate('/kb')}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-[#0066FF] flex items-center justify-center shrink-0">
                       <UploadCloud className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {lang === 'id' ? 'Sinkronisasi Basis Pengetahuan' : 'Sync Knowledge Base'}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {t.sync_kb_action}
                       </p>
-                      <p className="text-[10px] text-slate-400">
-                        {lang === 'id' ? 'Unggah file PDF, DOCX, atau teks referensi AI' : 'Upload PDF, DOCX, or text files'}
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {t.sync_kb_desc}
                       </p>
                     </div>
                   </div>
-                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-[#0066FF] group-hover:translate-x-0.5 transition-all">
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-[#0066FF] group-hover:translate-x-0.5 transition-all shrink-0">
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </button>
@@ -577,20 +579,20 @@ const Dashboard = () => {
                   onClick={() => navigate('/conversations')}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                       <MessageSquare className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {lang === 'id' ? 'Live Chat Pelanggan' : 'Live Customer Chat'}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {t.live_chat_action}
                       </p>
-                      <p className="text-[10px] text-slate-400">
-                        {lang === 'id' ? 'Pantau percakapan aktif dan tangani chat CS' : 'Monitor active chats and handle CS sessions'}
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {t.live_chat_desc}
                       </p>
                     </div>
                   </div>
-                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all">
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0">
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </button>
@@ -600,20 +602,20 @@ const Dashboard = () => {
                   onClick={() => navigate('/widget')}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
                       <Share2 className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {lang === 'id' ? 'Integrasi & Kode Embed' : 'Widget Setup & Embed'}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {t.widget_setup_action}
                       </p>
-                      <p className="text-[10px] text-slate-400">
-                        {lang === 'id' ? 'Dapatkan script untuk dipasang di website' : 'Get embed code snippet for your website'}
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {t.widget_setup_desc}
                       </p>
                     </div>
                   </div>
-                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all">
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all shrink-0">
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </button>
@@ -623,20 +625,20 @@ const Dashboard = () => {
                   onClick={() => navigate('/analytics')}
                   className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
                       <BarChart3 className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {lang === 'id' ? 'Laporan & Kepuasan Pelanggan' : 'Analytics & User Satisfaction'}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {t.analytics_action}
                       </p>
-                      <p className="text-[10px] text-slate-400">
-                        {lang === 'id' ? 'Lihat ringkasan pertanyaan dan feedback pengguna' : 'Review query resolution and feedback'}
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {t.analytics_desc}
                       </p>
                     </div>
                   </div>
-                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all">
+                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all shrink-0">
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </button>

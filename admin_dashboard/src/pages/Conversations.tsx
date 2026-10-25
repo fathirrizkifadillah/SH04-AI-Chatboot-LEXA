@@ -71,7 +71,7 @@ const formatSessionTime = (raw: string | number | undefined | null) => {
 };
 
 const Conversations = () => {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
@@ -85,6 +85,8 @@ const Conversations = () => {
   const [handoffToast, setHandoffToast] = useState('');
   const [replyError, setReplyError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewImageName, setPreviewImageName] = useState<string | null>(null);
 
@@ -149,7 +151,7 @@ const Conversations = () => {
     
     const connectAdminWs = () => {
       if (!isMounted) return;
-      const token = sessionStorage.getItem('lexa_admin_token') || '';
+      const token = sessionStorage.getItem('lexa_admin_token') || localStorage.getItem('lexa_admin_token') || '';
       ws = new WebSocket(`${getWebSocketUrl('/ws/admin')}${token ? `?token=${encodeURIComponent(token)}` : ''}`);
 
       ws.onmessage = (event) => {
@@ -244,7 +246,7 @@ const Conversations = () => {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      const token = sessionStorage.getItem('lexa_admin_token') || undefined;
+      const token = sessionStorage.getItem('lexa_admin_token') || localStorage.getItem('lexa_admin_token') || undefined;
       ws.send(JSON.stringify({ type: 'admin_authenticate', token }));
     };
     
@@ -359,18 +361,16 @@ const Conversations = () => {
       });
   };
 
-  const handleDeleteSession = async () => {
-    if (!selectedSession || isDeleting || !canReply) return;
-    if (!window.confirm("Hapus percakapan ini secara permanen? Sesi akan dibersihkan dari server dan widget pelanggan.")) {
-      return;
-    }
-
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete || isDeleting || !canReply) return;
     setIsDeleting(true);
     try {
-      await api.authDelete(`/api/admin/sessions/${selectedSession}`);
-      setSessions(prev => prev.filter(s => s.session_id !== selectedSession));
-      setSelectedSession(null);
-      setSessionData(null);
+      await api.authDelete(`/api/admin/sessions/${sessionToDelete}`);
+      setSessions(prev => prev.filter(s => s.session_id !== sessionToDelete));
+      if (selectedSession === sessionToDelete) {
+        setSelectedSession(null);
+        setSessionData(null);
+      }
       setHandoffToast('Percakapan berhasil dihapus');
       setTimeout(() => setHandoffToast(''), 3000);
     } catch (e) {
@@ -379,7 +379,13 @@ const Conversations = () => {
       setTimeout(() => setReplyError(''), 4000);
     } finally {
       setIsDeleting(false);
+      setSessionToDelete(null);
     }
+  };
+
+  const handleDeleteSession = () => {
+    if (!selectedSession || isDeleting || !canReply) return;
+    setSessionToDelete(selectedSession);
   };
 
   const getFilteredSessions = () => {
@@ -412,12 +418,8 @@ const Conversations = () => {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const confirmBulkDelete = async () => {
     if (selectedSessionIds.size === 0 || isDeleting || !canReply) return;
-    if (!window.confirm(`Hapus permanen ${selectedSessionIds.size} percakapan yang dipilih?`)) {
-      return;
-    }
-
     setIsDeleting(true);
     try {
       await api.authPost('/api/admin/sessions/bulk-delete', { session_ids: Array.from(selectedSessionIds) });
@@ -435,7 +437,13 @@ const Conversations = () => {
       setTimeout(() => setReplyError(''), 4000);
     } finally {
       setIsDeleting(false);
+      setShowBulkDeleteModal(false);
     }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedSessionIds.size === 0 || isDeleting || !canReply) return;
+    setShowBulkDeleteModal(true);
   };
 
   const handleBulkExportCSV = async () => {
@@ -875,7 +883,7 @@ const Conversations = () => {
                             <>
                               <Bot className="w-3 h-3 text-blue-500" />
                               <span className="font-semibold text-slate-700 dark:text-slate-300">Lexa AI</span>
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-mono">Grounding RAG</span>
+                              <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/10 text-[#0066FF] dark:text-[#38BDF8] border border-blue-500/20 font-medium">{lang === "id" ? "Referensi Dokumen KB" : "KB Reference"}</span>
                               {timeStr && <span className="opacity-70 font-mono">• {timeStr}</span>}
                             </>
                           )}
@@ -1102,6 +1110,87 @@ const Conversations = () => {
         </div>
       )}
 
+      {/* Modal Konfirmasi Hapus Sesi Tunggal */}
+      {sessionToDelete && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0D182E] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-white/10 animate-in fade-in zoom-in-95 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Hapus Percakapan Ini?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Sesi akan dibersihkan dari server dan widget pelanggan.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-600 dark:text-slate-400 truncate">
+              ID Sesi: {sessionToDelete}
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setSessionToDelete(null)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteSession}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {isDeleting ? 'Menghapus...' : 'Ya, Hapus Sesi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Bulk Delete */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0D182E] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-white/10 animate-in fade-in zoom-in-95 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Hapus {selectedSessionIds.size} Percakapan Terpilih?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Tindakan ini permanen untuk seluruh sesi yang dicentang.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Seluruh riwayat chat dan status sesi ini akan dihapus permanen dari basis data.
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmBulkDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {isDeleting ? 'Menghapus...' : `Hapus (${selectedSessionIds.size}) Sesi`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

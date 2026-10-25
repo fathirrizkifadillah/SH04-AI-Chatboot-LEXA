@@ -15,6 +15,7 @@ export const translations = {
     nav_logout: 'Keluar',
 
     // Header
+    breadcrumb_home: 'Beranda',
     search_placeholder: 'Cari halaman atau fitur... (⌘K)',
     search_title: 'Pencarian Cepat',
     notifications: 'Notifikasi',
@@ -50,6 +51,16 @@ export const translations = {
     peak: 'Puncak',
     system_activity: 'Aktivitas Sistem Terkini',
     system_activity_desc: 'Log operasional bot dan eskalasi CS terbaru',
+    quick_actions: 'Aksi Cepat & Navigasi',
+    quick_actions_desc: 'Pintas modul operasional utama untuk admin',
+    sync_kb_action: 'Kelola Dokumen',
+    sync_kb_desc: 'Tambah & perbarui materi pengetahuan',
+    live_chat_action: 'Meja Layanan CS',
+    live_chat_desc: 'Pantau obrolan & intervensi langsung',
+    widget_setup_action: 'Integrasi Widget',
+    widget_setup_desc: 'Pasang chatbot di website perusahaan',
+    analytics_action: 'Laporan & Tren',
+    analytics_desc: 'Cek performa & pertanyaan belum terjawab',
 
     // Analytics
     analytics_title: 'Analisis & Laporan',
@@ -92,6 +103,8 @@ export const translations = {
     btn_copied: 'Tersalin!',
     try_live_widget: 'Uji Coba Langsung di Widget Tester',
     config_widget: 'Konfigurasi Tampilan',
+    pos_screen: 'Posisi di Layar',
+    theme_chat: 'Tema Warna Chat',
     pos_bottom_right: 'Kanan Bawah',
     pos_bottom_left: 'Kiri Bawah',
     theme_dark: 'Dark Mode',
@@ -129,6 +142,7 @@ export const translations = {
     nav_logout: 'Logout',
 
     // Header
+    breadcrumb_home: 'Home',
     search_placeholder: 'Search pages or features... (⌘K)',
     search_title: 'Quick Search',
     notifications: 'Notifications',
@@ -164,6 +178,16 @@ export const translations = {
     peak: 'Peak',
     system_activity: 'Recent System Activity',
     system_activity_desc: 'Latest bot operations and human CS escalation events',
+    quick_actions: 'Quick Actions & Navigation',
+    quick_actions_desc: 'Direct shortcuts to main operational modules',
+    sync_kb_action: 'Manage Documents',
+    sync_kb_desc: 'Add & update knowledge base content',
+    live_chat_action: 'CS Support Desk',
+    live_chat_desc: 'Monitor chats & handle live escalations',
+    widget_setup_action: 'Widget Integration',
+    widget_setup_desc: 'Embed chatbot into business websites',
+    analytics_action: 'Reports & Trends',
+    analytics_desc: 'Review metrics & unanswered questions',
 
     // Analytics
     analytics_title: 'Analytics & Reports',
@@ -206,6 +230,8 @@ export const translations = {
     btn_copied: 'Copied!',
     try_live_widget: 'Launch Live Widget Tester',
     config_widget: 'Appearance Settings',
+    pos_screen: 'Screen Position',
+    theme_chat: 'Chat Appearance Theme',
     pos_bottom_right: 'Bottom Right',
     pos_bottom_left: 'Bottom Left',
     theme_dark: 'Dark Mode',

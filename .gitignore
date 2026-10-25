@@ -31,8 +31,16 @@ uploads/*
 
 # Node / Frontend
 node_modules/
-npm-debug.log
-yarn-error.log
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 .npm/
 admin_dashboard/dist/
 frontend/dist/

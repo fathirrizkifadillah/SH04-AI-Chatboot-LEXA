@@ -107,6 +107,12 @@ export default function ChatWidget() {
   );
 }`;
 
+  const dynamicIframeSnippet = `<!-- Fallback: Direct iframe embed (${position === 'bottom-left' ? 'Kiri Bawah' : 'Kanan Bawah'} / ${theme.toUpperCase()}) -->
+<iframe src="${embedData?.config.api_url || 'https://gianni-subvitalised-lauditorily.ngrok-free.dev'}/widget/?theme=${theme}&color=${encodeURIComponent(color)}&position=${position}"
+        style="position:fixed;bottom:24px;${position === 'bottom-left' ? 'left:24px;' : 'right:24px;'}z-index:99999;border:none;width:380px;height:640px;border-radius:24px;box-shadow:0 20px 60px -15px rgba(0,0,0,0.3);max-width:calc(100vw - 32px);"
+        title="Lexa Chat Widget">
+</iframe>`;
+
   const wordpressGuide = `<!-- Panduan WordPress:
 1. Pasang plugin gratis "WPCode - Insert Headers and Footers" dari Menu Plugins.
 2. Buka menu Code Snippets -> Header & Footer.
@@ -207,8 +213,32 @@ ${embedData?.embed_code || ''}`;
             {/* Position */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                {lang === 'id' ? 'Posisi Tombol di Layar' : 'Button Screen Position'}
+                {t.pos_screen || (lang === 'id' ? 'Posisi Tombol di Layar' : 'Button Screen Position')}
               </label>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPosition('bottom-left')}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                    position === 'bottom-left'
+                      ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>↙ {t.pos_bottom_left}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPosition('bottom-right')}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                    position === 'bottom-right'
+                      ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>↘ {t.pos_bottom_right}</span>
+                </button>
+              </div>
               <select
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
@@ -223,8 +253,43 @@ ${embedData?.embed_code || ''}`;
             {/* Theme */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                {lang === 'id' ? 'Tema Warna Chat' : 'Chat Appearance Theme'}
+                {t.theme_chat || (lang === 'id' ? 'Tema Warna Chat' : 'Chat Appearance Theme')}
               </label>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setTheme('light')}
+                  className={`px-2 py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer border ${
+                    theme === 'light'
+                      ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>☀️ {t.theme_light}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme('dark')}
+                  className={`px-2 py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer border ${
+                    theme === 'dark'
+                      ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>🌙 {t.theme_dark}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme('auto')}
+                  className={`px-2 py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer border ${
+                    theme === 'auto'
+                      ? 'bg-[#0066FF] text-white border-[#0066FF] shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>💻 {t.theme_auto}</span>
+                </button>
+              </div>
               <select
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
@@ -254,17 +319,32 @@ ${embedData?.embed_code || ''}`;
 
         {/* Right: Interactive Live Simulation Box (7 cols) */}
         <div className="lg:col-span-7">
-          <div className="bg-white dark:bg-[#0A1224] rounded-2xl border border-slate-200/80 dark:border-white/5 p-5 shadow-xs h-full flex flex-col justify-between">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5 mb-3">
+          <div className={`rounded-2xl border p-5 shadow-xs h-full flex flex-col justify-between transition-colors duration-300 ${
+            isDarkTheme
+              ? 'bg-[#0A1224] border-blue-500/20 text-white shadow-xl'
+              : 'bg-white border-slate-200/80 text-slate-900'
+          }`}>
+            <div className={`flex items-center justify-between pb-3 border-b mb-3 ${
+              isDarkTheme ? 'border-white/10' : 'border-slate-100'
+            }`}>
               <div className="flex items-center gap-2">
                 <Monitor className="w-4 h-4 text-[#0066FF]" />
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                <h3 className={`font-bold text-sm ${isDarkTheme ? 'text-white' : 'text-slate-900'}`}>
                   {t.live_preview}
                 </h3>
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {position === 'bottom-right' ? 'Kanan Bawah' : 'Kiri Bawah'} • {theme.toUpperCase()}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                  isDarkTheme ? 'bg-blue-950/60 text-blue-300 border-blue-500/30' : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}>
+                  {position === 'bottom-right' ? t.pos_bottom_right : t.pos_bottom_left}
+                </span>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                  isDarkTheme ? 'bg-indigo-950/60 text-indigo-300 border-indigo-500/30' : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}>
+                  {theme.toUpperCase()}
+                </span>
+              </div>
             </div>
 
             {/* Simulated Web Page */}
@@ -546,16 +626,21 @@ ${embedData?.embed_code || ''}`;
             {activeTab === 'iframe' && (
               <div className="bg-[#060D1E] rounded-xl overflow-hidden border border-white/10">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/[0.02]">
-                  <span className="text-xs text-slate-400 font-mono">Iframe Fallback</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400 font-mono">Iframe Fallback</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {position === 'bottom-left' ? 'Kiri Bawah' : 'Kanan Bawah'} • {theme.toUpperCase()}
+                    </span>
+                  </div>
                   <CopyButton
-                    text={embedData.iframe_fallback}
+                    text={dynamicIframeSnippet}
                     field="iframe"
                     isCopied={copiedField === 'iframe'}
                     onCopy={handleCopy}
                   />
                 </div>
                 <pre className="p-5 text-xs text-amber-300 font-mono overflow-x-auto leading-relaxed">
-                  {embedData.iframe_fallback}
+                  {dynamicIframeSnippet}
                 </pre>
               </div>
             )}

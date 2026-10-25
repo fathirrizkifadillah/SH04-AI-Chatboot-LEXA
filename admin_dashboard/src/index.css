@@ -13,6 +13,11 @@
 }
 
 @layer base {
+  html, body, #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
+  }
   body {
     @apply bg-[#F5F7FA] text-slate-800 antialiased dark:bg-[#0B1529] dark:text-slate-100;
   }

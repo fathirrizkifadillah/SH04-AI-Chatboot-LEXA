@@ -25,6 +25,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [hoveredNav, setHoveredNav] = useState<{ name: string; top: number; isLogout?: boolean } | null>(null);
 
   const userStr = sessionStorage.getItem('lexa_admin_user');
   let userRole = 'CS Agent';
@@ -112,13 +113,21 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
       <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto scrollbar-hidden py-4">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const isConv = item.path === '/conversations';
           return (
             <Link
-              key={item.name}
+              key={item.path}
               to={item.path}
               onClick={() => {
                 if (onCloseMobile) onCloseMobile();
               }}
+              onMouseEnter={(e) => {
+                if (isCollapsed) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setHoveredNav({ name: item.name, top: rect.top + rect.height / 2 });
+                }
+              }}
+              onMouseLeave={() => setHoveredNav(null)}
               className={`group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
                 isCollapsed ? 'lg:justify-center' : ''
               } ${
@@ -129,7 +138,7 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
             >
               <span className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`}>{item.icon}</span>
               {!isCollapsed && <span className="text-[13px] tracking-wide">{item.name}</span>}
-              {item.name === 'Conversations' && pendingHandoffCount > 0 && (
+              {isConv && pendingHandoffCount > 0 && (
                 isCollapsed ? (
                   <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse ring-2 ring-[#080E21]" />
                 ) : (
@@ -138,11 +147,6 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
                   </span>
                 )
               )}
-              {isCollapsed && (
-                <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-2.5 py-1.5 bg-[#0D1527] text-white text-xs font-medium rounded-lg shadow-xl border border-[#1E2E4A] whitespace-nowrap z-50 pointer-events-none items-center animate-in fade-in zoom-in-95 duration-100">
-                  {item.name}
-                </div>
-              )}
             </Link>
           );
         })}
@@ -150,18 +154,39 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
         <div className="pt-2 border-t border-[#152238] mt-2">
           <button
             onClick={() => setShowLogoutConfirm(true)}
+            onMouseEnter={(e) => {
+              if (isCollapsed) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setHoveredNav({ name: t.nav_logout, top: rect.top + rect.height / 2, isLogout: true });
+              }
+            }}
+            onMouseLeave={() => setHoveredNav(null)}
             className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-slate-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="w-5 h-5 shrink-0" />
             {!isCollapsed && <span className="text-[13px]">{t.nav_logout}</span>}
-            {isCollapsed && (
-              <div className="hidden lg:group-hover:flex absolute left-full ml-3 px-2.5 py-1.5 bg-[#0D1527] text-red-400 text-xs font-medium rounded-lg shadow-xl border border-[#1E2E4A] whitespace-nowrap z-50 pointer-events-none items-center animate-in fade-in zoom-in-95 duration-100">
-                {t.nav_logout}
-              </div>
-            )}
           </button>
         </div>
       </nav>
+
+      {/* Floating Unclipped Tooltip for Collapsed Sidebar */}
+      {isCollapsed && hoveredNav && (
+        <div
+          style={{ top: `${hoveredNav.top}px` }}
+          className={`fixed left-[80px] -translate-y-1/2 px-3 py-1.5 text-xs font-semibold rounded-xl shadow-2xl border whitespace-nowrap z-[9999] pointer-events-none animate-in fade-in zoom-in-95 duration-100 flex items-center gap-1.5 ring-1 ${
+            hoveredNav.isLogout
+              ? 'bg-[#150A10] text-red-400 border-red-500/30 ring-red-500/20 shadow-red-950/40'
+              : 'bg-[#0D1527] text-white border-[#1E2E4A] ring-white/10 shadow-black/60'
+          }`}
+        >
+          <span>{hoveredNav.name}</span>
+          <div
+            className={`absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-y-4 border-y-transparent border-r-4 ${
+              hoveredNav.isLogout ? 'border-r-[#150A10]' : 'border-r-[#0D1527]'
+            }`}
+          />
+        </div>
+      )}
 
       {/* Bottom Brand Card - Clean & Minimal */}
       {!isCollapsed && (
