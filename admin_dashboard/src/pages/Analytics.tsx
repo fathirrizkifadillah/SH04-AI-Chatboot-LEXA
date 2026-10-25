@@ -217,7 +217,7 @@ const Analytics = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                <img src="/elements/mascot_happy_transparent.png" alt="AI" className="w-4 h-4 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                 {lang === 'id' ? 'Otomatis Dijawab AI' : 'AI Auto-Resolved'}
               </span>
               <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
@@ -242,7 +242,7 @@ const Analytics = () => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                <AlertCircle className="w-3 h-3 text-amber-500" />
+                <img src="/elements/mascot_thinking_transparent.png" alt="Topic" className="w-4 h-4 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                 {lang === 'id' ? 'Perlu Dokumen di KB' : 'Needs Knowledge Doc'}
               </span>
               <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">

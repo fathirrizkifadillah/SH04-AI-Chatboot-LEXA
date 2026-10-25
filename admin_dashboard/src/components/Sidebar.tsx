@@ -70,8 +70,13 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
       <div className={`p-4 pb-3 flex items-center ${isCollapsed ? 'justify-between lg:justify-center lg:flex-col lg:gap-2' : 'justify-between'} border-b border-[#152238]`}>
         {(!isCollapsed || isMobileOpen) ? (
           <Link to="/" onClick={() => onCloseMobile && onCloseMobile()} className="flex items-center gap-3 group">
-            <div className="p-1 bg-white rounded-xl shadow-md border border-white/20 shrink-0">
-              <img src="/lexa_logo.jpeg" alt="LEXA" className="h-8 w-auto object-contain" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600/30 to-indigo-600/20 border border-blue-500/30 p-1 flex items-center justify-center shadow-md shrink-0">
+              <img 
+                src="/elements/app_icon_card.png" 
+                alt="LEXA" 
+                className="w-full h-full object-contain rounded-lg" 
+                onError={(e) => { (e.target as HTMLImageElement).src = '/lexa_logo.jpeg'; }} 
+              />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
@@ -83,8 +88,13 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
             </div>
           </Link>
         ) : (
-          <Link to="/" className="p-1 bg-white rounded-xl shadow-md border border-white/20 inline-block">
-            <img src="/lexa_logo.jpeg" alt="LEXA" className="h-7 w-7 object-contain" />
+          <Link to="/" className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600/30 to-indigo-600/20 border border-blue-500/30 p-1 flex items-center justify-center shadow-md">
+            <img 
+              src="/elements/app_icon_card.png" 
+              alt="LEXA" 
+              className="w-full h-full object-contain rounded-lg" 
+              onError={(e) => { (e.target as HTMLImageElement).src = '/lexa_logo.jpeg'; }} 
+            />
           </Link>
         )}
         <div className="flex items-center gap-1">

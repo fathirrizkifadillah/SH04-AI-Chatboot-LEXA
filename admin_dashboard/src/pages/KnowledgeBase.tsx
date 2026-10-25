@@ -194,7 +194,7 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
       setFileContent(data.content || '');
     } catch (err) {
       console.error(err);
-      alert('Gagal memuat isi dokumen.');
+      setSyncStatus({ type: 'error', message: 'Gagal memuat isi dokumen dari server.' });
       setIsEditOpen(false);
     } finally {
       setIsLoadingContent(false);
@@ -310,11 +310,20 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     <div className="p-6 space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Knowledge Base Management
-            </h1>
+        <div className="flex items-start gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 p-1 flex items-center justify-center shrink-0 mt-0.5">
+            <img 
+              src="/elements/mascot_default_transparent.png" 
+              alt="LEXA KB" 
+              className="w-full h-full object-contain filter drop-shadow-xs" 
+              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+            />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Knowledge Base Management
+              </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
               Basis Pengetahuan AI
             </span>
@@ -323,8 +332,9 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
             Pusat penyimpanan dokumen referensi AI LEXA. Semua informasi di sini digunakan model untuk menjawab pengunjung secara akurat tanpa halusinasi.
           </p>
         </div>
+      </div>
 
-        {canManageKB && (
+      {canManageKB && (
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setIsCreateOpen(true)}

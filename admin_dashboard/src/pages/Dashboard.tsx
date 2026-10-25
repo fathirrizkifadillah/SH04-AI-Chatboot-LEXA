@@ -220,6 +220,57 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Enterprise AI Mascot Welcome Banner (Section 5 & 7 Design System) */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#080E21] via-[#0F1E3A] to-[#162B50] border border-blue-500/25 p-5 sm:p-6 text-white shadow-lg">
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-1.5 shrink-0 flex items-center justify-center shadow-inner">
+              <img 
+                src="/elements/mascot_happy_transparent.png" 
+                alt="LEXA Bot" 
+                className="w-full h-full object-contain filter drop-shadow" 
+                onError={(e) => { (e.target as HTMLImageElement).src = '/lexa_bot_transparent.png'; }}
+              />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  {lang === 'id' ? 'Sistem AI Aktif & Optimal' : 'AI Engine Operational'}
+                </span>
+                <span className="text-xs text-blue-200/70 font-mono hidden sm:inline">v2.4 Enterprise</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-1.5">
+                {lang === 'id' ? 'Pusat Kendali Otomasi Percakapan LEXA' : 'LEXA AI Automation Command Center'}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
+                {lang === 'id' 
+                  ? 'Pantau percakapan pelanggan secara real-time, sinkronkan dokumen Knowledge Base, dan operasikan alih tugas ke tim CS dalam satu konsol terpadu.' 
+                  : 'Monitor customer interactions real-time, sync Knowledge Base documents, and manage live agent handoffs in a single console.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
+            <button
+              onClick={() => navigate('/conversations')}
+              className="flex-1 md:flex-none px-4 py-2.5 bg-[#0066FF] hover:bg-[#0052CC] text-white rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>{lang === 'id' ? 'Buka Percakapan' : 'View Inbox'}</span>
+            </button>
+            <button
+              onClick={() => navigate('/kb')}
+              className="flex-1 md:flex-none px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>{lang === 'id' ? 'Kelola Dokumen' : 'Knowledge Base'}</span>
+            </button>
+          </div>
+        </div>
+        {/* Subtle decorative glow */}
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#0066FF]/15 to-transparent pointer-events-none" />
+      </div>
+
       {/* 2. Key Business Metrics Bento Grid */}
       <div className="grid grid-cols-12 gap-4">
         

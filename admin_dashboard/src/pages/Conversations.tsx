@@ -766,6 +766,14 @@ const Conversations = () => {
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/60 p-1 flex items-center justify-center shrink-0">
+                    <img 
+                      src={sessionData?.is_human_handoff ? "/elements/mascot_help.png" : "/elements/mascot_default_transparent.png"} 
+                      alt="Avatar" 
+                      className="w-full h-full object-contain" 
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/elements/app_icon_card.png'; }}
+                    />
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Sesi Pelanggan</h3>
@@ -838,9 +846,17 @@ const Conversations = () => {
               <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4 bg-slate-100/70 dark:bg-slate-950/80">
                 {!sessionData ? (
                   <div className="h-full flex items-center justify-center text-slate-400 text-xs">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
-                      <span>Memuat riwayat sesi...</span>
+                    <div className="flex flex-col items-center gap-3">
+                      <img 
+                        src="/elements/mascot_thinking_transparent.png" 
+                        alt="Memuat..." 
+                        className="w-12 h-12 object-contain animate-bounce" 
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <div className="flex items-center gap-2 font-medium text-slate-500 dark:text-slate-400">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                        <span>Memuat riwayat percakapan...</span>
+                      </div>
                     </div>
                   </div>
                 ) : sessionData.history && sessionData.history.length > 0 ? (
@@ -1065,10 +1081,17 @@ const Conversations = () => {
               </div>
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400">
-              <MessageSquare className="w-10 h-10 mb-2 text-slate-300 dark:text-slate-700" />
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Pilih Percakapan</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Pilih sesi obrolan dari daftar untuk melihat atau merespons pelanggan.</p>
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 bg-slate-50/50 dark:bg-slate-900/40">
+              <img 
+                src="/elements/empty_conversations_transparent.png" 
+                alt="Pilih Percakapan" 
+                className="w-28 h-auto mb-3 object-contain opacity-90 filter drop-shadow-sm" 
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pilih Percakapan Pelanggan</p>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs text-center leading-relaxed">
+                Pilih salah satu sesi di kolom sebelah kiri untuk meninjau riwayat obrolan atau mengambil alih komunikasi langsung.
+              </p>
             </div>
           )}
         </div>

@@ -230,8 +230,13 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="p-0.5 bg-white rounded-lg shadow-xs border border-slate-200 dark:border-slate-700 shrink-0">
-            <img src="/lexa_logo.jpeg" alt="LEXA" className="h-5 w-auto object-contain" />
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600/20 to-indigo-600/10 border border-blue-500/20 p-0.5 flex items-center justify-center shrink-0">
+            <img 
+              src="/elements/app_icon_card.png" 
+              alt="LEXA" 
+              className="w-full h-full object-contain rounded-md" 
+              onError={(e) => { (e.target as HTMLImageElement).src = '/lexa_logo.jpeg'; }} 
+            />
           </div>
           <div className="flex flex-col min-w-0">
             <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">

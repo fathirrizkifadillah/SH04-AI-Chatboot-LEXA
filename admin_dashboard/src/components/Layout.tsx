@@ -177,7 +177,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
       />
-      <div className={`min-h-screen transition-all duration-300 ml-0 w-full max-w-full overflow-x-hidden ${sidebarCollapsed ? 'lg:ml-[74px]' : 'lg:ml-64'}`}>
+      <div className={`min-h-screen transition-all duration-300 flex flex-col min-w-0 ${sidebarCollapsed ? 'lg:pl-[74px]' : 'lg:pl-64'}`}>
         <Header
           onToggleSidebar={() => {
             if (window.innerWidth < 1024) {
@@ -188,7 +188,7 @@ const Layout = ({ setAuthToken }: LayoutProps) => {
           }}
           sidebarCollapsed={sidebarCollapsed}
         />
-        <main className="w-full max-w-full min-w-0 p-3.5 sm:p-5 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 w-full min-w-0 p-3.5 sm:p-5 lg:p-8">
           <Outlet />
         </main>
       </div>
