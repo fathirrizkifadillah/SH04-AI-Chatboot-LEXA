@@ -16,27 +16,27 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, subtitle, icon: Icon, color, onInfoClick }: StatCardProps) => (
-  <div className="bg-white dark:bg-[#0A1224] p-5 rounded-2xl shadow-xs border border-slate-200/80 dark:border-white/5 flex items-start justify-between transition-colors">
-    <div className="flex items-start gap-3.5">
-      <div className={`p-3 rounded-xl ${color} shrink-0 mt-0.5`}>
+  <div className="bg-white dark:bg-[#0A1224] p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/80 dark:border-white/5 flex items-start justify-between transition-colors min-w-0">
+    <div className="flex items-start gap-3 min-w-0 flex-1">
+      <div className={`p-2.5 sm:p-3 rounded-xl ${color} shrink-0 mt-0.5`}>
         <Icon className="w-5 h-5" />
       </div>
-      <div>
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{title}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{title}</p>
           {onInfoClick && (
             <button
               onClick={onInfoClick}
-              className="text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
+              className="text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer shrink-0"
               title="Pelajari sistem metrik ini"
             >
               <HelpCircle className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
-        <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mt-1">{value}</h3>
+        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight mt-1 font-mono tabular-nums">{value}</h3>
         {subtitle && (
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{subtitle}</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 leading-snug">{subtitle}</p>
         )}
       </div>
     </div>
@@ -178,7 +178,7 @@ const Analytics = () => {
                 onClick={() => handleRangeChange(range)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
                   timeRange === range
-                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-bold'
+                    ? 'bg-[#0066FF] text-white shadow-xs font-bold ring-2 ring-[#0066FF]/25'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
                 }`}
               >
@@ -275,8 +275,8 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* KPI Cards: 5 Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* KPI Cards: Responsive 5 Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <StatCard 
           title={t.total_conversations} 
           value={stats?.total_conversations || 0} 

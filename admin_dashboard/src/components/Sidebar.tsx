@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { LayoutDashboard, MessageSquare, BookOpen, BarChart3, Users, Settings, LogOut, ChevronsLeft, ChevronsRight, Code, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
@@ -206,9 +207,9 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
         </div>
       )}
 
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {/* Logout Confirmation Modal - Rendered via Portal to ensure full screen centering and no clipping */}
+      {showLogoutConfirm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#152238] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full shadow-2xl text-center space-y-4 animate-in fade-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto border border-red-200 dark:border-red-900/50">
               <LogOut className="w-6 h-6" />
@@ -239,7 +240,8 @@ const Sidebar = ({ setAuthToken, isCollapsed, onToggle, pendingHandoffCount = 0,
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </aside>
   );

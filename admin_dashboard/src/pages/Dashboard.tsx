@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  MessageSquare, BookOpen, Plus, 
+  MessageSquare, BookOpen, 
   ArrowUpRight, UploadCloud, 
   Share2, BarChart3, Settings, ShieldCheck,
-  ArrowRight, RefreshCw, AlertTriangle
+  ArrowRight, AlertTriangle
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import api from '../lib/apiClient';
@@ -27,7 +27,6 @@ const Dashboard = () => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [, setFeedbackStats] = useState<FeedbackStats | null>(null);
   const [timeRange, setTimeRange] = useState<'30m' | '1h' | '24h' | '7d' | '30d'>('7d');
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeZone, setTimeZone] = useState<'WIB' | 'WITA' | 'WIT' | 'UTC'>(() => {
     return (localStorage.getItem('lexa_admin_tz') as 'WIB' | 'WITA' | 'WIT' | 'UTC') || 'WIB';
   });
@@ -52,7 +51,6 @@ const Dashboard = () => {
     range: '30m' | '1h' | '24h' | '7d' | '30d' = timeRange,
     tz: 'WIB' | 'WITA' | 'WIT' | 'UTC' = timeZone
   ) => {
-    setIsRefreshing(true);
     const tzOffset = getTzOffset(tz);
     api.authGet<{ kpi: KPIStats; chart: ChartDataPoint[] }>(`/api/admin/stats?range=${range}&tz_offset=${tzOffset}`)
       .then(data => {
@@ -77,10 +75,7 @@ const Dashboard = () => {
           setChartData(data.chart);
         }
       })
-      .catch(() => {})
-      .finally(() => {
-        setTimeout(() => setIsRefreshing(false), 300);
-      });
+      .catch(() => {});
 
     api.authGet<FeedbackStats>('/api/admin/feedback/stats')
       .then(data => setFeedbackStats(data))
@@ -193,29 +188,6 @@ const Dashboard = () => {
                 {tz}
               </button>
             ))}
-          </div>
-
-          <div className="flex items-center gap-2 ml-auto md:ml-0">
-            {/* Refresh Button */}
-            <button
-              onClick={() => fetchStats()}
-              disabled={isRefreshing}
-              className="p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
-              title="Refresh data"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin text-[#0066FF]' : ''}`} />
-            </button>
-
-            {/* Primary Action Button */}
-            <button
-              onClick={() => navigate('/kb')}
-              className="group relative inline-flex items-center gap-2 pl-3 sm:pl-4 pr-1.5 py-1 sm:py-1.5 bg-[#0066FF] hover:bg-[#0052CC] active:scale-[0.98] text-white text-[11px] sm:text-xs font-semibold rounded-xl transition-all shadow-md shadow-[#0066FF]/25 cursor-pointer"
-            >
-              <span>{t.ingest_document}</span>
-              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-white/20 group-hover:bg-white/30 flex items-center justify-center transition-colors">
-                <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-              </span>
-            </button>
           </div>
         </div>
       </div>
@@ -336,65 +308,118 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => navigate('/kb')}
-              className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/80 cursor-pointer"
-            >
-              <span>{t.manage_kb}</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
+            {currentUser?.role === 'CS Agent' ? (
+              <div className="text-[11px] font-medium text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                <span>{lang === 'id' ? 'Dikelola oleh Tim Editor' : 'Managed by Editors'}</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => navigate('/kb')}
+                className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center gap-1 pt-3 border-t border-slate-100 dark:border-slate-800/80 cursor-pointer"
+              >
+                <span>{t.manage_kb}</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Bento Card 4: Antrean Eskalasi CS */}
+        {/* Bento Card 4: Role-specific contextual card */}
         <div className="col-span-12 lg:col-span-3 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/40 ring-1 ring-slate-300/60 dark:ring-white/[0.08] shadow-xs min-w-0 w-full">
-          <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
-                {lang === 'id' ? 'Eskalasi Staf CS' : 'CS Agent Queue'}
-              </span>
-              <div className={`p-1.5 rounded-lg ${
-                (stats.cs_handoff_sessions ?? 0) > 0 
-                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                  : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-              }`}>
-                {(stats.cs_handoff_sessions ?? 0) > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-              </div>
-            </div>
-            
-            <div className="my-2">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
-                  {stats.cs_handoff_sessions ?? 0}
+          {currentUser?.role === 'Editor (Knowledge Base)' ? (
+            /* Contextual Card for Editor KB: Focus on Unanswered Queries / Knowledge Gaps */
+            <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                  {lang === 'id' ? 'Topik Belum di KB' : 'Unanswered Topics'}
                 </span>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
-                  (stats.cs_handoff_sessions ?? 0) > 0
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                <div className={`p-1.5 rounded-lg ${
+                  stats.unanswered_queries > 0 
+                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                 }`}>
-                  {(stats.cs_handoff_sessions ?? 0) > 0 
-                    ? (lang === 'id' ? 'Menunggu CS' : 'Needs CS') 
-                    : (lang === 'id' ? 'Semua Ditangani' : 'All Clear')}
-                </span>
+                  {stats.unanswered_queries > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {lang === 'id' ? 'Sesi aktif di kotak masuk yang dialihkan ke CS' : 'Active inbox sessions waiting for human CS'}
-              </p>
-              {stats.unanswered_queries > 0 && (
-                <p className="text-[10px] text-amber-500/90 mt-1">
-                  • {stats.unanswered_queries} {lang === 'id' ? 'topik baru belum di KB' : 'new topics need KB'}
+              
+              <div className="my-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
+                    {stats.unanswered_queries}
+                  </span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
+                    stats.unanswered_queries > 0
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    {stats.unanswered_queries > 0 
+                      ? (lang === 'id' ? 'Perlu Dibuatkan KB' : 'Needs Articles') 
+                      : (lang === 'id' ? 'Semua Lengkap' : 'Up to Date')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {lang === 'id' ? 'Pertanyaan pelanggan yang belum memiliki artikel KB' : 'Customer queries needing knowledge base articles'}
                 </p>
-              )}
-            </div>
+              </div>
 
-            <button
-              onClick={() => navigate('/conversations')}
-              className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center justify-between cursor-pointer border border-slate-200 dark:border-slate-700/80"
-            >
-              <span>{t.view_conversations}</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          </div>
+              <button
+                onClick={() => navigate('/kb')}
+                className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center justify-between cursor-pointer border border-slate-200 dark:border-slate-700/80"
+              >
+                <span>{lang === 'id' ? 'Kelola Knowledge Base' : 'Open Knowledge Base'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            </div>
+          ) : (
+            /* Contextual Card for Super Admin & CS Agent: CS Escalation Queue */
+            <div className="h-full rounded-[calc(1rem-2px)] bg-white dark:bg-[#0A1224] p-5 flex flex-col justify-between border border-slate-200/40 dark:border-white/5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                  {lang === 'id' ? 'Eskalasi Staf CS' : 'CS Agent Queue'}
+                </span>
+                <div className={`p-1.5 rounded-lg ${
+                  (stats.cs_handoff_sessions ?? 0) > 0 
+                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                }`}>
+                  {(stats.cs_handoff_sessions ?? 0) > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                </div>
+              </div>
+              
+              <div className="my-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-mono tabular-nums">
+                    {stats.cs_handoff_sessions ?? 0}
+                  </span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
+                    (stats.cs_handoff_sessions ?? 0) > 0
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    {(stats.cs_handoff_sessions ?? 0) > 0 
+                      ? (lang === 'id' ? 'Menunggu CS' : 'Needs CS') 
+                      : (lang === 'id' ? 'Semua Ditangani' : 'All Clear')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {lang === 'id' ? 'Sesi aktif di kotak masuk yang dialihkan ke CS' : 'Active inbox sessions waiting for human CS'}
+                </p>
+                {stats.unanswered_queries > 0 && (
+                  <p className="text-[10px] text-amber-500/90 mt-1">
+                    • {stats.unanswered_queries} {lang === 'id' ? 'topik baru belum di KB' : 'new topics need KB'}
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={() => navigate('/conversations')}
+                className="w-full py-2 px-3 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center justify-between cursor-pointer border border-slate-200 dark:border-slate-700/80"
+              >
+                <span>{t.view_conversations}</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            </div>
+          )}
         </div>
 
       </div>
@@ -551,51 +576,55 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-2.5 mt-3.5">
-                {/* Action 1 */}
-                <button
-                  onClick={() => navigate('/kb')}
-                  className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-[#0066FF] flex items-center justify-center shrink-0">
-                      <UploadCloud className="w-4 h-4" />
+                {/* Action 1: KB (Super Admin & Editor KB only) */}
+                {(currentUser?.role === 'Super Admin' || currentUser?.role === 'Editor (Knowledge Base)') && (
+                  <button
+                    onClick={() => navigate('/kb')}
+                    className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-[#0066FF] flex items-center justify-center shrink-0">
+                        <UploadCloud className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          {t.sync_kb_action}
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {t.sync_kb_desc}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {t.sync_kb_action}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate">
-                        {t.sync_kb_desc}
-                      </p>
+                    <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-[#0066FF] group-hover:translate-x-0.5 transition-all shrink-0">
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </div>
-                  </div>
-                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-[#0066FF] group-hover:translate-x-0.5 transition-all shrink-0">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
-                </button>
+                  </button>
+                )}
 
-                {/* Action 2 */}
-                <button
-                  onClick={() => navigate('/conversations')}
-                  className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                      <MessageSquare className="w-4 h-4" />
+                {/* Action 2: Live Chat / Conversations (Super Admin & CS Agent only) */}
+                {(currentUser?.role === 'Super Admin' || currentUser?.role === 'CS Agent') && (
+                  <button
+                    onClick={() => navigate('/conversations')}
+                    className="w-full group flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          {t.live_chat_action}
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {t.live_chat_desc}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {t.live_chat_action}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate">
-                        {t.live_chat_desc}
-                      </p>
+                    <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0">
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </div>
-                  </div>
-                  <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-700/60 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
-                </button>
+                  </button>
+                )}
 
                 {/* Action 3 */}
                 <button

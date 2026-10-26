@@ -1,11 +1,13 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { Shield, ShieldAlert, User, Plus, Trash2, X, MessageSquare, Lock, KeyRound, Loader2, Check } from 'lucide-react';
+import { Shield, ShieldAlert, User, Plus, Trash2, X, MessageSquare, Lock, KeyRound, Loader2, Check, AlertCircle } from 'lucide-react';
 import api from '../lib/apiClient';
 import type { AdminUser, UserCreateRequest } from '../types/api';
 
 const Users = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [addUserError, setAddUserError] = useState('');
   const [formData, setFormData] = useState<UserCreateRequest>({
     name: '',
     email: '',
@@ -84,19 +86,36 @@ const Users = () => {
 
   const handleAdd = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const addedName = formData.name;
+    if (isAddingUser) return;
+    setAddUserError('');
+    const cleanEmail = formData.email.trim().toLowerCase();
+    const cleanName = formData.name.trim();
+    if (!cleanEmail || !cleanName) {
+      setAddUserError('Nama dan email wajib diisi.');
+      return;
+    }
+    setIsAddingUser(true);
+    const addedName = cleanName;
     const addedRole = formData.role;
-    api.authPost('/api/admin/users', formData)
+    api.authPost('/api/admin/users', {
+      ...formData,
+      name: cleanName,
+      email: cleanEmail,
+    })
     .then(() => {
       setIsModalOpen(false);
       setFormData({ name: '', email: '', password: '', role: 'CS Agent' });
+      setAddUserError('');
       setUserSuccessMessage(`Anggota "${addedName}" (${addedRole}) berhasil ditambahkan.`);
       setTimeout(() => setUserSuccessMessage(''), 4000);
       fetchUsers();
     })
     .catch(err => {
       console.error(err);
-      alert(err.message || 'Gagal menambah pengguna.');
+      setAddUserError(err.message || 'Gagal menambah pengguna.');
+    })
+    .finally(() => {
+      setIsAddingUser(false);
     });
   };
 
@@ -138,7 +157,10 @@ const Users = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Kelola kredensial tim dan hak akses pada Dashboard LEXA.</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setAddUserError('');
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -281,29 +303,38 @@ const Users = () => {
               </button>
             </div>
             <form onSubmit={handleAdd} className="p-5 space-y-3.5 text-xs">
+              {addUserError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{addUserError}</span>
+                </div>
+              )}
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Nama Lengkap</label>
-                <input required type="text" value={formData.name} onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, name: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500" placeholder="e.g. Budi Santoso" />
+                <input required type="text" disabled={isAddingUser} value={formData.name} onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, name: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500 disabled:opacity-50" placeholder="e.g. Budi Santoso" />
               </div>
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-                <input required type="email" value={formData.email} onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, email: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500" placeholder="budi@lexatech.id" />
+                <input required type="email" disabled={isAddingUser} value={formData.email} onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, email: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500 disabled:opacity-50" placeholder="budi@lexatech.id" />
               </div>
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
-                <input required type="password" value={formData.password} onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, password: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500" placeholder="Minimal 6 karakter" minLength={6} />
+                <input required type="password" disabled={isAddingUser} value={formData.password} onChange={(e: ChangeEvent<HTMLInputElement>) => setFormData({...formData, password: e.target.value})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500 disabled:opacity-50" placeholder="Minimal 6 karakter" minLength={6} />
               </div>
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Role / Peran</label>
-                <select value={formData.role} onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormData({...formData, role: e.target.value as UserCreateRequest['role']})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500">
+                <select disabled={isAddingUser} value={formData.role} onChange={(e: ChangeEvent<HTMLSelectElement>) => setFormData({...formData, role: e.target.value as UserCreateRequest['role']})} className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-blue-500 disabled:opacity-50">
                   <option value="CS Agent">CS Agent (Balas Chat & Handoff)</option>
                   <option value="Editor (Knowledge Base)">Editor (Knowledge Base)</option>
                   <option value="Super Admin">Super Admin (Akses Penuh)</option>
                 </select>
               </div>
               <div className="pt-3 flex gap-2.5">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Batal</button>
-                <button type="submit" className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-colors">Simpan Pengguna</button>
+                <button type="button" disabled={isAddingUser} onClick={() => setIsModalOpen(false)} className="flex-1 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50">Batal</button>
+                <button type="submit" disabled={isAddingUser} className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                  {isAddingUser && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isAddingUser ? 'Menyimpan...' : 'Simpan Pengguna'}</span>
+                </button>
               </div>
             </form>
           </div>

@@ -1,4 +1,4 @@
-import { Minus, RotateCcw, Headphones, Maximize2, Minimize2, Bot } from 'lucide-react';
+import { Minus, RotateCcw, Headphones, Maximize2, Minimize2, Bot, PhoneOff } from 'lucide-react';
 
 interface ChatHeaderProps {
   isRefreshing: boolean;
@@ -7,6 +7,8 @@ interface ChatHeaderProps {
   botAvatar: string;
   onRequestHandoff?: () => void;
   onReturnToBot?: () => void;
+  onEndSession?: () => void;
+  isSessionEnded?: boolean;
   isHandoffRequested?: boolean;
   isHandoffActive?: boolean;
   adminName?: string;
@@ -23,6 +25,8 @@ export const ChatHeader = ({
   botAvatar,
   onRequestHandoff,
   onReturnToBot,
+  onEndSession,
+  isSessionEnded,
   isHandoffRequested,
   isHandoffActive,
   adminName,
@@ -52,7 +56,9 @@ export const ChatHeader = ({
             <img src={botAvatar} alt="LEXA" className="w-full h-full object-contain filter drop-shadow-sm" />
           </div>
           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0D182E] ${
-            isHandoffActive 
+            isSessionEnded
+              ? 'bg-slate-400'
+              : isHandoffActive 
               ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]' 
               : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]'
           }`}></span>
@@ -63,21 +69,25 @@ export const ChatHeader = ({
               {isHandoffActive && adminName ? adminName : 'LEXA AI'}
             </h2>
             <span className={`text-[8.5px] font-mono uppercase px-1.5 py-0.5 rounded border font-semibold tracking-wider whitespace-nowrap ${
-              isHandoffActive 
+              isSessionEnded
+                ? 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                : isHandoffActive 
                 ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                 : isHandoffRequested
                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                 : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
             }`}>
-              {isHandoffActive ? 'CS LIVE' : isHandoffRequested ? 'MENUNGGU CS' : 'AI BOT'}
+              {isSessionEnded ? 'SESI SELESAI' : isHandoffActive ? 'CS LIVE' : isHandoffRequested ? 'MENUNGGU CS' : 'AI BOT'}
             </span>
           </div>
           <p className="text-[10px] text-slate-400 font-medium mt-1 flex items-center gap-1.5 leading-none truncate">
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              isHandoffActive ? 'bg-amber-400' : isHandoffRequested ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'
+              isSessionEnded ? 'bg-slate-400' : isHandoffActive ? 'bg-amber-400' : isHandoffRequested ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'
             }`}></span>
             <span className="truncate">
-              {isHandoffActive 
+              {isSessionEnded
+                ? 'Sesi percakapan telah selesai'
+                : isHandoffActive 
                 ? `Terhubung dengan ${adminName || 'Staf Admin'}` 
                 : isHandoffRequested 
                 ? 'Menghubungkan ke Tim CS...' 
@@ -89,6 +99,17 @@ export const ChatHeader = ({
 
       {/* Right: Action Controls */}
       <div className="flex items-center gap-1 z-20 shrink-0 ml-1">
+        {!isSessionEnded && onEndSession && (
+          <button
+            onClick={onEndSession}
+            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all border border-transparent cursor-pointer active:scale-[0.95]"
+            title="Akhiri sesi percakapan"
+            aria-label="Akhiri sesi"
+          >
+            <PhoneOff size={13} />
+          </button>
+        )}
+
         {(isHandoffRequested || isHandoffActive) && onReturnToBot ? (
           <button
             onClick={onReturnToBot}

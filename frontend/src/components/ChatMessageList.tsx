@@ -41,6 +41,23 @@ export const ChatMessageList = ({
     <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-5 bg-[#080E20]/95 scroll-smooth relative">
       <AnimatePresence>
         {messages.map((msg, idx) => {
+          const isSystem = msg.role === 'system';
+          if (isSystem) {
+            return (
+              <motion.div
+                key={msg.id || idx}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex justify-center my-2"
+              >
+                <div className="px-3.5 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-[11.5px] text-slate-300 text-center max-w-[90%] shadow-xs">
+                  {msg.content}
+                </div>
+              </motion.div>
+            );
+          }
+
           const isUser = msg.role === 'user';
           const isAdmin = msg.role === 'admin';
           const isBot = !isUser && !isAdmin;

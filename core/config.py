@@ -54,10 +54,10 @@ class Config:
         "Halo! Saya Lexa, asisten customer service LEXA Software House. Ada yang bisa saya bantu?",
     )
     QUICK_REPLIES: list = [
-        "Layanan apa saja yang tersedia?",
-        "Berapa harga paket Pro?",
-        "Bagaimana cara menghubungi tim sales?",
-        "Apa keunggulan LEXA?",
+        "Layanan software apa saja yang disediakan LEXA?",
+        "Bagaimana proses konsultasi proyek software?",
+        "Bagaimana cara menghubungi tim LEXA?",
+        "Apa keunggulan teknologi LEXA Software House?",
     ]
 
     @classmethod

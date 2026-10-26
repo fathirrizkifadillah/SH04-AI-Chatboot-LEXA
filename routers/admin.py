@@ -6,7 +6,7 @@ import tempfile
 from typing import Optional
 
 import bcrypt
-from fastapi import APIRouter, Request, HTTPException, Depends, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -217,7 +217,8 @@ async def admin_get_sessions(payload: dict = Depends(require_role("Super Admin",
 
 @router.get("/api/admin/sessions/export-all")
 async def export_all_sessions(format: str = "csv", payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
-    db = SessionLocal()
+    import core.database as db_module
+    db = db_module.SessionLocal()
     try:
         sessions = db.query(ChatSession).order_by(ChatSession.created_at.desc()).all()
 
@@ -233,20 +234,39 @@ async def export_all_sessions(format: str = "csv", payload: dict = Depends(requi
                     if msg.get("role") == "system":
                         continue
                     ts = msg.get("timestamp", "")
+                    formatted_ts = ""
                     if ts:
-                        ts = datetime.datetime.fromtimestamp(ts / 1000, tz=datetime.timezone.utc).isoformat()
+                        if isinstance(ts, (int, float)):
+                            sec = ts / 1000.0 if ts > 1e11 else float(ts)
+                            try:
+                                formatted_ts = datetime.datetime.fromtimestamp(sec, tz=datetime.timezone.utc).isoformat()
+                            except Exception:
+                                formatted_ts = str(ts)
+                        elif isinstance(ts, str):
+                            try:
+                                val = float(ts)
+                                sec = val / 1000.0 if val > 1e11 else val
+                                formatted_ts = datetime.datetime.fromtimestamp(sec, tz=datetime.timezone.utc).isoformat()
+                            except ValueError:
+                                formatted_ts = ts
+                        else:
+                            formatted_ts = str(ts)
                     writer.writerow([
                         s.session_id,
                         msg.get("role", ""),
                         msg.get("content", ""),
-                        ts,
-                        s.is_human_handoff,
+                        formatted_ts,
+                        str(bool(s.is_human_handoff)),
                     ])
             output.seek(0)
+            csv_bytes = output.getvalue().encode("utf-8-sig")
             return StreamingResponse(
-                io.BytesIO(output.getvalue().encode("utf-8")),
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=lexa_all_chats.csv"},
+                io.BytesIO(csv_bytes),
+                media_type="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": "attachment; filename=lexa_all_chats.csv",
+                    "Content-Type": "text/csv; charset=utf-8",
+                },
             )
         else:
             raise HTTPException(status_code=400, detail="Format harus 'csv'")
@@ -275,9 +295,56 @@ async def admin_get_session_history(session_id: str, payload: dict = Depends(req
             "session_id": s.session_id,
             "history": history,
             "is_human_handoff": bool(s.is_human_handoff),
+            "is_archived": bool(s.is_archived),
             "created_at": s.created_at.isoformat() if s.created_at else "",
             "updated_at": s.updated_at.isoformat() if s.updated_at else "",
         }
+    finally:
+        db.close()
+
+
+@router.post("/api/admin/sessions/{session_id}/end")
+async def admin_end_session(session_id: str, payload: dict = Depends(require_role("Super Admin", "CS Agent"))):
+    admin_name = payload.get("name") or "Staf CS"
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now_ts = now_dt.timestamp() * 1000
+    import core.database as db_module
+    db = db_module.SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if not s:
+            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        from sqlalchemy.orm.attributes import flag_modified
+        s.is_archived = True
+        s.is_human_handoff = False
+        s.updated_at = now_dt
+        new_hist = list(s.history or [])
+        new_hist.append({
+            "role": "system",
+            "content": f"[Sesi percakapan telah diakhiri oleh {admin_name}]",
+            "timestamp": now_ts,
+        })
+        s.history = new_hist
+        flag_modified(s, "history")
+        db.commit()
+
+        if session_id in chat_sessions:
+            chat_sessions[session_id].is_archived = True
+            chat_sessions[session_id].history = list(s.history)
+
+        await manager.broadcast_to_session({
+            "type": "session_ended",
+            "session_id": session_id,
+            "ended_by": admin_name,
+            "message": f"Sesi percakapan telah diakhiri oleh {admin_name}.",
+        }, session_id)
+        await manager.broadcast_to_admins({
+            "type": "session_ended",
+            "session_id": session_id,
+            "ended_by": admin_name,
+        })
+
+        return {"status": "success", "message": "Sesi berhasil diakhiri."}
     finally:
         db.close()
 
@@ -501,9 +568,15 @@ async def admin_get_users(payload: dict = Depends(require_role("Super Admin")), 
 @router.post("/api/admin/users")
 @limiter.limit("10/minute")
 async def admin_create_user(request: Request, req: UserCreateRequest, payload: dict = Depends(require_role("Super Admin"))):
-    db = SessionLocal()
+    import core.database as db_module
+    from sqlalchemy.exc import IntegrityError
+    clean_email = req.email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=400, detail="Format email tidak valid")
+
+    db = db_module.SessionLocal()
     try:
-        existing = db.query(AdminUser).filter(AdminUser.email == req.email).first()
+        existing = db.query(AdminUser).filter(AdminUser.email.ilike(clean_email)).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email sudah terdaftar")
 
@@ -512,14 +585,20 @@ async def admin_create_user(request: Request, req: UserCreateRequest, payload: d
         hashed_pwd = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
 
         new_user = AdminUser(
-            name=req.name,
-            email=req.email,
+            name=req.name.strip(),
+            email=clean_email,
             password_hash=hashed_pwd,
-            role=req.role
+            role=req.role,
+            token_version=1,
         )
         db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+        try:
+            db.commit()
+            db.refresh(new_user)
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+
         return {
             "status": "success",
             "message": "User berhasil dibuat",
@@ -580,7 +659,8 @@ async def admin_change_user_password(
     current_email = payload.get("sub")
     current_role = payload.get("role")
 
-    db = SessionLocal()
+    import core.database as db_module
+    db = db_module.SessionLocal()
     try:
         user = db.query(AdminUser).filter(AdminUser.id == user_id).first()
         if not user:
@@ -608,6 +688,7 @@ async def admin_change_user_password(
         pwd_bytes = req.new_password.encode('utf-8')
         salt = bcrypt.gensalt()
         user.password_hash = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+        user.token_version = (getattr(user, "token_version", 1) or 1) + 1
         db.commit()
         return {"status": "success", "message": f"Password untuk {user.name} berhasil diperbarui"}
     finally:
@@ -618,6 +699,7 @@ async def admin_change_user_password(
 @limiter.limit("10/minute")
 async def admin_change_my_password(
     request: Request,
+    response: Response,
     req: ChangePasswordRequest,
     payload: dict = Depends(verify_jwt),
 ):
@@ -627,7 +709,8 @@ async def admin_change_my_password(
     current_email = payload.get("sub")
     current_role = payload.get("role")
 
-    db = SessionLocal()
+    import core.database as db_module
+    db = db_module.SessionLocal()
     try:
         user = db.query(AdminUser).filter(AdminUser.email == current_email).first()
         if not user:
@@ -636,7 +719,7 @@ async def admin_change_my_password(
         is_super_admin = (current_role == "Super Admin")
 
         # Jika bukan super admin, wajib cek password lama
-        if not is_super_admin:
+        if not is_super_admin or req.old_password:
             if not req.old_password:
                 raise HTTPException(status_code=400, detail="Password lama wajib diisi")
             old_bytes = req.old_password.encode('utf-8')
@@ -651,8 +734,17 @@ async def admin_change_my_password(
         pwd_bytes = req.new_password.encode('utf-8')
         salt = bcrypt.gensalt()
         user.password_hash = bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+        user.token_version = (getattr(user, "token_version", 1) or 1) + 1
         db.commit()
-        return {"status": "success", "message": "Password berhasil diperbarui"}
+
+        # Invalidate active session cookie so browser is logged out
+        response.delete_cookie(
+            "lexa_admin_session",
+            httponly=True,
+            secure=os.getenv("ENVIRONMENT", "development") == "production",
+            samesite="lax",
+        )
+        return {"status": "success", "message": "Password berhasil diperbarui. Silakan login kembali."}
     finally:
         db.close()
 

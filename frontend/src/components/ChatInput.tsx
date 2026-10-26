@@ -9,9 +9,11 @@ interface ChatInputProps {
   inputRef: RefObject<HTMLTextAreaElement | null>;
   selectedFile: File | null;
   onFileSelect: (file: File | null) => void;
+  isSessionEnded?: boolean;
+  onStartNewSession?: () => void;
 }
 
-export const ChatInput = ({ input, setInput, onSend, disabled, inputRef, selectedFile, onFileSelect }: ChatInputProps) => {
+export const ChatInput = ({ input, setInput, onSend, disabled, inputRef, selectedFile, onFileSelect, isSessionEnded, onStartNewSession }: ChatInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
 
@@ -57,7 +59,24 @@ export const ChatInput = ({ input, setInput, onSend, disabled, inputRef, selecte
       className="p-3 sm:p-4 bg-[#0A1224]/95 backdrop-blur-2xl border-t border-white/[0.08] shrink-0 z-10 relative"
       style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
     >
-      <input ref={fileInputRef} type="file" accept="image/*,.pdf,.txt,.docx" className="hidden" onChange={handleFileChange} />
+      {isSessionEnded ? (
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/10 text-xs text-slate-300">
+          <div className="flex items-center gap-2 min-w-0 pr-2">
+            <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
+            <span className="leading-snug">Sesi telah diakhiri. Ingin bertanya hal lain?</span>
+          </div>
+          {onStartNewSession && (
+            <button
+              onClick={onStartNewSession}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs transition-colors shrink-0 cursor-pointer shadow-sm active:scale-95"
+            >
+              Mulai Sesi Baru
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <input ref={fileInputRef} type="file" accept="image/*,.pdf,.txt,.docx" className="hidden" onChange={handleFileChange} />
       
       {/* Attached File Preview Chip */}
       {selectedFile && (
@@ -120,6 +139,8 @@ export const ChatInput = ({ input, setInput, onSend, disabled, inputRef, selecte
           <Send size={15} />
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 };

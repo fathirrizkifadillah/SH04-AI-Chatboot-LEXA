@@ -273,6 +273,59 @@ async def return_to_bot_api(req: Request):
     return {"status": "ok", "message": "Sesi telah dikembalikan ke AI bot"}
 
 
+@router.post("/api/chat/sessions/{session_id}/end")
+async def end_chat_session_api(session_id: str, req: Request):
+    """Endpoint REST bagi user widget untuk mengakhiri sesi percakapan."""
+    user_name = "Pelanggan"
+    try:
+        body = await req.json()
+        if isinstance(body, dict) and body.get("user_name"):
+            user_name = str(body["user_name"]).strip()
+    except Exception:
+        pass
+
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now_ts = now_dt.timestamp() * 1000
+    sys_msg = {
+        "role": "system",
+        "content": f"[Sesi percakapan telah diakhiri oleh {user_name}]",
+        "timestamp": now_ts,
+    }
+    db = SessionLocal()
+    try:
+        s = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
+        if not s:
+            raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+        from sqlalchemy.orm.attributes import flag_modified
+        s.is_archived = True
+        s.is_human_handoff = False
+        s.updated_at = now_dt
+        new_hist = list(s.history or [])
+        new_hist.append(sys_msg)
+        s.history = new_hist
+        flag_modified(s, "history")
+        db.commit()
+
+        if session_id in chat_sessions:
+            chat_sessions[session_id].is_archived = True
+            chat_sessions[session_id].history = list(s.history)
+    finally:
+        db.close()
+
+    await manager.broadcast_to_session({
+        "type": "session_ended",
+        "session_id": session_id,
+        "ended_by": user_name,
+        "message": "Sesi percakapan telah diakhiri.",
+    }, session_id)
+    await manager.broadcast_to_admins({
+        "type": "session_ended",
+        "session_id": session_id,
+        "ended_by": user_name,
+    })
+    return {"status": "ok", "message": "Sesi berhasil diakhiri"}
+
+
 def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
@@ -722,9 +775,13 @@ async def poll_chat(request: Request, session_id: str):
     _require_session_token(session_id, request.headers.get("X-Lexa-Session"))
     history = get_session_history(session_id)
     if not history:
-        return {"history": [], "is_human_handoff": False}
+        return {"history": [], "is_human_handoff": False, "is_archived": False}
     filtered_history = [m for m in history.get("history", []) if m.get("role") != "system"]
-    return {"history": filtered_history, "is_human_handoff": history.get("is_human_handoff", False)}
+    return {
+        "history": filtered_history,
+        "is_human_handoff": history.get("is_human_handoff", False),
+        "is_archived": bool(history.get("is_archived", False)),
+    }
 
 
 @router.post("/api/chat/feedback")

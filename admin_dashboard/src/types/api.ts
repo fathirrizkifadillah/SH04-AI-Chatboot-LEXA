@@ -137,6 +137,7 @@ export interface ChatSession {
   session_id: string;
   last_message: string;
   is_human_handoff?: boolean;
+  is_archived?: boolean;
   has_admin_replied?: boolean;
   created_at: string;
   updated_at: string;
@@ -146,6 +147,7 @@ export interface SessionHistory {
   session_id: string;
   history: Message[];
   is_human_handoff: boolean;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
 }

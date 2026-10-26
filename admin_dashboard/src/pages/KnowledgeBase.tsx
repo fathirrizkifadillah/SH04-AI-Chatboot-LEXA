@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import api, { ApiError, API_URL } from '../lib/apiClient';
+import api, { API_URL } from '../lib/apiClient';
 import type { KBFile } from '../types/api';
 
 interface SyncStatus {
@@ -44,6 +44,7 @@ const KnowledgeBase = () => {
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<{ filename: string; isCore?: boolean } | null>(null);
   const [modalError, setModalError] = useState('');
+  const [uploadFeedback, setUploadFeedback] = useState<{ type: 'success' | 'error'; message: string; filename?: string } | null>(null);
 
   const currentUser = (() => {
     try {
@@ -101,7 +102,9 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     if (!file) return;
 
     if (!file.name.endsWith('.md') && !file.name.endsWith('.txt') && !file.name.endsWith('.pdf')) {
-      setSyncStatus({ type: 'error', message: 'Hanya format berkas .txt, .md, atau .pdf yang didukung.' });
+      const errNotice = 'Hanya format berkas .txt, .md, atau .pdf yang didukung.';
+      setUploadFeedback({ type: 'error', message: errNotice });
+      setSyncStatus({ type: 'error', message: errNotice });
       return;
     }
 
@@ -109,17 +112,21 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
     formData.append('file', file);
 
     setIsUploading(true);
+    setUploadFeedback(null);
     try {
       await api.authUpload('/api/admin/kb/upload', formData);
       fetchFiles();
-      setSyncStatus({ type: 'warning', message: 'Dokumen baru berhasil diunggah. Silakan klik "Perbarui Basis Pengetahuan" agar langsung aktif di AI.' });
+      setUploadFeedback({
+        type: 'success',
+        message: `Berkas "${file.name}" berhasil diunggah dan terindeks.`,
+        filename: file.name,
+      });
+      setSyncStatus({ type: 'warning', message: `Dokumen "${file.name}" berhasil diunggah. Klik "Perbarui Basis Pengetahuan" agar langsung aktif di AI.` });
+      setTimeout(() => setUploadFeedback(null), 8000);
     } catch (err: any) {
-      if (err instanceof ApiError) {
-        setSyncStatus({ type: 'error', message: `Gagal unggah: ${err.message}` });
-      } else {
-        console.error(err);
-        setSyncStatus({ type: 'error', message: 'Terjadi kendala saat mengunggah file. Silakan coba kembali.' });
-      }
+      const errMsg = err?.message || 'Terjadi kendala saat mengunggah file. Silakan coba kembali.';
+      setUploadFeedback({ type: 'error', message: `Gagal unggah: ${errMsg}` });
+      setSyncStatus({ type: 'error', message: `Gagal unggah: ${errMsg}` });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -490,23 +497,16 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
         {/* Right Column: Actions (Upload & Re-index RAG) (4 cols) */}
         <div className="lg:col-span-4 space-y-5">
           
-          {/* Quick Create Prompt Card */}
+          {/* Quick Create Prompt Card - Informative Tips (Redundant button removed per UX-006) */}
           {canManageKB && (
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg space-y-3">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg space-y-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 <h3 className="font-bold text-sm">Pengetahuan Instan</h3>
               </div>
               <p className="text-xs text-blue-100 leading-relaxed">
-                Tulis artikel FAQ atau aturan bisnis baru langsung di dashboard tanpa perlu membuat file manual di komputer.
+                Tulis artikel FAQ atau aturan bisnis baru langsung di dashboard tanpa perlu membuat file manual di komputer. Gunakan tombol "Buat Dokumen Baru" di bagian atas halaman.
               </p>
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="w-full py-2 bg-white text-[#0066FF] font-semibold text-xs rounded-xl shadow-sm hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Buat Dokumen Teks Baru</span>
-              </button>
             </div>
           )}
 
@@ -545,6 +545,34 @@ Tuliskan panduan atau informasi lengkap di sini agar AI dapat menjawab pertanyaa
                   onChange={handleFileUpload}
                 />
               </div>
+
+              {/* Dedicated Upload Feedback Banner (UX-007) */}
+              {uploadFeedback && (
+                <div className={`mt-3 p-3 rounded-xl text-xs font-medium flex items-start gap-2 animate-in fade-in ${
+                  uploadFeedback.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
+                }`}>
+                  {uploadFeedback.type === 'success' ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-xs">{uploadFeedback.type === 'success' ? 'Unggah Berhasil' : 'Unggah Gagal'}</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed opacity-95">{uploadFeedback.message}</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUploadFeedback(null);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, Response
 
 from core.schemas import LoginRequest
 from core.auth import create_jwt_token, decode_token_allow_expired, verify_jwt
-from core.database import AdminUser, SessionLocal
+import core.database as db_module
 from core.rate_limit import limiter
 
 router = APIRouter()
@@ -15,9 +15,9 @@ router = APIRouter()
 @router.post("/api/auth/login")
 @limiter.limit("5/minute")
 async def login(request: Request, req: LoginRequest):
-    db = SessionLocal()
+    db = db_module.SessionLocal()
     try:
-        user = db.query(AdminUser).filter(AdminUser.email == req.email).first()
+        user = db.query(db_module.AdminUser).filter(db_module.AdminUser.email == req.email).first()
         if not user or not user.password_hash:
             raise HTTPException(status_code=401, detail="Email atau password salah")
 
@@ -41,7 +41,12 @@ async def login(request: Request, req: LoginRequest):
         if not is_valid:
             raise HTTPException(status_code=401, detail="Email atau password salah")
 
-        token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
+        token = create_jwt_token({
+            "sub": user.email,
+            "role": user.role,
+            "name": user.name,
+            "tv": getattr(user, "token_version", 1) or 1,
+        })
         response = Response(
             content=json.dumps({
                 "token": token,
@@ -77,13 +82,18 @@ async def refresh_token(request: Request):
     if not email:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    db = SessionLocal()
+    db = db_module.SessionLocal()
     try:
-        user = db.query(AdminUser).filter(AdminUser.email == email).first()
+        user = db.query(db_module.AdminUser).filter(db_module.AdminUser.email == email).first()
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        new_token = create_jwt_token({"sub": user.email, "role": user.role, "name": user.name})
+        new_token = create_jwt_token({
+            "sub": user.email,
+            "role": user.role,
+            "name": user.name,
+            "tv": getattr(user, "token_version", 1) or 1,
+        })
         response = Response(
             content=json.dumps({
                 "token": new_token,

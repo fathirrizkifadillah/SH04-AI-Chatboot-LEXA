@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, FormEvent } from 'react';
-import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users, KeyRound, Loader2, Check } from 'lucide-react';
+import { Search, Bell, HelpCircle, Menu, X, Sun, Moon, LogOut, User, Shield, ChevronDown, BookOpen, MessageSquare, LayoutDashboard, BarChart3, Settings, Code, Users, KeyRound, Loader2, Check, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api, { getWebSocketUrl } from '../lib/apiClient';
 import { useLanguage } from '../lib/i18n';
@@ -56,6 +56,9 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
@@ -186,14 +189,19 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
         old_password: currentUser.role === 'Super Admin' ? (oldPassword || undefined) : oldPassword,
         new_password: newPassword,
       });
-      setPwdSuccess('Password Anda berhasil diperbarui!');
+      setPwdSuccess('Password berhasil diperbarui. Mengalihkan ke halaman login...');
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      // Invalidate frontend auth session and redirect to login
+      sessionStorage.clear();
+      localStorage.removeItem('lexa_admin_token');
+      localStorage.removeItem('lexa_admin_user');
       setTimeout(() => {
         setShowPasswordModal(false);
         setPwdSuccess('');
-      }, 1500);
+        navigate('/login', { replace: true });
+      }, 1200);
     } catch (err: any) {
       setPwdError(err.message || 'Gagal mengubah password. Pastikan password lama sesuai.');
     } finally {
@@ -223,7 +231,7 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
       <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
         <button
           onClick={onToggleSidebar}
-          className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           title="Toggle Sidebar"
           aria-label="Toggle navigation menu"
         >
@@ -631,41 +639,71 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
               {currentUser.role !== 'Super Admin' && (
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Password Saat Ini</label>
-                  <input
-                    required
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder="Ketik password lama Anda"
-                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-[#0D7AFF]"
-                  />
+                  <div className="relative">
+                    <input
+                      required
+                      type={showOldPassword ? 'text' : 'password'}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      placeholder="Ketik password lama Anda"
+                      className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 pr-10 outline-none focus:border-[#0D7AFF]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPassword(!showOldPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                      title={showOldPassword ? 'Sembunyikan password' : 'Lihat password'}
+                    >
+                      {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
-                <input
-                  required
-                  type="password"
-                  minLength={6}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimal 6 karakter"
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-[#0D7AFF]"
-                />
+                <div className="relative">
+                  <input
+                    required
+                    type={showNewPassword ? 'text' : 'password'}
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimal 6 karakter"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 pr-10 outline-none focus:border-[#0D7AFF]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                    title={showNewPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password Baru</label>
-                <input
-                  required
-                  type="password"
-                  minLength={6}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Ulangi password baru"
-                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 outline-none focus:border-[#0D7AFF]"
-                />
+                <div className="relative">
+                  <input
+                    required
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Ulangi password baru"
+                    className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl px-3 py-2 pr-10 outline-none focus:border-[#0D7AFF]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                    title={showConfirmPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="pt-3 flex gap-2.5">

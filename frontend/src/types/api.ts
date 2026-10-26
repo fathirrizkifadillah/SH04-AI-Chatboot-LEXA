@@ -51,7 +51,7 @@ export interface SSEErrorEvent {
 export type SSEEvent = SSESessionEvent | SSEChunkEvent | SSEDoneEvent | SSEErrorEvent;
 
 export interface Message {
-  role: 'user' | 'bot' | 'admin';
+  role: 'user' | 'bot' | 'admin' | 'system';
   content: string;
   timestamp: number;
   id: number;

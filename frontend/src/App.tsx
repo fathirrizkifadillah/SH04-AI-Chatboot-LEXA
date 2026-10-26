@@ -87,6 +87,7 @@ function App() {
   const [activeAdminName, setActiveAdminName] = useState<string>('');
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'thumbs_up' | 'thumbs_down'>>({});
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSessionEnded, setIsSessionEnded] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -154,13 +155,16 @@ function App() {
   useEffect(() => {
     if (!sessionId || !sessionToken) return;
     api
-      .get<{ history: unknown[]; is_human_handoff: boolean }>(
+      .get<{ history: unknown[]; is_human_handoff: boolean; is_archived?: boolean }>(
         `/api/chat/poll?session_id=${sessionId}&t=${Date.now()}`,
         { headers: { 'X-Lexa-Session': sessionToken } }
       )
       .then((data) => {
         if (typeof data.is_human_handoff === 'boolean') {
           setIsHandoffRequested(data.is_human_handoff);
+        }
+        if (typeof data.is_archived === 'boolean') {
+          setIsSessionEnded(data.is_archived);
         }
       })
       .catch(() => {});
@@ -258,6 +262,19 @@ function App() {
               id: Date.now(),
               role: 'bot',
               content: 'Percakapan dengan staf CS telah berakhir. Anda kembali terhubung dengan Lexa AI. Ada lagi yang bisa saya bantu?',
+              timestamp: Date.now(),
+            },
+          ]);
+        } else if ((data as any).type === 'session_ended') {
+          setIsSessionEnded(true);
+          setIsHandoffRequested(false);
+          setActiveAdminName('');
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now(),
+              role: 'system',
+              content: (data as any).message || 'Sesi percakapan telah diakhiri.',
               timestamp: Date.now(),
             },
           ]);
@@ -522,6 +539,8 @@ function App() {
     localStorage.setItem('lexa_session_token', newToken);
     setIsHandoffRequested(false);
     setEscalationShown(false);
+    setIsSessionEnded(false);
+    setActiveAdminName('');
 
     setTimeout(() => {
       if (config) {
@@ -608,6 +627,47 @@ function App() {
     }
   };
 
+  const handleEndSession = async () => {
+    if (!sessionId) return;
+    try {
+      await api.post(`/api/chat/sessions/${sessionId}/end`, { user_name: 'Pelanggan' });
+    } catch (e) {
+      console.warn('End session request warning:', e);
+    }
+    setIsSessionEnded(true);
+    setIsHandoffRequested(false);
+    setActiveAdminName('');
+    const endNotice: ChatMessage = {
+      id: Date.now(),
+      role: 'system',
+      content: 'Sesi percakapan telah diakhiri. Terima kasih telah menghubungi LEXA Software House.',
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, endNotice]);
+  };
+
+  const handleStartNewSession = () => {
+    setIsSessionEnded(false);
+    setIsHandoffRequested(false);
+    setActiveAdminName('');
+    const newId = crypto.randomUUID();
+    const newToken = crypto.randomUUID();
+    setSessionId(newId);
+    setSessionToken(newToken);
+    localStorage.setItem('lexa_session_id', newId);
+    localStorage.setItem('lexa_session_token', newToken);
+    setCookie('lexa_session_id', newId);
+    setCookie('lexa_session_token', newToken);
+    const welcomeMsg: ChatMessage = {
+      id: Date.now(),
+      role: 'bot',
+      content: config?.welcome_message || 'Halo! Selamat datang di LEXA Software House. Ada yang bisa kami bantu seputar layanan teknologi kami?',
+      timestamp: Date.now(),
+    };
+    setMessages([welcomeMsg]);
+    localStorage.setItem('lexa_messages', JSON.stringify([welcomeMsg]));
+  };
+
   const [isSmallScreen, setIsSmallScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
 
   useEffect(() => {
@@ -676,10 +736,10 @@ function App() {
                     position: 'fixed',
                     bottom: '24px',
                     ...(isLeftPos ? { left: '24px' } : { right: '24px' }),
-                    width: '380px',
-                    height: '580px',
+                    width: '400px',
+                    height: '630px',
                     maxWidth: 'calc(100vw - 32px)',
-                    maxHeight: 'calc(100vh - 48px)',
+                    maxHeight: 'calc(100vh - 32px)',
                     zIndex: 99999,
                     transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1), height 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
                   }
@@ -698,6 +758,8 @@ function App() {
               botAvatar={lexaBotHead}
               onRequestHandoff={handleRequestHandoff}
               onReturnToBot={handleReturnToBot}
+              onEndSession={handleEndSession}
+              isSessionEnded={isSessionEnded}
               isHandoffRequested={isHandoffRequested}
               isHandoffActive={isHandoffRequested && Boolean(activeAdminName || messages.some(m => m.role === 'admin'))}
               adminName={activeAdminName}
@@ -722,7 +784,7 @@ function App() {
             />
 
             {/* Quick Replies (Always Accessible & Persistent) */}
-            {config?.quick_replies && config.quick_replies.length > 0 && !isStreaming && !isWaitingForResponse && (
+            {config?.quick_replies && config.quick_replies.length > 0 && !isStreaming && !isWaitingForResponse && !isSessionEnded && (
               showQuickRepliesBar ? (
                 <QuickReplies
                   replies={config.quick_replies}
@@ -752,10 +814,12 @@ function App() {
               input={input}
               setInput={setInput}
               onSend={() => handleSend()}
-              disabled={(!input.trim() && !selectedFile) || isStreaming || isWaitingForResponse}
+              disabled={(!input.trim() && !selectedFile) || isStreaming || isWaitingForResponse || isSessionEnded}
               inputRef={inputRef}
               selectedFile={selectedFile}
               onFileSelect={setSelectedFile}
+              isSessionEnded={isSessionEnded}
+              onStartNewSession={handleStartNewSession}
             />
           </motion.div>
         )}

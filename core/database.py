@@ -87,6 +87,7 @@ class AdminUser(Base):
     role = Column(String) # Super Admin, CS Agent, Editor (Knowledge Base)
     status = Column(String, default="Online")
     last_active = Column(String, default="Sekarang")
+    token_version = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class UnansweredQuery(Base):
@@ -553,6 +554,7 @@ def get_session_history(session_id: str):
             "session_id": s.session_id,
             "history": s.history,
             "is_human_handoff": s.is_human_handoff,
+            "is_archived": bool(s.is_archived),
             "created_at": _to_utc_iso(s.created_at),
             "updated_at": _to_utc_iso(s.updated_at)
         }
@@ -643,6 +645,7 @@ def init_database():
         ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN is_archived BOOLEAN DEFAULT FALSE"),
         ("chat_sessions", "ALTER TABLE chat_sessions ADD COLUMN session_token_hash VARCHAR"),
         ("admin_users", "ALTER TABLE admin_users ADD COLUMN password_hash VARCHAR"),
+        ("admin_users", "ALTER TABLE admin_users ADD COLUMN token_version INTEGER DEFAULT 1"),
         ("unanswered_queries", "ALTER TABLE unanswered_queries ADD COLUMN status VARCHAR DEFAULT 'pending'"),
     ]
     for table_name, migration_sql in _migrations:

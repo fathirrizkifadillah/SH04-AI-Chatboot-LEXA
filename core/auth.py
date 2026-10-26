@@ -44,6 +44,20 @@ def verify_jwt(request: Request, credentials: HTTPAuthorizationCredentials | Non
         raise HTTPException(status_code=401, detail="Authentication required")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        email = payload.get("sub")
+        token_tv = payload.get("tv")
+        if email and token_tv is not None:
+            import core.database as db_module
+            db = db_module.SessionLocal()
+            try:
+                user = db.query(db_module.AdminUser).filter(db_module.AdminUser.email == email).first()
+                if not user:
+                    raise HTTPException(status_code=401, detail="User not found")
+                current_tv = getattr(user, "token_version", 1) or 1
+                if int(token_tv) != int(current_tv):
+                    raise HTTPException(status_code=401, detail="Session revoked. Please login again.")
+            finally:
+                db.close()
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
